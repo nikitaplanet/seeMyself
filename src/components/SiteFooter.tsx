@@ -68,6 +68,17 @@ export function SiteFooter() {
               （MIT）。有出生地經度時會先換成真太陽時再定時辰；派別為 iztro
               預設通行版本。
             </li>
+            <li>
+              八字排盤使用開源套件{' '}
+              <a
+                className="underline hover:text-fg"
+                href="https://github.com/6tail/lunar-javascript"
+                rel="noopener noreferrer"
+              >
+                lunar-javascript
+              </a>
+              （MIT）。與紫微斗數相同，有經度時會先換成真太陽時再定時辰；起運採晚子時（sect 2）。
+            </li>
           </ul>
         </section>
       </div>

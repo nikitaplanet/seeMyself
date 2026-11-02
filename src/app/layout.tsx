@@ -9,7 +9,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: { default: '排盤', template: '%s｜排盤' },
   description:
-    '輸入一次出生資料，同時排出人類圖與紫微斗數命盤。未登入時資料僅用於即時計算、不保存；登入後可自行選擇把命盤儲存到帳號。',
+    '輸入一次出生資料，同時排出人類圖、紫微斗數與八字命盤。未登入時資料僅用於即時計算、不保存；登入後可自行選擇把命盤儲存到帳號。',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

@@ -1,3 +1,4 @@
+import type { BaziChart } from '@/lib/bazi/types';
 import { parseSavedRef, type SavedRef } from '@/lib/charts/mapping';
 import type { BirthInput, ChartResult } from '@/lib/hd/types';
 import type { ZiweiChart } from '@/lib/ziwei/types';
@@ -16,6 +17,9 @@ export type ChartResponse =
   | { ok: false; status: number; error: ApiError };
 export type ZiweiResponse =
   | { ok: true; chart: ZiweiChart }
+  | { ok: false; status: number; error: ApiError };
+export type BaziResponse =
+  | { ok: true; chart: BaziChart }
   | { ok: false; status: number; error: ApiError };
 
 const NETWORK_ERROR: ApiError = {
@@ -75,6 +79,19 @@ export async function postChart(
   };
 }
 
+function isBaziChart(v: unknown): v is BaziChart {
+  if (typeof v !== 'object' || v === null) return false;
+  const c = v as Partial<BaziChart>;
+  return (
+    Array.isArray(c.pillars) &&
+    c.pillars.length === 4 &&
+    typeof c.ganZhiLabel === 'string' &&
+    Array.isArray(c.daYun) &&
+    Array.isArray(c.wuXing) &&
+    c.wuXing.length === 5
+  );
+}
+
 function isZiweiChart(v: unknown): v is ZiweiChart {
   if (typeof v !== 'object' || v === null) return false;
   const c = v as Partial<ZiweiChart>;
@@ -124,18 +141,58 @@ export async function postZiwei(
   };
 }
 
-/** Human Design is required; 紫微 is best-effort so a library failure still shows the bodygraph. */
+export async function postBazi(
+  input: BirthInput,
+  timeUnknown: boolean,
+  signal?: AbortSignal,
+): Promise<BaziResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/bazi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, timeUnknown }),
+      signal,
+    });
+  } catch {
+    return { ok: false, status: 0, error: NETWORK_ERROR };
+  }
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // fall through
+  }
+  if (res.ok && isBaziChart(body)) return { ok: true, chart: body };
+  if (isApiErrorBody(body))
+    return { ok: false, status: res.status, error: body.error };
+  return {
+    ok: false,
+    status: res.status,
+    error: {
+      code: 'UNKNOWN',
+      message: `伺服器回應異常（HTTP ${res.status}），請稍後再試。`,
+    },
+  };
+}
+
+/** Human Design is required; 紫微／八字 are best-effort so a library failure still shows the bodygraph. */
 export async function postBoth(
   input: BirthInput,
   timeUnknown: boolean,
   signal?: AbortSignal,
-): Promise<{ hd: ChartResponse; ziwei: ZiweiResponse | null }> {
+): Promise<{ hd: ChartResponse; ziwei: ZiweiResponse | null; bazi: BaziResponse | null }> {
   const hdPromise = postChart(input, signal);
-  const ziweiPromise = input.gender
-    ? postZiwei(input, timeUnknown, signal)
-    : Promise.resolve(null);
-  const [hd, ziwei] = await Promise.all([hdPromise, ziweiPromise]);
-  return { hd, ziwei };
+  if (!input.gender) {
+    const hd = await hdPromise;
+    return { hd, ziwei: null, bazi: null };
+  }
+  const [hd, ziwei, bazi] = await Promise.all([
+    hdPromise,
+    postZiwei(input, timeUnknown, signal),
+    postBazi(input, timeUnknown, signal),
+  ]);
+  return { hd, ziwei, bazi };
 }
 
 export function attachZiwei(
@@ -153,6 +210,31 @@ export function attachZiwei(
   }
   if (ziwei.ok) return { ...stored, ziwei: ziwei.chart, ziweiError: null };
   return { ...stored, ziwei: null, ziweiError: ziwei.error.message };
+}
+
+export function attachBazi(
+  stored: StoredChart,
+  bazi: BaziResponse | null,
+): StoredChart {
+  if (!bazi) {
+    return {
+      ...stored,
+      bazi: null,
+      baziError: stored.input.gender
+        ? null
+        : '八字排盤需要性別。重新輸入一次並選擇男或女即可一併排出。',
+    };
+  }
+  if (bazi.ok) return { ...stored, bazi: bazi.chart, baziError: null };
+  return { ...stored, bazi: null, baziError: bazi.error.message };
+}
+
+export function attachSidecars(
+  stored: StoredChart,
+  ziwei: ZiweiResponse | null,
+  bazi: BaziResponse | null,
+): StoredChart {
+  return attachBazi(attachZiwei(stored, ziwei), bazi);
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +255,8 @@ export interface StoredChart {
   saved?: SavedRef | null;
   ziwei?: ZiweiChart | null;
   ziweiError?: string | null;
+  bazi?: BaziChart | null;
+  baziError?: string | null;
 }
 
 const listeners = new Set<() => void>();
@@ -227,6 +311,8 @@ export function parseStoredChart(raw: string | null): StoredChart | null {
       saved: parseSavedRef(v.saved),
       ziwei: isZiweiChart(v.ziwei) ? v.ziwei : null,
       ziweiError: typeof v.ziweiError === 'string' ? v.ziweiError : null,
+      bazi: isBaziChart(v.bazi) ? v.bazi : null,
+      baziError: typeof v.baziError === 'string' ? v.baziError : null,
     };
   } catch {
     return null;

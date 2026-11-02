@@ -43,6 +43,14 @@
   --ziwei-ji: #5b3a8a;
   --ziwei-soul-bg: #f4d7a8;
   --ziwei-scope-bg: #d7eb9a;
+
+  --bazi-header: #b24532;
+  --bazi-header-fg: #ffffff;
+  --bazi-note: #fbf3d5;
+  --bazi-xi: #e7f3ea;
+  --bazi-yong: #e4eef8;
+  --bazi-ji: #f8eaea;
+  --bazi-tiao: #efe6f4;
 }
 
 @theme inline {
@@ -72,10 +80,25 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Visible keyboard focus everywhere (§11.3). */
+/* Visible keyboard focus everywhere (§11.3), except form fields (no ring). */
 :focus-visible {
   outline: 3px solid var(--app-focus);
   outline-offset: 2px;
+}
+
+:is(input, textarea, select):focus,
+:is(input, textarea, select):focus-visible,
+.mantine-Input-input:focus,
+.mantine-Input-input:focus-visible,
+.mantine-Input-input:focus-within,
+.mantine-PasswordInput-innerInput:focus,
+.mantine-PasswordInput-innerInput:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.mantine-Input-wrapper {
+  --input-bd-focus: var(--app-border);
 }
 
 /* BodyGraph gate buttons live in an SVG overlay: draw the focus ring on the circle itself. */

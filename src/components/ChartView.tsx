@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CENTER_NAMES_ZH } from '@/lib/hd/constants';
 import { buildHdAiPrompt } from '@/lib/hd/prompt';
 import type { BirthInput, ChartResult, NodeMode } from '@/lib/hd/types';
 import {
   parseStoredChart,
+  postBazi,
   postChart,
   readStoredChartRaw,
   saveStoredChart,
@@ -14,6 +15,7 @@ import {
 } from '@/lib/ui/chartClient';
 import { ActivationTable } from './ActivationTable';
 import { AiPromptCard } from './AiPromptCard';
+import { BaziView } from './bazi/BaziView';
 import { BodyGraph } from './BodyGraph/BodyGraph';
 import { ChartSummary } from './ChartSummary';
 import { SaveChartButton } from './charts/SaveChartButton';
@@ -38,7 +40,7 @@ export function ChartView() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'hd' | 'ziwei'>('hd');
+  const [tab, setTab] = useState<'hd' | 'ziwei' | 'bazi'>('hd');
 
   if (stored === undefined) return <ChartSkeleton />;
   if (stored === null) return <EmptyState />;
@@ -98,6 +100,9 @@ export function ChartView() {
         <TabButton selected={tab === 'ziwei'} onClick={() => setTab('ziwei')}>
           紫微斗數
         </TabButton>
+        <TabButton selected={tab === 'bazi'} onClick={() => setTab('bazi')}>
+          八字
+        </TabButton>
       </div>
 
       {tab === 'ziwei' ? (
@@ -107,6 +112,8 @@ export function ChartView() {
           error={stored.ziweiError}
           input={stored.input}
         />
+      ) : tab === 'bazi' ? (
+        <BaziTab stored={stored} />
       ) : (
         <div
           className={`space-y-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}
@@ -151,6 +158,45 @@ export function ChartView() {
         </div>
       )}
     </div>
+  );
+}
+
+function BaziTab({
+  stored,
+}: {
+  stored: NonNullable<ReturnType<typeof parseStoredChart>>;
+}) {
+  useEffect(() => {
+    if (stored.bazi || stored.baziError || !stored.input.gender) return;
+    let cancelled = false;
+    void postBazi(stored.input, stored.timeUnknown).then((res) => {
+      if (cancelled) return;
+      if (res.ok)
+        saveStoredChart({ ...stored, bazi: res.chart, baziError: null });
+      else
+        saveStoredChart({
+          ...stored,
+          bazi: null,
+          baziError: res.error.message,
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stored]);
+  if (!stored.bazi && !stored.baziError && stored.input.gender) {
+    return (
+      <p className="rounded-md border border-border bg-surface px-4 py-6 text-muted">
+        正在排出八字命盤…
+      </p>
+    );
+  }
+  return (
+    <BaziView
+      chart={stored.bazi}
+      timeUnknown={stored.timeUnknown}
+      error={stored.baziError}
+    />
   );
 }
 

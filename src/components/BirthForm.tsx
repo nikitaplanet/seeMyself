@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_SENSITIVITY_MINUTES, MAX_DATE, MIN_DATE } from '@/lib/hd/constants';
 import type { BirthInput, Gender, NodeMode } from '@/lib/hd/types';
-import { attachZiwei, formatOffset, formatUtc, postBoth, saveStoredChart, type StoredChart } from '@/lib/ui/chartClient';
+import { attachSidecars, formatOffset, formatUtc, postBoth, saveStoredChart, type StoredChart } from '@/lib/ui/chartClient';
 import { PlaceAutocomplete, placeLabel, type PlaceOption } from './PlaceAutocomplete';
 
 // Spec §11.1 — the input page form.
@@ -167,18 +167,19 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     // users who cannot find their birthplace. We accept a manual timezone without a place (the
     // place only determines the timezone anyway, §4) and omit `place` from the request.
     if (!place && !manualTz) e.place = '請從清單中選擇出生地點，或在「進階」手動選擇時區。';
-    if (gender !== 'male' && gender !== 'female') e.gender = '紫微斗數需要性別，請選擇男或女。';
+    if (gender !== 'male' && gender !== 'female') e.gender = '紫微斗數與八字排盤需要性別，請選擇男或女。';
     return e;
   }
 
   async function send(input: BirthInput) {
     setSubmitting(true);
     setFormError(null);
-    const { hd, ziwei } = await postBoth(input, timeUnknown);
+    const { hd, ziwei, bazi } = await postBoth(input, timeUnknown);
     if (hd.ok) {
-      const stored = attachZiwei(
+      const stored = attachSidecars(
         { input, result: hd.chart, timeUnknown, placeLabel: place ? placeLabel(place) : null },
         ziwei,
+        bazi,
       );
       if (onComputed) {
         const err = await onComputed(stored);
@@ -287,7 +288,7 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
           id={genderId}
           label="性別"
           labelProps={{ className: 'mb-1 font-medium' }}
-          description="人類圖不使用性別；紫微斗數排盤需要。"
+          description="人類圖不使用性別；紫微斗數與八字排盤需要。"
           inputWrapperOrder={['label', 'input', 'description', 'error']}
           descriptionProps={{ className: 'mt-1' }}
           styles={{ description: { fontSize: 'var(--mantine-font-size-sm)' }, error: { fontSize: 'var(--mantine-font-size-sm)' } }}
