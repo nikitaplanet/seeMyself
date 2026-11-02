@@ -1,14 +1,29 @@
 'use client';
 
-import { Alert, Button, Divider, PasswordInput, Stack, Tabs, Text, TextInput } from '@mantine/core';
+import {
+  Alert,
+  Button,
+  Divider,
+  PasswordInput,
+  Stack,
+  Tabs,
+  Text,
+  TextInput,
+} from '@mantine/core';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { authErrorMessage, PASSWORD_MIN_LENGTH, validateEmail, validateNewPassword } from '@/lib/auth/errors';
+import {
+  authErrorMessage,
+  PASSWORD_MIN_LENGTH,
+  validateEmail,
+  validateNewPassword,
+} from '@/lib/auth/errors';
+import { googleProviderEnabled } from '@/lib/auth/google';
 import { safeNextPath } from '@/lib/auth/redirect';
 import { useAuth } from '@/lib/auth/useAuth';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { authCallbackUrl, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase/env';
+import { authCallbackUrl } from '@/lib/supabase/env';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -19,40 +34,46 @@ const INPUT_PROPS = {
   styles: { error: { fontSize: 'var(--mantine-font-size-sm)' } },
 } as const;
 
-/**
- * The Google button checks the project's public auth settings first, so a disabled provider shows a
- * Chinese message instead of Supabase's raw JSON error page. Returns null when it can't tell.
- */
-async function googleEnabled(): Promise<boolean | null> {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_PUBLISHABLE_KEY } });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { external?: { google?: boolean } };
-    return typeof body.external?.google === 'boolean' ? body.external.google : null;
-  } catch {
-    return null;
-  }
-}
-
 export function LoginView() {
   const params = useSearchParams();
   const router = useRouter();
   const auth = useAuth();
   const next = safeNextPath(params.get('next'), '/charts');
   const initial = params.get('mode');
-  const [mode, setMode] = useState<Mode>(initial === 'signup' || initial === 'forgot' ? initial : 'signin');
+  const [mode, setMode] = useState<Mode>(
+    initial === 'signup' || initial === 'forgot' ? initial : 'signin',
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string; confirm?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirm?: string;
+  }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | 'email' | 'google'>(null);
-  const [sent, setSent] = useState<null | { kind: 'signup' | 'reset'; email: string }>(null);
+  const [sent, setSent] = useState<null | {
+    kind: 'signup' | 'reset';
+    email: string;
+  }>(null);
+  // Hidden until the Google provider is turned on in the Dashboard (email/password is the path now).
+  const [showGoogle, setShowGoogle] = useState(false);
 
   // Signed in (just now, or already when the page opened): go where the user was heading.
   useEffect(() => {
     if (auth.status === 'signedIn' && mode !== 'forgot') router.replace(next);
   }, [auth.status, mode, next, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    googleProviderEnabled().then(on => {
+      if (!cancelled) setShowGoogle(on);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function switchMode(m: Mode) {
     setMode(m);
@@ -68,7 +89,8 @@ export function LoginView() {
     const emailErr = validateEmail(email);
     if (emailErr) e.email = emailErr;
     if (mode === 'signin' && !password) e.password = '請輸入密碼。';
-    if (mode === 'signup') Object.assign(e, validateNewPassword(password, confirm));
+    if (mode === 'signup')
+      Object.assign(e, validateNewPassword(password, confirm));
     setErrors(e);
     setFormError(null);
     if (e.email || e.password || e.confirm) return;
@@ -77,7 +99,10 @@ export function LoginView() {
     const addr = email.trim();
     setBusy('email');
     if (mode === 'signin') {
-      const { error } = await sb.auth.signInWithPassword({ email: addr, password });
+      const { error } = await sb.auth.signInWithPassword({
+        email: addr,
+        password,
+      });
       setBusy(null);
       if (error) setFormError(authErrorMessage(error));
       // success: the auth state changes and the effect above redirects
@@ -103,7 +128,9 @@ export function LoginView() {
       }
       return;
     }
-    const { error } = await sb.auth.resetPasswordForEmail(addr, { redirectTo: authCallbackUrl('/reset-password') });
+    const { error } = await sb.auth.resetPasswordForEmail(addr, {
+      redirectTo: authCallbackUrl('/reset-password'),
+    });
     setBusy(null);
     if (error) setFormError(authErrorMessage(error));
     else setSent({ kind: 'reset', email: addr });
@@ -113,9 +140,9 @@ export function LoginView() {
     if (busy) return;
     setBusy('google');
     setFormError(null);
-    const enabled = await googleEnabled();
-    if (enabled === false) {
+    if (!(await googleProviderEnabled())) {
       setBusy(null);
+      setShowGoogle(false);
       setFormError('Google 登入尚未啟用，請先改用電子郵件登入。');
       return;
     }
@@ -160,9 +187,9 @@ export function LoginView() {
           label="電子郵件"
           autoComplete="email"
           value={email}
-          onChange={(e) => {
+          onChange={e => {
             setEmail(e.currentTarget.value);
-            setErrors((x) => ({ ...x, email: undefined }));
+            setErrors(x => ({ ...x, email: undefined }));
           }}
           error={errors.email}
         />
@@ -170,12 +197,18 @@ export function LoginView() {
           <PasswordInput
             {...INPUT_PROPS}
             label="密碼"
-            description={mode === 'signup' ? `至少 ${PASSWORD_MIN_LENGTH} 個字元` : undefined}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            description={
+              mode === 'signup'
+                ? `至少 ${PASSWORD_MIN_LENGTH} 個字元`
+                : undefined
+            }
+            autoComplete={
+              mode === 'signup' ? 'new-password' : 'current-password'
+            }
             value={password}
-            onChange={(e) => {
+            onChange={e => {
               setPassword(e.currentTarget.value);
-              setErrors((x) => ({ ...x, password: undefined }));
+              setErrors(x => ({ ...x, password: undefined }));
             }}
             error={errors.password}
             visibilityToggleButtonProps={{ 'aria-label': '顯示或隱藏密碼' }}
@@ -187,9 +220,9 @@ export function LoginView() {
             label="確認密碼"
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => {
+            onChange={e => {
               setConfirm(e.currentTarget.value);
-              setErrors((x) => ({ ...x, confirm: undefined }));
+              setErrors(x => ({ ...x, confirm: undefined }));
             }}
             error={errors.confirm}
             visibilityToggleButtonProps={{ 'aria-label': '顯示或隱藏密碼' }}
@@ -202,17 +235,35 @@ export function LoginView() {
           </Alert>
         ) : null}
 
-        <Button type="submit" size="md" loading={busy === 'email'} disabled={busy === 'google'} fullWidth>
-          {mode === 'signin' ? '登入' : mode === 'signup' ? '註冊' : '寄送重設密碼連結'}
+        <Button
+          type="submit"
+          size="md"
+          loading={busy === 'email'}
+          disabled={busy === 'google'}
+          fullWidth
+        >
+          {mode === 'signin'
+            ? '登入'
+            : mode === 'signup'
+              ? '註冊'
+              : '寄送重設密碼連結'}
         </Button>
 
         {mode === 'signin' ? (
-          <button type="button" onClick={() => switchMode('forgot')} className="self-start text-sm underline hover:text-accent">
+          <button
+            type="button"
+            onClick={() => switchMode('forgot')}
+            className="self-start text-sm underline hover:text-accent"
+          >
             忘記密碼？
           </button>
         ) : null}
         {mode === 'forgot' ? (
-          <button type="button" onClick={() => switchMode('signin')} className="self-start text-sm underline hover:text-accent">
+          <button
+            type="button"
+            onClick={() => switchMode('signin')}
+            className="self-start text-sm underline hover:text-accent"
+          >
             回到登入
           </button>
         ) : null}
@@ -234,7 +285,10 @@ export function LoginView() {
 
   return (
     <Stack gap="lg">
-      <Tabs value={mode} onChange={(v) => switchMode(v === 'signup' ? 'signup' : 'signin')}>
+      <Tabs
+        value={mode}
+        onChange={v => switchMode(v === 'signup' ? 'signup' : 'signin')}
+      >
         <Tabs.List grow>
           <Tabs.Tab value="signin" className="text-base">
             登入
@@ -247,10 +301,21 @@ export function LoginView() {
           {form}
         </Tabs.Panel>
       </Tabs>
-      <Divider label="或" labelPosition="center" />
-      <Button variant="default" size="md" fullWidth onClick={onGoogle} loading={busy === 'google'} disabled={busy === 'email'}>
-        使用 Google 帳號{mode === 'signup' ? '註冊' : '登入'}
-      </Button>
+      {showGoogle ? (
+        <>
+          <Divider label="或" labelPosition="center" />
+          <Button
+            variant="default"
+            size="md"
+            fullWidth
+            onClick={onGoogle}
+            loading={busy === 'google'}
+            disabled={busy === 'email'}
+          >
+            使用 Google 帳號{mode === 'signup' ? '註冊' : '登入'}
+          </Button>
+        </>
+      ) : null}
       <Text size="sm" c="dimmed">
         不登入也能排盤；登入後可以把命盤儲存到帳號。
         <Link href="/" className="ml-1 underline hover:text-accent">

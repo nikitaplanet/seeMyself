@@ -1,5 +1,6 @@
 import { parseSavedRef, type SavedRef } from '@/lib/charts/mapping';
 import type { BirthInput, ChartResult } from '@/lib/hd/types';
+import type { ZiweiChart } from '@/lib/ziwei/types';
 
 // Browser-side helpers shared by the form page and the result page: calling POST /api/chart and
 // passing the result through sessionStorage (spec §11.1, §13.3 — never through the URL).
@@ -10,17 +11,33 @@ export interface ApiError {
   details?: Record<string, unknown>;
 }
 
-export type ChartResponse = { ok: true; chart: ChartResult } | { ok: false; status: number; error: ApiError };
+export type ChartResponse =
+  | { ok: true; chart: ChartResult }
+  | { ok: false; status: number; error: ApiError };
+export type ZiweiResponse =
+  | { ok: true; chart: ZiweiChart }
+  | { ok: false; status: number; error: ApiError };
 
-const NETWORK_ERROR: ApiError = { code: 'NETWORK_ERROR', message: '無法連線到伺服器，請檢查網路後再試。' };
+const NETWORK_ERROR: ApiError = {
+  code: 'NETWORK_ERROR',
+  message: '無法連線到伺服器，請檢查網路後再試。',
+};
 
 function isApiErrorBody(v: unknown): v is { error: ApiError } {
   if (typeof v !== 'object' || v === null || !('error' in v)) return false;
   const e = (v as { error: unknown }).error;
-  return typeof e === 'object' && e !== null && typeof (e as ApiError).code === 'string' && typeof (e as ApiError).message === 'string';
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    typeof (e as ApiError).code === 'string' &&
+    typeof (e as ApiError).message === 'string'
+  );
 }
 
-export async function postChart(input: BirthInput, signal?: AbortSignal): Promise<ChartResponse> {
+export async function postChart(
+  input: BirthInput,
+  signal?: AbortSignal,
+): Promise<ChartResponse> {
   let res: Response;
   try {
     res = await fetch('/api/chart', {
@@ -38,15 +55,104 @@ export async function postChart(input: BirthInput, signal?: AbortSignal): Promis
   } catch {
     // fall through
   }
-  if (res.ok && body !== null && typeof body === 'object' && 'activations' in body) {
+  if (
+    res.ok &&
+    body !== null &&
+    typeof body === 'object' &&
+    'activations' in body
+  ) {
     return { ok: true, chart: body as ChartResult };
   }
-  if (isApiErrorBody(body)) return { ok: false, status: res.status, error: body.error };
+  if (isApiErrorBody(body))
+    return { ok: false, status: res.status, error: body.error };
   return {
     ok: false,
     status: res.status,
-    error: { code: 'UNKNOWN', message: `伺服器回應異常（HTTP ${res.status}），請稍後再試。` },
+    error: {
+      code: 'UNKNOWN',
+      message: `伺服器回應異常（HTTP ${res.status}），請稍後再試。`,
+    },
   };
+}
+
+function isZiweiChart(v: unknown): v is ZiweiChart {
+  if (typeof v !== 'object' || v === null) return false;
+  const c = v as Partial<ZiweiChart>;
+  return (
+    Array.isArray(c.palaces) &&
+    c.palaces.length === 12 &&
+    typeof c.fiveElementsClass === 'string' &&
+    typeof c.luckIndex === 'number' &&
+    c.horoscope !== null &&
+    typeof c.horoscope === 'object'
+  );
+}
+
+export async function postZiwei(
+  input: BirthInput,
+  timeUnknown: boolean,
+  signal?: AbortSignal,
+  extras?: { targetDate?: string; targetTimeIndex?: number },
+): Promise<ZiweiResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/ziwei', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, timeUnknown, ...extras }),
+      signal,
+    });
+  } catch {
+    return { ok: false, status: 0, error: NETWORK_ERROR };
+  }
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // fall through
+  }
+  if (res.ok && isZiweiChart(body)) return { ok: true, chart: body };
+  if (isApiErrorBody(body))
+    return { ok: false, status: res.status, error: body.error };
+  return {
+    ok: false,
+    status: res.status,
+    error: {
+      code: 'UNKNOWN',
+      message: `伺服器回應異常（HTTP ${res.status}），請稍後再試。`,
+    },
+  };
+}
+
+/** Human Design is required; 紫微 is best-effort so a library failure still shows the bodygraph. */
+export async function postBoth(
+  input: BirthInput,
+  timeUnknown: boolean,
+  signal?: AbortSignal,
+): Promise<{ hd: ChartResponse; ziwei: ZiweiResponse | null }> {
+  const hdPromise = postChart(input, signal);
+  const ziweiPromise = input.gender
+    ? postZiwei(input, timeUnknown, signal)
+    : Promise.resolve(null);
+  const [hd, ziwei] = await Promise.all([hdPromise, ziweiPromise]);
+  return { hd, ziwei };
+}
+
+export function attachZiwei(
+  stored: StoredChart,
+  ziwei: ZiweiResponse | null,
+): StoredChart {
+  if (!ziwei) {
+    return {
+      ...stored,
+      ziwei: null,
+      ziweiError: stored.input.gender
+        ? null
+        : '紫微斗數需要性別。重新輸入一次並選擇男或女即可一併排出。',
+    };
+  }
+  if (ziwei.ok) return { ...stored, ziwei: ziwei.chart, ziweiError: null };
+  return { ...stored, ziwei: null, ziweiError: ziwei.error.message };
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +171,8 @@ export interface StoredChart {
   placeLabel: string | null;
   /** Set when this chart was saved to, or opened from, the user's account (avoids duplicate saves). */
   saved?: SavedRef | null;
+  ziwei?: ZiweiChart | null;
+  ziweiError?: string | null;
 }
 
 const listeners = new Set<() => void>();
@@ -80,7 +188,7 @@ export function saveStoredChart(data: StoredChart): void {
   } catch {
     // ignore — memoryCopy is used instead
   }
-  listeners.forEach((l) => l());
+  listeners.forEach(l => l());
 }
 
 /** Raw snapshot for useSyncExternalStore (a string, so it is referentially stable). */
@@ -103,13 +211,22 @@ export function parseStoredChart(raw: string | null): StoredChart | null {
   if (!raw) return null;
   try {
     const v = JSON.parse(raw) as Partial<StoredChart>;
-    if (!v || typeof v !== 'object' || !v.input || !v.result || !Array.isArray(v.result.activations)) return null;
+    if (
+      !v ||
+      typeof v !== 'object' ||
+      !v.input ||
+      !v.result ||
+      !Array.isArray(v.result.activations)
+    )
+      return null;
     return {
       input: v.input,
       result: v.result,
       timeUnknown: v.timeUnknown === true,
       placeLabel: typeof v.placeLabel === 'string' ? v.placeLabel : null,
       saved: parseSavedRef(v.saved),
+      ziwei: isZiweiChart(v.ziwei) ? v.ziwei : null,
+      ziweiError: typeof v.ziweiError === 'string' ? v.ziweiError : null,
     };
   } catch {
     return null;
@@ -131,7 +248,7 @@ export function setPendingSave(on: boolean): void {
   } catch {
     // storage unavailable: the user just reopens the dialog by hand
   }
-  pendingListeners.forEach((l) => l());
+  pendingListeners.forEach(l => l());
 }
 
 export function readPendingSave(): boolean {

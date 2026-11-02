@@ -3,13 +3,18 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
+import { authErrorMessage } from '@/lib/auth/errors';
+import { googleProviderEnabled } from '@/lib/auth/google';
+import { safeNextPath } from '@/lib/auth/redirect';
 import { useAuth } from '@/lib/auth/useAuth';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { authCallbackUrl } from '@/lib/supabase/env';
 
 // Header account links. Client-only state (see useAuth), so the root layout and the / and /chart
 // static shells stay prerendered; a fixed-size placeholder avoids layout shift while it resolves.
 
-const LINK = 'rounded-md px-3 py-1.5 text-sm hover:bg-surface-2 hover:text-accent';
+const LINK =
+  'rounded-md px-3 py-1.5 text-sm hover:bg-surface-2 hover:text-accent';
 
 export function UserNav() {
   const auth = useAuth();
@@ -17,6 +22,9 @@ export function UserNav() {
   const menuId = useId();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
+  const [googleOn, setGoogleOn] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,8 +43,23 @@ export function UserNav() {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (auth.status !== 'signedIn') {
+      setGoogleOn(false);
+      return;
+    }
+    let cancelled = false;
+    googleProviderEnabled().then(on => {
+      if (!cancelled) setGoogleOn(on);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.status]);
+
   if (auth.status === 'unavailable') return null;
-  if (auth.status === 'loading') return <span aria-hidden="true" className="inline-block h-8 w-14" />;
+  if (auth.status === 'loading')
+    return <span aria-hidden="true" className="inline-block h-8 w-14" />;
   if (auth.status === 'signedOut') {
     return (
       <Link href="/login" className={LINK}>
@@ -51,7 +74,32 @@ export function UserNav() {
     setSigningOut(false);
     setOpen(false);
     const path = window.location.pathname;
-    if (path.startsWith('/charts') || path === '/reset-password') router.replace('/');
+    if (path.startsWith('/charts') || path === '/reset-password')
+      router.replace('/');
+  }
+
+  async function linkGoogle() {
+    if (linkingGoogle || signingOut) return;
+    setLinkError(null);
+    setLinkingGoogle(true);
+    if (!(await googleProviderEnabled())) {
+      setGoogleOn(false);
+      setLinkingGoogle(false);
+      setLinkError('Google 登入尚未啟用。');
+      return;
+    }
+    const next = safeNextPath(
+      `${window.location.pathname}${window.location.search}`,
+      '/charts',
+    );
+    const { error } = await getSupabaseBrowserClient().auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: authCallbackUrl(next) },
+    });
+    if (error) {
+      setLinkingGoogle(false);
+      setLinkError(authErrorMessage(error));
+    }
   }
 
   const email = auth.user.email ?? '已登入';
@@ -66,7 +114,7 @@ export function UserNav() {
           aria-haspopup="true"
           aria-expanded={open}
           aria-controls={menuId}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen(o => !o)}
           className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm hover:bg-surface-2"
         >
           <span className="sr-only">帳號選單：</span>
@@ -83,9 +131,31 @@ export function UserNav() {
             <p className="truncate px-2 py-1.5 text-muted" title={email}>
               {email}
             </p>
-            <Link href="/charts" onClick={() => setOpen(false)} className="block rounded px-2 py-1.5 hover:bg-surface-2">
+            <Link
+              href="/charts"
+              onClick={() => setOpen(false)}
+              className="block rounded px-2 py-1.5 hover:bg-surface-2"
+            >
               我的命盤
             </Link>
+            {googleOn && !auth.user.googleLinked ? (
+              <button
+                type="button"
+                onClick={linkGoogle}
+                disabled={linkingGoogle || signingOut}
+                className="block w-full rounded px-2 py-1.5 text-left hover:bg-surface-2 disabled:opacity-60"
+              >
+                {linkingGoogle ? '前往 Google…' : '連結 Google 帳號'}
+              </button>
+            ) : null}
+            {auth.user.googleLinked ? (
+              <p className="px-2 py-1.5 text-muted">已連結 Google</p>
+            ) : null}
+            {linkError ? (
+              <p className="px-2 py-1.5 text-danger" role="alert">
+                {linkError}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={signOut}

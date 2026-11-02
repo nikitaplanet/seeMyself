@@ -5,9 +5,10 @@ import { MantineRoot } from '@/components/MantineRoot';
 export default function Home() {
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold sm:text-3xl">人類圖排盤</h1>
+      <h1 className="text-2xl font-bold sm:text-3xl">排盤</h1>
       <p className="mt-2 text-muted">
-        輸入出生日期、時間與地點，計算個性與設計兩組共 26 個星體啟動，推導類型、內在權威、人生角色等屬性並繪出人體圖。
+        輸入一次出生日期、時間、地點與性別，同時排出人類圖（個性／設計 26
+        顆星體啟動）與紫微斗數十二宮命盤。
       </p>
       <MantineRoot>
         <Paper withBorder radius="md" className="mt-8 p-5 sm:p-8">

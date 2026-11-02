@@ -16,13 +16,13 @@ npm run dev                       # http://localhost:3000
 
 ## 指令
 
-| 指令 | 用途 |
-| --- | --- |
-| `npm run dev` | 開發伺服器 |
-| `npm run build` / `npm start` | 正式建置／啟動 |
-| `npm test` | vitest 單元測試（`tests/`） |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
+| 指令                              | 用途                                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run dev`                     | 開發伺服器                                                                               |
+| `npm run build` / `npm start`     | 正式建置／啟動                                                                           |
+| `npm test`                        | vitest 單元測試（`tests/`）                                                              |
+| `npm run typecheck`               | `tsc --noEmit`                                                                           |
+| `npm run lint`                    | ESLint                                                                                   |
 | `npx tsx scripts/build-places.ts` | 從 GeoNames（cities15000 + alternateNamesV2）重建地名索引，下載快取在 `.cache/geonames/` |
 
 ## 結構
@@ -39,15 +39,15 @@ npm run dev                       # http://localhost:3000
 
 - 前端直接以 publishable key 連線 Supabase；資料表 `public.charts` 以 RLS 限制只能存取本人的資料（anon 無任何權限）。不使用 service-role key。
 - `src/proxy.ts`（Next 16 的 middleware）負責更新 session cookie，並把未登入的 `/charts` 請求導向 `/login?next=…`。
-- 頁面：`/login`（登入／註冊／忘記密碼／Google）、`/auth/callback`（PKCE code 交換）、`/auth/error`、`/reset-password`、`/charts`、`/charts/new`；結果頁有「儲存到帳號」。
+- 頁面：`/login`（登入／註冊／忘記密碼）、`/auth/callback`（PKCE code 交換）、`/auth/error`、`/reset-password`、`/charts`、`/charts/new`；結果頁有「儲存到帳號」。目前以電子郵件註冊；Google 尚未啟用時，登入頁不顯示 Google 按鈕。
 
 ### 環境變數（`.env.local`）
 
-| 變數 | 說明 |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| 變數                                   | 說明                                                              |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | `https://<project-ref>.supabase.co`                               |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings → API Keys 的 publishable key（或舊版 anon key） |
-| `NEXT_PUBLIC_SITE_URL` | 網站網址，用於驗證信與 OAuth 的回跳，例如 `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL`                 | 網站網址，用於驗證信與 OAuth 的回跳，例如 `http://localhost:3000` |
 
 `NEXT_PUBLIC_*` 會在 **建置時** 寫進前端程式；Docker 建置時也要提供（例如 `--build-arg` 或建置前放好 `.env.local`）。缺少前兩個變數時，會員功能自動隱藏，排盤照常運作。
 
@@ -62,17 +62,18 @@ Supabase Dashboard → **Authentication → URL Configuration**：
 - **Site URL**：正式網址（開發時可設 `http://localhost:3000`）。
 - **Redirect URLs** 加入：`http://localhost:3000/auth/callback`，以及正式網址的 `https://<你的網域>/auth/callback`（可用 `https://<你的網域>/**`）。
 
-驗證信、重設密碼信與 Google 登入都會回到 `/auth/callback?next=…`；不在清單內的網址會被 Supabase 改導回 Site URL。電子郵件驗證為必要，註冊後需點信中連結；請在送出申請的同一個瀏覽器開啟連結（PKCE）。
+驗證信、重設密碼信與之後的 Google 綁定都會回到 `/auth/callback?next=…`；不在清單內的網址會被 Supabase 改導回 Site URL。電子郵件驗證為必要，註冊後需點信中連結；請在送出申請的同一個瀏覽器開啟連結（PKCE）。
 
-### 啟用 Google 登入
+### 之後啟用 Google（可選）
+
+先用電子郵件註冊的會員，之後可在已登入狀態下從右上角帳號選單「連結 Google 帳號」。登入頁的 Google 按鈕也只在 Provider 開啟後才出現。
 
 1. Google Cloud Console → APIs & Services → **OAuth consent screen** 設定應用程式名稱與支援信箱。
-2. **Credentials → Create credentials → OAuth client ID**，類型選 *Web application*：
+2. **Credentials → Create credentials → OAuth client ID**，類型選 _Web application_：
    - Authorized JavaScript origins：`http://localhost:3000`、正式網址。
    - Authorized redirect URIs：`https://<project-ref>.supabase.co/auth/v1/callback`（Supabase 的 callback，不是本站的）。
 3. Supabase Dashboard → **Authentication → Sign In / Providers → Google**：啟用，貼上 Client ID 與 Client Secret，儲存。
-
-尚未啟用時，登入頁的 Google 按鈕會顯示「Google 登入尚未啟用」。
+4. 同一頁開啟 **Enable Manual Linking**，否則已存在的 email 帳號無法綁定 Google。
 
 ## Docker
 

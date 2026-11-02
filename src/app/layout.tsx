@@ -8,8 +8,9 @@ import './globals.css';
 
 // §13.2: avoid "Human Design" / "Rave BodyGraph" as product branding.
 export const metadata: Metadata = {
-  title: { default: '人類圖排盤', template: '%s｜人類圖排盤' },
-  description: '輸入出生日期、時間與地點，計算個性與設計兩組星體啟動並繪製人體圖。未登入時資料僅用於即時計算、不保存；登入後可自行選擇把命盤儲存到帳號。',
+  title: { default: '排盤', template: '%s｜排盤' },
+  description:
+    '輸入一次出生資料，同時排出人類圖與紫微斗數命盤。未登入時資料僅用於即時計算、不保存；登入後可自行選擇把命盤儲存到帳號。',
 };
 
 // Applies the saved theme before first paint (Next docs: guides/preventing-flash-before-hydration).
@@ -21,7 +22,11 @@ const THEME_SCRIPT = `(function(){var d=document.documentElement,t=null;try{t=lo
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="zh-Hant-TW" {...mantineHtmlProps} className="h-full antialiased">
+    <html
+      lang="zh-Hant-TW"
+      {...mantineHtmlProps}
+      className="h-full antialiased"
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
@@ -34,8 +39,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         </a>
         <header className="border-b border-border">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/" className="text-lg font-semibold tracking-wide hover:text-accent">
-              人類圖排盤
+            <Link
+              href="/"
+              className="text-lg font-semibold tracking-wide hover:text-accent"
+            >
+              排盤
             </Link>
             <div className="flex items-center gap-2">
               <UserNav />
@@ -43,7 +51,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             </div>
           </div>
         </header>
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10">
+        <main
+          id="main"
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-10"
+        >
           {children}
         </main>
         <SiteFooter />

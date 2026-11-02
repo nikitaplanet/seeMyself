@@ -1,6 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { hasGoogleIdentity } from '@/lib/auth/google';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 
@@ -12,6 +13,7 @@ import { isSupabaseConfigured } from '@/lib/supabase/env';
 export interface AuthUser {
   id: string;
   email: string | null;
+  googleLinked: boolean;
 }
 
 export type AuthState =
@@ -32,7 +34,10 @@ function setState(next: AuthState) {
   const same =
     next.status === state.status &&
     (next.status !== 'signedIn' ||
-      (state.status === 'signedIn' && state.user.id === next.user.id && state.user.email === next.user.email));
+      (state.status === 'signedIn' &&
+        state.user.id === next.user.id &&
+        state.user.email === next.user.email &&
+        state.user.googleLinked === next.user.googleLinked));
   if (same) return;
   state = next;
   listeners.forEach((l) => l());
@@ -48,7 +53,11 @@ function start() {
   getSupabaseBrowserClient().auth.onAuthStateChange((_event, session) => {
     // Keep this callback synchronous: calling other Supabase methods here can deadlock.
     const u = session?.user;
-    setState(u ? { status: 'signedIn', user: { id: u.id, email: u.email ?? null } } : SIGNED_OUT);
+    setState(
+      u
+        ? { status: 'signedIn', user: { id: u.id, email: u.email ?? null, googleLinked: hasGoogleIdentity(u.identities) } }
+        : SIGNED_OUT,
+    );
   });
 }
 

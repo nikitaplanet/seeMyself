@@ -78,6 +78,7 @@ export const birthInputSchema = z.object({
     .min(1, { message: '請提供時區。' })
     .refine(isValidTimezone, { message: '無法辨識的時區名稱。' }),
   place: placeSchema.optional(),
+  gender: z.enum(['male', 'female'], { message: '性別必須為 male 或 female。' }).optional(),
   options: optionsSchema.optional(),
 }, { message: '請求本文必須是 JSON 物件。' });
 

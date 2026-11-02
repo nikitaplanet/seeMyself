@@ -68,11 +68,12 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  */
 export function sanitizeBirthInput(v: unknown): BirthInput | null {
   if (!isRecord(v)) return null;
-  const { date, time, timezone, place, options } = v;
+  const { date, time, timezone, place, options, gender } = v;
   if (typeof date !== 'string' || !DATE_RE.test(date)) return null;
   if (typeof time !== 'string' || !TIME_RE.test(time)) return null;
   if (typeof timezone !== 'string' || timezone === '' || timezone.length > 64) return null;
   const out: BirthInput = { date, time, timezone };
+  if (gender === 'male' || gender === 'female') out.gender = gender;
 
   if (place !== undefined && place !== null) {
     if (!isRecord(place)) return null;

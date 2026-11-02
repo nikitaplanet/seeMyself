@@ -1,6 +1,6 @@
 /* Cascade layer order: Mantine (form only, see mantine.css) sits between Tailwind base and utilities. */
 @layer theme, base, mantine, components, utilities;
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * Design tokens (spec §10.4, §11.3). Every colour is a CSS variable; light is the default.
@@ -39,10 +39,17 @@
   --hd-gate-on-text: #ffffff;
   --hd-gate-off: rgb(255 255 255 / 0.7);
   --hd-gate-off-text: #4a4a4a;
+
+  --ziwei-lu: #1b7f4e;
+  --ziwei-quan: #b3261e;
+  --ziwei-ke: #2b5c8a;
+  --ziwei-ji: #5b3a8a;
+  --ziwei-soul-bg: #f4d7a8;
+  --ziwei-scope-bg: #d7eb9a;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
 
     --app-bg: #121316;
@@ -71,10 +78,17 @@
     --hd-gate-on-text: #111111;
     --hd-gate-off: rgb(27 29 33 / 0.75);
     --hd-gate-off-text: #c9ccd1;
+
+    --ziwei-lu: #6fcf97;
+    --ziwei-quan: #ff6b66;
+    --ziwei-ke: #8ab4f8;
+    --ziwei-ji: #c4b5fd;
+    --ziwei-soul-bg: #5a4324;
+    --ziwei-scope-bg: #2f4a22;
   }
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   color-scheme: dark;
 
   --app-bg: #121316;
@@ -103,6 +117,13 @@
   --hd-gate-on-text: #111111;
   --hd-gate-off: rgb(27 29 33 / 0.75);
   --hd-gate-off-text: #c9ccd1;
+
+  --ziwei-lu: #6fcf97;
+  --ziwei-quan: #ff6b66;
+  --ziwei-ke: #8ab4f8;
+  --ziwei-ji: #c4b5fd;
+  --ziwei-soul-bg: #5a4324;
+  --ziwei-scope-bg: #2f4a22;
 }
 
 @theme inline {
@@ -119,7 +140,7 @@
   --color-focus: var(--app-focus);
   --color-personality: var(--hd-personality);
   --color-design: var(--hd-design);
-  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-sans: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
 }
 
 html {
@@ -161,4 +182,26 @@ body {
   50% {
     opacity: 0.55;
   }
+}
+
+.ziwei-lu {
+  color: var(--ziwei-lu);
+}
+.ziwei-quan {
+  color: var(--ziwei-quan);
+}
+.ziwei-ke {
+  color: var(--ziwei-ke);
+}
+.ziwei-ji {
+  color: var(--ziwei-ji);
+}
+.ziwei-tough {
+  color: var(--app-danger);
+}
+.ziwei-palace-soul {
+  background: var(--ziwei-soul-bg);
+}
+.ziwei-palace-scope {
+  background: var(--ziwei-scope-bg);
 }

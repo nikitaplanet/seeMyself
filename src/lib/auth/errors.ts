@@ -26,6 +26,8 @@ const BY_CODE: Record<string, string> = {
   signup_disabled: '目前暫停開放註冊。',
   email_provider_disabled: '目前未開放以電子郵件登入。',
   provider_disabled: 'Google 登入尚未啟用，請先改用電子郵件登入。',
+  manual_linking_disabled: '目前尚未開放綁定第三方帳號。',
+  identity_already_exists: '這個 Google 帳號已經綁定過其他會員。',
   validation_failed: '輸入的資料格式不正確。',
   otp_expired: '連結已過期或已經使用過，請重新申請。',
   otp_disabled: '這種登入方式目前未開放。',

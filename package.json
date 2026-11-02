@@ -17,6 +17,7 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "dayjs": "^1.11.23",
+    "iztro": "^2.6.3",
     "luxon": "^3.7.2",
     "next": "16.4.3",
     "react": "19.3.0",

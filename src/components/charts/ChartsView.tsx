@@ -16,7 +16,7 @@ import {
 } from '@/lib/charts/mapping';
 import { deleteChart, listCharts, updateChart, type RepoResult } from '@/lib/charts/repo';
 import { AUTHORITY_NAMES_ZH, TYPE_NAMES_ZH } from '@/lib/hd/constants';
-import { postChart, saveStoredChart } from '@/lib/ui/chartClient';
+import { attachZiwei, postBoth, saveStoredChart } from '@/lib/ui/chartClient';
 import { ChartMetaFields } from './ChartMetaFields';
 
 // /charts — the signed-in user's saved charts, in two tabs (我的 / 好友). Reads and writes go
@@ -107,19 +107,24 @@ export function ChartsView() {
     if (opening) return;
     setOpening(chart.id);
     setActionError(null);
-    const res = await postChart(chart.input);
-    if (!res.ok) {
+    const { hd, ziwei } = await postBoth(chart.input, chart.timeUnknown);
+    if (!hd.ok) {
       setOpening(null);
-      setActionError(`無法開啟「${chart.name}」：${res.error.message}`);
+      setActionError(`無法開啟「${chart.name}」：${hd.error.message}`);
       return;
     }
-    saveStoredChart({
-      input: chart.input,
-      result: res.chart,
-      timeUnknown: chart.timeUnknown,
-      placeLabel: chart.placeLabel,
-      saved: toSavedRef(chart),
-    });
+    saveStoredChart(
+      attachZiwei(
+        {
+          input: chart.input,
+          result: hd.chart,
+          timeUnknown: chart.timeUnknown,
+          placeLabel: chart.placeLabel,
+          saved: toSavedRef(chart),
+        },
+        ziwei,
+      ),
+    );
     router.push('/chart');
   }
 

@@ -30,7 +30,11 @@ export function SiteFooter() {
           <ul className="list-disc space-y-1 pl-5">
             <li>
               地名資料來自{' '}
-              <a className="underline hover:text-fg" href="https://www.geonames.org/" rel="noopener noreferrer">
+              <a
+                className="underline hover:text-fg"
+                href="https://www.geonames.org/"
+                rel="noopener noreferrer"
+              >
                 GeoNames
               </a>
               ，以{' '}
@@ -44,12 +48,26 @@ export function SiteFooter() {
               授權使用。
             </li>
             <li>
-              星曆計算：Swiss Ephemeris（Moshier 模式，© Astrodienst AG），經由 sweph 套件使用；Swiss Ephemeris 採
-              AGPL-3.0 或商業授權。
+              星曆計算：Swiss Ephemeris（Moshier 模式，© Astrodienst AG），經由
+              sweph 套件使用；Swiss Ephemeris 採 AGPL-3.0 或商業授權。
               {/* TODO(§13.1): once the licensing decision is made, link the AGPL source code here
                   (or remove this note if a commercial licence is bought). */}
             </li>
-            <li>人體圖為本站自行繪製的幾何圖形；閘門、通道與中心的對照為體系的公開事實。</li>
+            <li>
+              人體圖為本站自行繪製的幾何圖形；閘門、通道與中心的對照為體系的公開事實。
+            </li>
+            <li>
+              紫微斗數排盤使用開源套件{' '}
+              <a
+                className="underline hover:text-fg"
+                href="https://iztro.com/"
+                rel="noopener noreferrer"
+              >
+                iztro
+              </a>
+              （MIT）。有出生地經度時會先換成真太陽時再定時辰；派別為 iztro
+              預設通行版本。
+            </li>
           </ul>
         </section>
       </div>

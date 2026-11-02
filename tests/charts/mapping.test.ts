@@ -22,7 +22,11 @@ const INPUT: BirthInput = {
 
 const COMPUTED: ComputedChart = {
   input: INPUT,
-  result: { type: 'generator', authority: 'sacral', profile: { personality: 4, design: 6 } },
+  result: {
+    type: 'generator',
+    authority: 'sacral',
+    profile: { personality: 4, design: 6 },
+  },
   timeUnknown: false,
   placeLabel: '臺北市, 臺灣',
 };
@@ -55,11 +59,23 @@ describe('sanitizeBirthInput', () => {
   });
 
   it('accepts an input without place / options', () => {
-    expect(sanitizeBirthInput({ date: '2000-01-01', time: '00:00', timezone: 'UTC' })).toEqual({
+    expect(
+      sanitizeBirthInput({
+        date: '2000-01-01',
+        time: '00:00',
+        timezone: 'UTC',
+      }),
+    ).toEqual({
       date: '2000-01-01',
       time: '00:00',
       timezone: 'UTC',
     });
+  });
+
+  it('keeps gender for 紫微斗數', () => {
+    expect(sanitizeBirthInput({ ...INPUT, gender: 'female' })?.gender).toBe(
+      'female',
+    );
   });
 
   it('drops unknown keys and keeps disambiguation', () => {
@@ -69,7 +85,10 @@ describe('sanitizeBirthInput', () => {
       place: { ...INPUT.place, extra: 'x' },
       options: { nodeMode: 'mean', disambiguation: 'later', foo: 'bar' },
     });
-    expect(out).toEqual({ ...INPUT, options: { nodeMode: 'mean', disambiguation: 'later' } });
+    expect(out).toEqual({
+      ...INPUT,
+      options: { nodeMode: 'mean', disambiguation: 'later' },
+    });
   });
 
   it.each([
@@ -80,16 +99,23 @@ describe('sanitizeBirthInput', () => {
     { date: '1990-5-12', time: '14:30', timezone: 'UTC' },
     { date: '1990-05-12', time: '24:00', timezone: 'UTC' },
     { date: '1990-05-12', time: '14:30', timezone: '' },
-    { date: '1990-05-12', time: '14:30', timezone: 'UTC', place: { name: 'x', lat: '1', lon: 2, countryCode: 'TW' } },
+    {
+      date: '1990-05-12',
+      time: '14:30',
+      timezone: 'UTC',
+      place: { name: 'x', lat: '1', lon: 2, countryCode: 'TW' },
+    },
     { date: '1990-05-12', time: '14:30', timezone: 'UTC', options: 'x' },
-  ])('rejects malformed input %#', (bad) => {
+  ])('rejects malformed input %#', bad => {
     expect(sanitizeBirthInput(bad)).toBeNull();
   });
 });
 
 describe('normalizeChartMeta', () => {
   it('trims name and note', () => {
-    expect(normalizeChartMeta({ kind: 'friend', name: '  小明 ', note: '  同事 ' })).toEqual({
+    expect(
+      normalizeChartMeta({ kind: 'friend', name: '  小明 ', note: '  同事 ' }),
+    ).toEqual({
       ok: true,
       value: { kind: 'friend', name: '小明', note: '同事' },
     });
@@ -102,10 +128,20 @@ describe('normalizeChartMeta', () => {
   });
 
   it('limits name to 60 and note to 500 characters (counting code points)', () => {
-    expect(normalizeChartMeta({ kind: 'self', name: '字'.repeat(60), note: '' }).ok).toBe(true);
-    expect(normalizeChartMeta({ kind: 'self', name: '字'.repeat(61), note: '' }).ok).toBe(false);
-    expect(normalizeChartMeta({ kind: 'self', name: '😀'.repeat(60), note: '' }).ok).toBe(true);
-    const r = normalizeChartMeta({ kind: 'self', name: 'a', note: 'x'.repeat(501) });
+    expect(
+      normalizeChartMeta({ kind: 'self', name: '字'.repeat(60), note: '' }).ok,
+    ).toBe(true);
+    expect(
+      normalizeChartMeta({ kind: 'self', name: '字'.repeat(61), note: '' }).ok,
+    ).toBe(false);
+    expect(
+      normalizeChartMeta({ kind: 'self', name: '😀'.repeat(60), note: '' }).ok,
+    ).toBe(true);
+    const r = normalizeChartMeta({
+      kind: 'self',
+      name: 'a',
+      note: 'x'.repeat(501),
+    });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.note).toBeTruthy();
   });
@@ -113,7 +149,9 @@ describe('normalizeChartMeta', () => {
 
 describe('toChartInsert', () => {
   it('maps a computed chart to the insert payload', () => {
-    expect(toChartInsert(COMPUTED, { kind: 'self', name: '我', note: '' })).toEqual({
+    expect(
+      toChartInsert(COMPUTED, { kind: 'self', name: '我', note: '' }),
+    ).toEqual({
       kind: 'self',
       name: '我',
       note: null,
@@ -130,7 +168,10 @@ describe('toChartInsert', () => {
   });
 
   it('stores a null birth_time when the time is unknown, and no user_id (DB default)', () => {
-    const ins = toChartInsert({ ...COMPUTED, timeUnknown: true, placeLabel: null }, { kind: 'friend', name: 'A', note: 'n' });
+    const ins = toChartInsert(
+      { ...COMPUTED, timeUnknown: true, placeLabel: null },
+      { kind: 'friend', name: 'A', note: 'n' },
+    );
     expect(ins.birth_time).toBeNull();
     expect(ins.time_unknown).toBe(true);
     expect(ins.place_label).toBeNull();
@@ -139,13 +180,22 @@ describe('toChartInsert', () => {
   });
 
   it('throws on an unusable input', () => {
-    expect(() => toChartInsert({ ...COMPUTED, input: { ...INPUT, date: 'bad' } }, { kind: 'self', name: 'a', note: '' })).toThrow();
+    expect(() =>
+      toChartInsert(
+        { ...COMPUTED, input: { ...INPUT, date: 'bad' } },
+        { kind: 'self', name: 'a', note: '' },
+      ),
+    ).toThrow();
   });
 });
 
 describe('toChartUpdate', () => {
   it('maps form values and empties the note to null', () => {
-    expect(toChartUpdate({ kind: 'friend', name: 'B', note: '' })).toEqual({ kind: 'friend', name: 'B', note: null });
+    expect(toChartUpdate({ kind: 'friend', name: 'B', note: '' })).toEqual({
+      kind: 'friend',
+      name: 'B',
+      note: null,
+    });
   });
 });
 
@@ -172,7 +222,9 @@ describe('fromChartRow', () => {
   });
 
   it('nulls unknown summary values instead of failing', () => {
-    const s = fromChartRow(row({ hd_type: 'wizard', profile: '7/9', authority: null }));
+    const s = fromChartRow(
+      row({ hd_type: 'wizard', profile: '7/9', authority: null }),
+    );
     expect(s?.summary).toEqual({ type: null, profile: null, authority: null });
   });
 
@@ -184,7 +236,9 @@ describe('fromChartRow', () => {
 
 describe('parseSavedRef', () => {
   it('accepts a valid ref and rejects others', () => {
-    expect(parseSavedRef({ id: 'x', name: 'n', kind: 'friend', extra: 1 })).toEqual({ id: 'x', name: 'n', kind: 'friend' });
+    expect(
+      parseSavedRef({ id: 'x', name: 'n', kind: 'friend', extra: 1 }),
+    ).toEqual({ id: 'x', name: 'n', kind: 'friend' });
     expect(parseSavedRef({ id: 'x', name: 'n', kind: 'enemy' })).toBeNull();
     expect(parseSavedRef(undefined)).toBeNull();
   });
@@ -192,14 +246,23 @@ describe('parseSavedRef', () => {
 
 describe('chartDbErrorMessage', () => {
   it('explains a missing table', () => {
-    expect(chartDbErrorMessage({ code: 'PGRST205', message: "Could not find the table 'public.charts'" })).toContain('SQL');
+    expect(
+      chartDbErrorMessage({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.charts'",
+      }),
+    ).toContain('SQL');
     expect(chartDbErrorMessage({ code: '42P01' })).toContain('SQL');
   });
   it('maps auth, RLS, constraint and network errors', () => {
-    expect(chartDbErrorMessage({ code: 'PGRST301', message: 'JWT expired' })).toContain('登入');
+    expect(
+      chartDbErrorMessage({ code: 'PGRST301', message: 'JWT expired' }),
+    ).toContain('登入');
     expect(chartDbErrorMessage({ code: '42501' })).toContain('權限');
     expect(chartDbErrorMessage({ code: '23514' })).toContain('長度');
-    expect(chartDbErrorMessage({ message: 'TypeError: Failed to fetch' })).toContain('網路');
+    expect(
+      chartDbErrorMessage({ message: 'TypeError: Failed to fetch' }),
+    ).toContain('網路');
     expect(chartDbErrorMessage(null)).toBeTruthy();
   });
 });

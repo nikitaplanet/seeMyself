@@ -13,11 +13,15 @@ export type CenterId =
 
 export type NodeMode = 'true' | 'mean';
 
+/** Used by 紫微斗數; Human Design ignores it. Stored with the birth input so a saved chart can be recomputed. */
+export type Gender = 'male' | 'female';
+
 export interface BirthInput {
   date: string;        // 'YYYY-MM-DD'（當地日期）
   time: string;        // 'HH:mm'（當地時間，24 小時制）
   timezone: string;    // IANA，例如 'Asia/Taipei'
   place?: { name: string; lat: number; lon: number; countryCode: string };
+  gender?: Gender;     // 紫微斗數需要；人類圖不使用
   options?: {
     nodeMode?: NodeMode;              // 預設 'true'
     sensitivityMinutes?: number[];    // 預設 [-30, -15, 15, 30]

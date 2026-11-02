@@ -18,8 +18,8 @@ import { DatePickerInput } from '@mantine/dates';
 import { useRouter } from 'next/navigation';
 import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_SENSITIVITY_MINUTES, MAX_DATE, MIN_DATE } from '@/lib/hd/constants';
-import type { BirthInput, NodeMode } from '@/lib/hd/types';
-import { formatOffset, formatUtc, postChart, saveStoredChart, type StoredChart } from '@/lib/ui/chartClient';
+import type { BirthInput, Gender, NodeMode } from '@/lib/hd/types';
+import { attachZiwei, formatOffset, formatUtc, postBoth, saveStoredChart, type StoredChart } from '@/lib/ui/chartClient';
 import { PlaceAutocomplete, placeLabel, type PlaceOption } from './PlaceAutocomplete';
 
 // Spec §11.1 — the input page form.
@@ -56,6 +56,7 @@ interface FieldErrors {
   date?: string;
   time?: string;
   place?: string;
+  gender?: string;
 }
 
 interface AmbiguousState {
@@ -117,6 +118,7 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
   const [date, setDate] = useState('');
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
+  const [gender, setGender] = useState<Gender | ''>('');
   const [timeUnknown, setTimeUnknown] = useState(false);
   const [place, setPlace] = useState<PlaceOption | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -132,6 +134,7 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
   const today = useToday();
 
   const dateId = `${ids}-date`;
+  const genderId = `${ids}-gender`;
   const hourId = `${ids}-hour`;
   const minuteId = `${ids}-minute`;
   const timeErrId = `${ids}-time-err`;
@@ -164,15 +167,19 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     // users who cannot find their birthplace. We accept a manual timezone without a place (the
     // place only determines the timezone anyway, §4) and omit `place` from the request.
     if (!place && !manualTz) e.place = '請從清單中選擇出生地點，或在「進階」手動選擇時區。';
+    if (gender !== 'male' && gender !== 'female') e.gender = '紫微斗數需要性別，請選擇男或女。';
     return e;
   }
 
   async function send(input: BirthInput) {
     setSubmitting(true);
     setFormError(null);
-    const res = await postChart(input);
-    if (res.ok) {
-      const stored: StoredChart = { input, result: res.chart, timeUnknown, placeLabel: place ? placeLabel(place) : null };
+    const { hd, ziwei } = await postBoth(input, timeUnknown);
+    if (hd.ok) {
+      const stored = attachZiwei(
+        { input, result: hd.chart, timeUnknown, placeLabel: place ? placeLabel(place) : null },
+        ziwei,
+      );
       if (onComputed) {
         const err = await onComputed(stored);
         if (err) {
@@ -186,7 +193,7 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
       return; // keep the submitting state while navigating
     }
     setSubmitting(false);
-    const { code, message, details } = res.error;
+    const { code, message, details } = hd.error;
     if (code === 'AMBIGUOUS_LOCAL_TIME') {
       const c = details?.candidates;
       if (Array.isArray(c) && c.length === 2 && typeof c[0] === 'string' && typeof c[1] === 'string') {
@@ -210,8 +217,8 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     setErrors(e);
     setFormError(null);
     if (!extraOk) return;
-    if (e.date || e.time || e.place) {
-      const first = e.date ? dateId : e.time ? hourId : placeId;
+    if (e.date || e.time || e.place || e.gender) {
+      const first = e.date ? dateId : e.gender ? genderId : e.time ? hourId : placeId;
       document.getElementById(first)?.focus();
       return;
     }
@@ -220,6 +227,7 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
       date,
       time: timeUnknown ? UNKNOWN_TIME : `${hour}:${minute}`,
       timezone,
+      gender: gender === 'female' ? 'female' : 'male',
       ...(place
         ? { place: { name: place.nameZh ?? place.name, lat: place.lat, lon: place.lon, countryCode: place.countryCode } }
         : {}),
@@ -274,6 +282,30 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
           styles={{ error: { fontSize: 'var(--mantine-font-size-sm)' } }}
           className="sm:w-64"
         />
+
+        <Radio.Group
+          id={genderId}
+          label="性別"
+          labelProps={{ className: 'mb-1 font-medium' }}
+          description="人類圖不使用性別；紫微斗數排盤需要。"
+          inputWrapperOrder={['label', 'input', 'description', 'error']}
+          descriptionProps={{ className: 'mt-1' }}
+          styles={{ description: { fontSize: 'var(--mantine-font-size-sm)' }, error: { fontSize: 'var(--mantine-font-size-sm)' } }}
+          name="gender"
+          size="md"
+          value={gender}
+          onChange={(v) => {
+            setGender(v === 'female' ? 'female' : v === 'male' ? 'male' : '');
+            setErrors((x) => ({ ...x, gender: undefined }));
+          }}
+          error={errors.gender}
+          errorProps={{ className: 'mt-1' }}
+        >
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+            <Radio size="sm" value="male" label="男" />
+            <Radio size="sm" value="female" label="女" />
+          </div>
+        </Radio.Group>
 
         {/* 出生時間 */}
         <fieldset aria-describedby={errors.time ? timeErrId : undefined}>
