@@ -3,10 +3,7 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (spec §10.4, §11.3). Every colour is a CSS variable; light is the default.
- * Dark values apply when the OS prefers dark and the user has not forced light
- * (`:root:not([data-theme="light"])`), or when the user forced dark (`[data-theme="dark"]`).
- * The two dark blocks below must stay identical.
+ * Design tokens (spec §10.4, §11.3). Every colour is a CSS variable. Light is the only theme.
  */
 :root {
   color-scheme: light;
@@ -46,84 +43,6 @@
   --ziwei-ji: #5b3a8a;
   --ziwei-soul-bg: #f4d7a8;
   --ziwei-scope-bg: #d7eb9a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-
-    --app-bg: #121316;
-    --app-fg: #e8e6e3;
-    --app-muted: #a4a8ae;
-    --app-border: #33363c;
-    --app-surface: #1b1d21;
-    --app-surface-2: #24272c;
-    --app-accent: #8ab4f8;
-    --app-accent-fg: #0d1b2a;
-    --app-danger: #f28b82;
-    --app-warning: #f2c46d;
-    --app-focus: #8ab4f8;
-
-    --hd-personality: #e6e6e6;
-    --hd-design: #ff6b66;
-    --hd-inactive: #34373c;
-    --hd-surface: #1b1d21;
-    --hd-yellow: #d9b440;
-    --hd-green: #5bb884;
-    --hd-red: #d65252;
-    --hd-brown: #a07d60;
-    --hd-center-stroke: #6b6f76;
-    --hd-center-stroke-defined: #2a2a2a;
-    --hd-gate-on: #f2f2f2;
-    --hd-gate-on-text: #111111;
-    --hd-gate-off: rgb(27 29 33 / 0.75);
-    --hd-gate-off-text: #c9ccd1;
-
-    --ziwei-lu: #6fcf97;
-    --ziwei-quan: #ff6b66;
-    --ziwei-ke: #8ab4f8;
-    --ziwei-ji: #c4b5fd;
-    --ziwei-soul-bg: #5a4324;
-    --ziwei-scope-bg: #2f4a22;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  --app-bg: #121316;
-  --app-fg: #e8e6e3;
-  --app-muted: #a4a8ae;
-  --app-border: #33363c;
-  --app-surface: #1b1d21;
-  --app-surface-2: #24272c;
-  --app-accent: #8ab4f8;
-  --app-accent-fg: #0d1b2a;
-  --app-danger: #f28b82;
-  --app-warning: #f2c46d;
-  --app-focus: #8ab4f8;
-
-  --hd-personality: #e6e6e6;
-  --hd-design: #ff6b66;
-  --hd-inactive: #34373c;
-  --hd-surface: #1b1d21;
-  --hd-yellow: #d9b440;
-  --hd-green: #5bb884;
-  --hd-red: #d65252;
-  --hd-brown: #a07d60;
-  --hd-center-stroke: #6b6f76;
-  --hd-center-stroke-defined: #2a2a2a;
-  --hd-gate-on: #f2f2f2;
-  --hd-gate-on-text: #111111;
-  --hd-gate-off: rgb(27 29 33 / 0.75);
-  --hd-gate-off-text: #c9ccd1;
-
-  --ziwei-lu: #6fcf97;
-  --ziwei-quan: #ff6b66;
-  --ziwei-ke: #8ab4f8;
-  --ziwei-ji: #c4b5fd;
-  --ziwei-soul-bg: #5a4324;
-  --ziwei-scope-bg: #2f4a22;
 }
 
 @theme inline {

@@ -2,7 +2,6 @@ import { mantineHtmlProps } from '@mantine/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteFooter } from '@/components/SiteFooter';
-import { THEME_STORAGE_KEY, ThemeToggle } from '@/components/ThemeToggle';
 import { UserNav } from '@/components/UserNav';
 import './globals.css';
 
@@ -13,13 +12,6 @@ export const metadata: Metadata = {
     '輸入一次出生資料，同時排出人類圖與紫微斗數命盤。未登入時資料僅用於即時計算、不保存；登入後可自行選擇把命盤儲存到帳號。',
 };
 
-// Applies the saved theme before first paint (Next docs: guides/preventing-flash-before-hydration).
-// Also mirrors it to Mantine's `data-mantine-color-scheme` (the form's colour scheme, see MantineRoot);
-// this replaces Mantine's ColorSchemeScript so both attributes come from the one stored value.
-const THEME_SCRIPT = `(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem(${JSON.stringify(
-  THEME_STORAGE_KEY,
-)});if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}try{d.setAttribute("data-mantine-color-scheme",t==="light"||t==="dark"?t:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){}})()`;
-
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
@@ -27,9 +19,6 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       {...mantineHtmlProps}
       className="h-full antialiased"
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
       <body className="flex min-h-full flex-col">
         <a
           href="#main"
@@ -45,10 +34,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             >
               排盤
             </Link>
-            <div className="flex items-center gap-2">
-              <UserNav />
-              <ThemeToggle />
-            </div>
+            <UserNav />
           </div>
         </header>
         <main

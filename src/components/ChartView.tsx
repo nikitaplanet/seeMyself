@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { CENTER_NAMES_ZH } from '@/lib/hd/constants';
+import { buildHdAiPrompt } from '@/lib/hd/prompt';
 import type { BirthInput, ChartResult, NodeMode } from '@/lib/hd/types';
 import {
   parseStoredChart,
@@ -12,6 +13,7 @@ import {
   subscribeStoredChart,
 } from '@/lib/ui/chartClient';
 import { ActivationTable } from './ActivationTable';
+import { AiPromptCard } from './AiPromptCard';
 import { BodyGraph } from './BodyGraph/BodyGraph';
 import { ChartSummary } from './ChartSummary';
 import { SaveChartButton } from './charts/SaveChartButton';
@@ -107,30 +109,45 @@ export function ChartView() {
         />
       ) : (
         <div
-          className={`grid gap-6 lg:grid-cols-2 ${busy ? 'opacity-60 transition-opacity' : ''}`}
+          className={`space-y-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}
         >
-          <div className="space-y-6">
-            <ChartSummary
-              stored={stored}
-              busy={busy}
-              onToggleNodeMode={toggleNodeMode}
-            />
-            <section
-              aria-labelledby="graph-title"
-              className="rounded-lg border border-border bg-surface p-4"
-            >
-              <h2 id="graph-title" className="text-lg font-semibold">
-                人體圖
-              </h2>
-              <GraphLegend />
-              <BodyGraph chart={chart} />
-            </section>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              <ChartSummary
+                stored={stored}
+                busy={busy}
+                onToggleNodeMode={toggleNodeMode}
+              />
+              <section
+                aria-labelledby="graph-title"
+                className="rounded-lg border border-border bg-surface p-4"
+              >
+                <h2 id="graph-title" className="text-lg font-semibold">
+                  人體圖
+                </h2>
+                <GraphLegend />
+                <BodyGraph chart={chart} />
+              </section>
+            </div>
+            <div className="space-y-6">
+              <ActivationTable activations={chart.activations} />
+              <SensitivityPanel
+                chart={chart}
+                timeUnknown={stored.timeUnknown}
+              />
+              <ChannelList chart={chart} />
+            </div>
           </div>
-          <div className="space-y-6">
-            <ActivationTable activations={chart.activations} />
-            <SensitivityPanel chart={chart} timeUnknown={stored.timeUnknown} />
-            <ChannelList chart={chart} />
-          </div>
+          <AiPromptCard
+            heading="提供給 AI 的提示詞"
+            description="複製後可貼到 ChatGPT、Claude 等，請它依這份人類圖做解讀。內容含出生資料。"
+            text={buildHdAiPrompt({
+              input: stored.input,
+              result: stored.result,
+              timeUnknown: stored.timeUnknown,
+              placeLabel: stored.placeLabel,
+            })}
+          />
         </div>
       )}
     </div>
