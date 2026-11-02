@@ -1,0 +1,164 @@
+/* Cascade layer order: Mantine (form only, see mantine.css) sits between Tailwind base and utilities. */
+@layer theme, base, mantine, components, utilities;
+@import "tailwindcss";
+
+/*
+ * Design tokens (spec §10.4, §11.3). Every colour is a CSS variable; light is the default.
+ * Dark values apply when the OS prefers dark and the user has not forced light
+ * (`:root:not([data-theme="light"])`), or when the user forced dark (`[data-theme="dark"]`).
+ * The two dark blocks below must stay identical.
+ */
+:root {
+  color-scheme: light;
+
+  /* app */
+  --app-bg: #f7f6f2;
+  --app-fg: #1d1d1f;
+  --app-muted: #5b5d63;
+  --app-border: #d9d6ce;
+  --app-surface: #ffffff;
+  --app-surface-2: #efede7;
+  --app-accent: #2b5c8a;
+  --app-accent-fg: #ffffff;
+  --app-danger: #b3261e;
+  --app-warning: #8a5a00;
+  --app-focus: #1a73e8;
+
+  /* BodyGraph */
+  --hd-personality: #1a1a1a;
+  --hd-design: #c8312f;
+  --hd-inactive: #e3e1dc;
+  --hd-surface: #ffffff;
+  --hd-yellow: #f2c94c;
+  --hd-green: #6fcf97;
+  --hd-red: #eb5757;
+  --hd-brown: #b08968;
+  --hd-center-stroke: #8c8a85;
+  --hd-center-stroke-defined: #5c5a55;
+  --hd-gate-on: #1f1f1f;
+  --hd-gate-on-text: #ffffff;
+  --hd-gate-off: rgb(255 255 255 / 0.7);
+  --hd-gate-off-text: #4a4a4a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --app-bg: #121316;
+    --app-fg: #e8e6e3;
+    --app-muted: #a4a8ae;
+    --app-border: #33363c;
+    --app-surface: #1b1d21;
+    --app-surface-2: #24272c;
+    --app-accent: #8ab4f8;
+    --app-accent-fg: #0d1b2a;
+    --app-danger: #f28b82;
+    --app-warning: #f2c46d;
+    --app-focus: #8ab4f8;
+
+    --hd-personality: #e6e6e6;
+    --hd-design: #ff6b66;
+    --hd-inactive: #34373c;
+    --hd-surface: #1b1d21;
+    --hd-yellow: #d9b440;
+    --hd-green: #5bb884;
+    --hd-red: #d65252;
+    --hd-brown: #a07d60;
+    --hd-center-stroke: #6b6f76;
+    --hd-center-stroke-defined: #2a2a2a;
+    --hd-gate-on: #f2f2f2;
+    --hd-gate-on-text: #111111;
+    --hd-gate-off: rgb(27 29 33 / 0.75);
+    --hd-gate-off-text: #c9ccd1;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --app-bg: #121316;
+  --app-fg: #e8e6e3;
+  --app-muted: #a4a8ae;
+  --app-border: #33363c;
+  --app-surface: #1b1d21;
+  --app-surface-2: #24272c;
+  --app-accent: #8ab4f8;
+  --app-accent-fg: #0d1b2a;
+  --app-danger: #f28b82;
+  --app-warning: #f2c46d;
+  --app-focus: #8ab4f8;
+
+  --hd-personality: #e6e6e6;
+  --hd-design: #ff6b66;
+  --hd-inactive: #34373c;
+  --hd-surface: #1b1d21;
+  --hd-yellow: #d9b440;
+  --hd-green: #5bb884;
+  --hd-red: #d65252;
+  --hd-brown: #a07d60;
+  --hd-center-stroke: #6b6f76;
+  --hd-center-stroke-defined: #2a2a2a;
+  --hd-gate-on: #f2f2f2;
+  --hd-gate-on-text: #111111;
+  --hd-gate-off: rgb(27 29 33 / 0.75);
+  --hd-gate-off-text: #c9ccd1;
+}
+
+@theme inline {
+  --color-bg: var(--app-bg);
+  --color-fg: var(--app-fg);
+  --color-muted: var(--app-muted);
+  --color-border: var(--app-border);
+  --color-surface: var(--app-surface);
+  --color-surface-2: var(--app-surface-2);
+  --color-accent: var(--app-accent);
+  --color-accent-fg: var(--app-accent-fg);
+  --color-danger: var(--app-danger);
+  --color-warning: var(--app-warning);
+  --color-focus: var(--app-focus);
+  --color-personality: var(--hd-personality);
+  --color-design: var(--hd-design);
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+html {
+  background: var(--app-bg);
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-fg);
+  font-family: var(--font-sans);
+}
+
+/* Visible keyboard focus everywhere (§11.3). */
+:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+/* BodyGraph gate buttons live in an SVG overlay: draw the focus ring on the circle itself. */
+.hd-gate-hit {
+  outline: none;
+}
+.hd-gate-hit circle {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 2.5;
+}
+.hd-gate-hit:hover circle,
+.hd-gate-hit:focus-visible circle {
+  stroke: var(--app-focus);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hd-skeleton {
+    animation: hd-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes hd-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}

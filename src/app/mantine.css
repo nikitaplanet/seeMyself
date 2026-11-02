@@ -1,0 +1,46 @@
+/*
+ * Mantine styles for the input form and the account pages (login, /charts, save dialog on /chart).
+ *
+ * Cascade layers: everything Mantine ships lives in `@layer mantine`. The order below puts it after
+ * Tailwind's `base` (preflight would otherwise strip Mantine's button/input styles) and before
+ * Tailwind's `components`/`utilities`, so utility classes still override Mantine. Unlayered rules
+ * (globals.css tokens, body, :focus-visible) beat every layer. globals.css declares the same order;
+ * whichever stylesheet loads first fixes it, and both say the same thing.
+ *
+ * Mantine's `baseline.css` (body font/line-height/background, :root color-scheme) is deliberately NOT
+ * imported: Tailwind preflight + globals.css already cover it, and importing it would change the
+ * results page typography once this stylesheet is loaded (Next keeps stylesheets across navigations).
+ * Only per-component files are imported; they are scoped to Mantine's own classes.
+ */
+@layer theme, base, mantine, components, utilities;
+
+@import "@mantine/core/styles/default-css-variables.layer.css";
+@import "@mantine/core/styles/global.layer.css";
+@import "@mantine/core/styles/UnstyledButton.layer.css";
+@import "@mantine/core/styles/VisuallyHidden.layer.css";
+@import "@mantine/core/styles/Paper.layer.css";
+@import "@mantine/core/styles/Popover.layer.css";
+@import "@mantine/core/styles/CloseButton.layer.css";
+@import "@mantine/core/styles/Group.layer.css";
+@import "@mantine/core/styles/Loader.layer.css";
+@import "@mantine/core/styles/Overlay.layer.css";
+@import "@mantine/core/styles/ModalBase.layer.css";
+@import "@mantine/core/styles/Input.layer.css";
+@import "@mantine/core/styles/InlineInput.layer.css";
+@import "@mantine/core/styles/Flex.layer.css";
+@import "@mantine/core/styles/ActionIcon.layer.css";
+@import "@mantine/core/styles/Button.layer.css";
+@import "@mantine/core/styles/Checkbox.layer.css";
+@import "@mantine/core/styles/Radio.layer.css";
+@import "@mantine/core/styles/ScrollArea.layer.css";
+@import "@mantine/core/styles/Combobox.layer.css";
+@import "@mantine/core/styles/Alert.layer.css";
+@import "@mantine/core/styles/Skeleton.layer.css";
+@import "@mantine/core/styles/Modal.layer.css";
+@import "@mantine/core/styles/Stack.layer.css";
+@import "@mantine/core/styles/Text.layer.css";
+@import "@mantine/core/styles/PasswordInput.layer.css";
+@import "@mantine/core/styles/Tabs.layer.css";
+@import "@mantine/core/styles/Badge.layer.css";
+@import "@mantine/core/styles/Divider.layer.css";
+@import "@mantine/dates/styles.layer.css";
