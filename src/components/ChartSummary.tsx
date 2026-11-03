@@ -45,7 +45,7 @@ export function ChartSummary({ stored, busy, onToggleNodeMode }: Props) {
   return (
     <section
       aria-labelledby="summary-title"
-      className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+      className="surface-card flex flex-col gap-4 p-5"
     >
       <h2 id="summary-title" className="text-xl font-semibold">
         {TYPE_NAMES_ZH[chart.type]} · {chart.profile.personality}/{chart.profile.design}
@@ -88,7 +88,7 @@ export function ChartSummary({ stored, busy, onToggleNodeMode }: Props) {
               type="button"
               onClick={onToggleNodeMode}
               disabled={busy}
-              className="rounded-md border border-border px-2 py-0.5 text-sm hover:bg-surface-2 disabled:opacity-60"
+              className="btn-secondary px-3 py-1 text-sm disabled:opacity-60"
             >
               {busy ? '重新計算中…' : `改用${NODE_MODE_NAMES_ZH[other]}`}
             </button>

@@ -65,10 +65,10 @@ export function ChartView() {
   return (
     <div aria-busy={busy} className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold">
+        <h1 className="flex flex-wrap items-baseline gap-x-2 font-serif text-3xl font-medium tracking-wide">
           排盤結果
           {stored.saved ? (
-            <span className="text-lg font-medium text-muted">
+            <span className="font-sans text-lg font-medium text-muted">
               · {stored.saved.name}
             </span>
           ) : null}
@@ -92,7 +92,7 @@ export function ChartView() {
       <div
         role="tablist"
         aria-label="命盤種類"
-        className="flex gap-1 border-b border-border"
+        className="tab-pill w-fit"
       >
         <TabButton selected={tab === 'hd'} onClick={() => setTab('hd')}>
           人類圖
@@ -127,7 +127,7 @@ export function ChartView() {
               />
               <section
                 aria-labelledby="graph-title"
-                className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+                className="surface-card flex flex-col gap-2 p-4 sm:p-5"
               >
                 <h2 id="graph-title" className="text-lg font-semibold">
                   人體圖
@@ -215,11 +215,10 @@ function TabButton({
       role="tab"
       aria-selected={selected}
       onClick={onClick}
-      className={`cursor-pointer -mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-        selected
-          ? 'border-accent text-accent'
-          : 'border-transparent text-muted hover:text-fg'
+      className={`tab-pill-item cursor-pointer ${
+        selected ? '' : 'hover:text-fg'
       }`}
+      data-active={selected ? 'true' : undefined}
     >
       {children}
     </button>
@@ -291,7 +290,7 @@ function ChannelList({ chart }: { chart: ChartResult }) {
   return (
     <section
       aria-labelledby="channels-title"
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+      className="surface-card flex flex-col gap-2 p-5"
     >
       <h2 id="channels-title" className="text-lg font-semibold">
         已成立的通道
@@ -320,16 +319,16 @@ function ChannelList({ chart }: { chart: ChartResult }) {
 
 function EmptyState() {
   return (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-6 rounded-lg border border-border bg-surface p-8 text-center">
+    <div className="surface-card mx-auto flex max-w-xl flex-col items-center gap-6 p-8 text-center">
       <div className="flex flex-col items-center gap-3">
-        <h1 className="text-xl font-semibold">目前沒有排盤資料</h1>
+        <h1 className="font-serif text-2xl font-medium">目前沒有排盤資料</h1>
         <p className="text-muted">
           為了保護隱私，排盤結果只暫存在原本的瀏覽器分頁中；關閉分頁或直接開啟這個網址時，就不會有資料。
         </p>
       </div>
       <Link
         href="/"
-        className="inline-block rounded-md bg-accent px-5 py-2.5 font-semibold text-accent-fg hover:opacity-90"
+        className="btn-primary px-6 py-2.5 text-sm"
       >
         輸入出生資料
       </Link>

@@ -111,7 +111,7 @@ export function SensitivityPanel({ chart, timeUnknown }: { chart: ChartResult; t
     return (
       <section
         aria-labelledby="sens-title"
-        className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+        className="surface-card flex flex-col gap-2 p-5"
       >
         <h2 id="sens-title" className="text-lg font-semibold">
           出生時間敏感度
@@ -137,7 +137,7 @@ export function SensitivityPanel({ chart, timeUnknown }: { chart: ChartResult; t
   return (
     <section
       aria-labelledby="sens-title"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+      className="surface-card flex flex-col gap-3 p-5"
     >
       <h2 id="sens-title" className="text-lg font-semibold">
         出生時間敏感度

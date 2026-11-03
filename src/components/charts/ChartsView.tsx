@@ -278,7 +278,7 @@ function ChartCard({
   return (
     <li
       aria-labelledby={titleId}
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+      className="surface-card flex flex-col gap-2 p-4"
     >
       <div className="flex items-start justify-between gap-2">
         <h2 id={titleId} className="break-all text-lg font-semibold">
@@ -336,7 +336,7 @@ function ChartCard({
 
 function EmptyState({ kind }: { kind: ChartKind }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-border p-8 text-center">
+    <div className="surface-card flex flex-col items-center gap-4 border-dashed p-8 text-center">
       {kind === 'self' ? (
         <>
           <div className="flex flex-col gap-2">

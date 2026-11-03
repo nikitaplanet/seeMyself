@@ -462,7 +462,7 @@ export function BirthForm({
         />
 
         {/* 進階 */}
-        <div className="rounded-md border border-border">
+        <div className="surface-card overflow-hidden">
           <UnstyledButton
             aria-expanded={advancedOpen}
             aria-controls={advancedId}

@@ -14,7 +14,7 @@ import { authCallbackUrl } from '@/lib/supabase/env';
 // static shells stay prerendered; a fixed-size placeholder avoids layout shift while it resolves.
 
 const LINK =
-  'rounded-md px-3 py-1.5 text-sm hover:bg-surface-2 hover:text-accent';
+  'rounded-full px-3 py-1.5 text-sm text-fg hover:bg-surface-2 hover:text-accent';
 
 export function UserNav() {
   const auth = useAuth();
@@ -115,7 +115,7 @@ export function UserNav() {
           aria-expanded={open}
           aria-controls={menuId}
           onClick={() => setOpen(o => !o)}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm hover:bg-surface-2"
+          className="btn-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
         >
           <span className="sr-only">帳號選單：</span>
           <span aria-hidden="true">帳號</span>
@@ -126,7 +126,7 @@ export function UserNav() {
         {open ? (
           <div
             id={menuId}
-            className="absolute right-0 z-40 mt-2 w-56 rounded-md border border-border bg-surface p-2 text-sm shadow-lg"
+            className="surface-card absolute right-0 z-40 mt-2 w-56 p-2 text-sm"
           >
             <p className="truncate px-2 py-1.5 text-muted" title={email}>
               {email}

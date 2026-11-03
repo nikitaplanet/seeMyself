@@ -80,10 +80,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface">
+    <section className="surface-card overflow-hidden">
       <h2
-        className="px-4 py-2.5 text-sm font-semibold tracking-wide text-white"
-        style={{ background: '#b24532' }}
+        className="bg-accent px-4 py-2.5 font-serif text-sm font-medium tracking-wide text-accent-fg"
       >
         {title}
       </h2>

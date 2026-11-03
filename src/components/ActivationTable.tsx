@@ -87,7 +87,7 @@ export function ActivationTable({ activations }: { activations: readonly Activat
   return (
     <section
       aria-labelledby="activations-title"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+      className="surface-card flex flex-col gap-3 p-5"
     >
       <div className="flex flex-col gap-1">
         <h2 id="activations-title" className="text-lg font-semibold">

@@ -13,38 +13,41 @@ import { DatesProvider } from '@mantine/dates';
 // Mantine is used for the input form and the account UI (login, /charts, save dialog). Everything else keeps its own
 // Tailwind styling; see src/app/mantine.css for how the cascade layers keep the two apart.
 
-/** Shade 6 is the app accent (--app-accent): #2b5c8a. */
+/** Shade 6 is Forest (--app-accent): #0f5132. */
 const ACCENT: MantineColorsTuple = [
-  '#eaf1f8',
-  '#d3e1ee',
-  '#a9c3dd',
-  '#7da4cb',
-  '#5888bb',
-  '#3f73a6',
-  '#2b5c8a',
-  '#234c73',
-  '#1b3c5b',
-  '#132b42',
+  '#e8f2ec',
+  '#d2e5da',
+  '#b7d9c1',
+  '#8fbe9c',
+  '#5f9774',
+  '#357a54',
+  '#0f5132',
+  '#0c4229',
+  '#093420',
+  '#062517',
 ];
-/** Warm greys matching the light tokens (gray-4 = --app-border). */
+/** Stone greys matching Ivory / Stone tokens (gray-4 ≈ --app-border). */
 const GRAY: MantineColorsTuple = [
-  '#f7f6f2',
-  '#efede7',
+  '#faf9f4',
+  '#eef4ef',
   '#e6e3dc',
-  '#dedad2',
-  '#d9d6ce',
+  '#ddd9d0',
+  '#d6d3c8',
   '#a9a69f',
-  '#8c8a85',
-  '#5b5d63',
-  '#3d3f44',
-  '#1d1d1f',
+  '#7a7f78',
+  '#5f6d65',
+  '#2f4338',
+  '#163528',
 ];
 
-const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+const FONT_SANS =
+  'var(--font-sans-face), "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+const FONT_SERIF =
+  'var(--font-serif-face), "Noto Serif TC", "Songti TC", "PMingLiU", serif';
 
 const theme = createTheme({
-  fontFamily: FONT,
-  headings: { fontFamily: FONT },
+  fontFamily: FONT_SANS,
+  headings: { fontFamily: FONT_SERIF, fontWeight: '500' },
   colors: {
     accent: ACCENT,
     gray: GRAY,
@@ -52,8 +55,57 @@ const theme = createTheme({
   primaryColor: 'accent',
   primaryShade: 6,
   autoContrast: true,
-  radius: { sm: '0.375rem', md: '0.5rem' },
-  defaultRadius: 'sm',
+  radius: {
+    xs: '0.75rem',
+    sm: '1rem',
+    md: '1.5rem',
+    lg: '1.75rem',
+    xl: '9999px',
+  },
+  defaultRadius: 'md',
+  shadows: {
+    sm: '4px 6px 12px rgb(15 81 50 / 0.06), -2px -2px 8px rgb(255 255 255 / 0.8)',
+    md: '6px 8px 18px rgb(15 81 50 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85)',
+    lg: '10px 14px 28px rgb(15 81 50 / 0.1), -6px -6px 18px rgb(255 255 255 / 0.9)',
+  },
+  components: {
+    Button: {
+      defaultProps: { radius: 'xl' },
+    },
+    TextInput: {
+      defaultProps: { radius: 'xl' },
+    },
+    PasswordInput: {
+      defaultProps: { radius: 'xl' },
+    },
+    Textarea: {
+      defaultProps: { radius: 'md' },
+    },
+    Select: {
+      defaultProps: { radius: 'xl' },
+    },
+    NativeSelect: {
+      defaultProps: { radius: 'xl' },
+    },
+    DatePickerInput: {
+      defaultProps: { radius: 'xl' },
+    },
+    Paper: {
+      defaultProps: { radius: 'md', shadow: 'md' },
+    },
+    Modal: {
+      defaultProps: { radius: 'md' },
+    },
+    Checkbox: {
+      defaultProps: { color: 'accent', radius: 'sm' },
+    },
+    Radio: {
+      defaultProps: { color: 'accent' },
+    },
+    Tabs: {
+      defaultProps: { variant: 'pills', radius: 'xl' },
+    },
+  },
 });
 
 const APP_SEMANTIC_VARS = {

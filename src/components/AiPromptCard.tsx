@@ -45,11 +45,11 @@ export function AiPromptCard({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+      className="surface-card flex flex-col gap-4 p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 id={headingId} className="text-lg font-semibold">
+          <h2 id={headingId} className="font-serif text-xl font-medium">
             {heading}
           </h2>
           <p className="text-sm text-muted">{description}</p>
@@ -57,7 +57,7 @@ export function AiPromptCard({
         <button
           type="button"
           onClick={() => void copy()}
-          className="cursor-pointer shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-fg hover:opacity-90"
+          className="btn-primary cursor-pointer shrink-0 px-4 py-2 text-sm"
         >
           {copied ? '已複製' : '複製提示詞'}
         </button>
@@ -72,7 +72,7 @@ export function AiPromptCard({
         rows={16}
         spellCheck={false}
         aria-label={heading}
-        className="w-full resize-y rounded-md border border-border bg-surface-2 p-3 font-mono text-xs leading-relaxed text-fg"
+        className="surface-inset w-full resize-y rounded-[1.25rem] p-3 font-mono text-xs leading-relaxed text-fg"
       />
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted">
@@ -85,7 +85,7 @@ export function AiPromptCard({
               type="button"
               onClick={() => copyAndOpen(chat.href)}
               aria-label={`複製提示詞並開啟 ${chat.name}（新分頁）`}
-              className="cursor-pointer inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-2"
+              className="btn-secondary cursor-pointer gap-1.5 px-4 py-2 text-sm"
             >
               {chat.name}
               <span aria-hidden="true" className="text-muted">

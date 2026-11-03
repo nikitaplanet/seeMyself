@@ -202,13 +202,13 @@ function ZiweiChartPanel({
         </p>
       ) : null}
 
-      <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+      <fieldset className="surface-card flex flex-col gap-3 p-4 sm:p-5">
         <legend className="px-1 text-sm font-semibold">流月起始宮位</legend>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex items-center gap-1 text-sm">
             年
             <select
-              className="rounded-md border border-border bg-surface px-2 py-1"
+              className="surface-inset rounded-full px-3 py-1.5"
               value={year}
               onChange={e => setYear(Number(e.target.value))}
             >
@@ -222,7 +222,7 @@ function ZiweiChartPanel({
           <label className="flex items-center gap-1 text-sm">
             月
             <select
-              className="rounded-md border border-border bg-surface px-2 py-1"
+              className="surface-inset rounded-full px-3 py-1.5"
               value={month}
               onChange={e => setMonth(Number(e.target.value))}
             >
@@ -236,7 +236,7 @@ function ZiweiChartPanel({
           <label className="flex items-center gap-1 text-sm">
             日
             <select
-              className="rounded-md border border-border bg-surface px-2 py-1"
+              className="surface-inset rounded-full px-3 py-1.5"
               value={day}
               onChange={e => setDay(Number(e.target.value))}
             >
@@ -250,7 +250,7 @@ function ZiweiChartPanel({
           <label className="flex items-center gap-1 text-sm">
             時
             <select
-              className="rounded-md border border-border bg-surface px-2 py-1"
+              className="surface-inset rounded-full px-3 py-1.5"
               value={timeIndex}
               onChange={e => setTimeIndex(Number(e.target.value))}
             >
@@ -288,10 +288,10 @@ function ZiweiChartPanel({
             <button
               key={s}
               type="button"
-              className={`cursor-pointer rounded-md border px-3 py-1 text-sm ${
+              className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium ${
                 scope === s
-                  ? 'border-accent bg-accent text-accent-fg'
-                  : 'border-border hover:border-accent'
+                  ? 'bg-accent text-accent-fg shadow-soft'
+                  : 'btn-secondary'
               }`}
               aria-pressed={scope === s}
               disabled={busy && s !== 'origin'}
@@ -339,7 +339,7 @@ function ZiweiChartPanel({
 
       <section
         aria-labelledby="ziwei-star-analysis"
-        className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+        className="surface-card flex flex-col gap-3 p-5"
       >
         <h2 id="ziwei-star-analysis" className="text-lg font-semibold">
           主星亮度與吉凶分析

@@ -11,9 +11,9 @@ export function AuthCard({
 }) {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
-      <h1 className="text-2xl font-bold">{title}</h1>
+      <h1 className="font-serif text-3xl font-medium tracking-wide">{title}</h1>
       <MantineRoot>
-        <Paper withBorder radius="md" className="p-5 sm:p-8">
+        <Paper withBorder radius="md" shadow="md" className="p-5 sm:p-8">
           {children}
         </Paper>
       </MantineRoot>

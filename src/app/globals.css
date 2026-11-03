@@ -3,54 +3,70 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (spec §10.4, §11.3). Every colour is a CSS variable. Light is the only theme.
+ * Calm / System — softer digital space.
+ * Palette: Forest · Mint · Ivory · Stone. Light is the only theme.
  */
 :root {
   color-scheme: light;
 
-  /* app */
-  --app-bg: #f7f6f2;
-  --app-fg: #1d1d1f;
-  --app-muted: #5b5d63;
-  --app-border: #d9d6ce;
-  --app-surface: #ffffff;
-  --app-surface-2: #efede7;
-  --app-accent: #2b5c8a;
-  --app-accent-fg: #ffffff;
-  --app-danger: #b3261e;
-  --app-warning: #8a5a00;
-  --app-focus: #1a73e8;
+  --forest: #0f5132;
+  --mint: #b7d9c1;
+  --ivory: #faf9f4;
+  --stone: #d6d3c8;
 
-  /* BodyGraph */
+  /* app */
+  --app-bg: var(--ivory);
+  --app-fg: #163528;
+  --app-muted: #5f6d65;
+  --app-border: var(--stone);
+  --app-surface: #fffefb;
+  --app-surface-2: #eef4ef;
+  --app-accent: var(--forest);
+  --app-accent-fg: #ffffff;
+  --app-danger: #9b2c2c;
+  --app-warning: #8a5a00;
+  --app-focus: var(--forest);
+  --app-mint: var(--mint);
+
+  --radius-card: 1.5rem;
+  --radius-control: 9999px;
+  --shadow-soft:
+    6px 8px 18px rgb(15 81 50 / 0.08),
+    -4px -4px 14px rgb(255 255 255 / 0.85);
+  --shadow-inset:
+    inset 3px 3px 8px rgb(15 81 50 / 0.07),
+    inset -2px -2px 6px rgb(255 255 255 / 0.9);
+
+  /* BodyGraph — keep domain semantics; soften inactive to ivory/stone */
   --hd-personality: #1a1a1a;
   --hd-design: #c8312f;
-  --hd-inactive: #e3e1dc;
-  --hd-surface: #ffffff;
+  --hd-inactive: #e8e6df;
+  --hd-surface: #fffefb;
   --hd-yellow: #f2c94c;
   --hd-green: #6fcf97;
   --hd-red: #eb5757;
   --hd-brown: #b08968;
-  --hd-center-stroke: #8c8a85;
-  --hd-center-stroke-defined: #5c5a55;
-  --hd-gate-on: #1f1f1f;
+  --hd-center-stroke: #a8a59c;
+  --hd-center-stroke-defined: var(--forest);
+  --hd-gate-on: var(--forest);
   --hd-gate-on-text: #ffffff;
   --hd-gate-off: rgb(255 255 255 / 0.7);
   --hd-gate-off-text: #4a4a4a;
 
-  --ziwei-lu: #1b7f4e;
-  --ziwei-quan: #b3261e;
-  --ziwei-ke: #2b5c8a;
+  --ziwei-lu: #0f5132;
+  --ziwei-quan: #9b2c2c;
+  --ziwei-ke: #3d6b56;
   --ziwei-ji: #5b3a8a;
-  --ziwei-soul-bg: #f4d7a8;
-  --ziwei-scope-bg: #d7eb9a;
+  --ziwei-soul-bg: #f3ead6;
+  --ziwei-scope-bg: #d9ebd8;
 
-  --bazi-header: #b24532;
+  --bazi-header: var(--forest);
   --bazi-header-fg: #ffffff;
-  --bazi-note: #fbf3d5;
-  --bazi-xi: #e7f3ea;
-  --bazi-yong: #e4eef8;
-  --bazi-ji: #f8eaea;
-  --bazi-tiao: #efe6f4;
+  --bazi-note: #eef4ef;
+  --bazi-xi: #dcebd9;
+  --bazi-yong: #e4efe8;
+  --bazi-ji: #f3e4e4;
+  --bazi-tiao: #e8efe6;
 }
 
 @theme inline {
@@ -65,9 +81,15 @@
   --color-danger: var(--app-danger);
   --color-warning: var(--app-warning);
   --color-focus: var(--app-focus);
+  --color-mint: var(--app-mint);
   --color-personality: var(--hd-personality);
   --color-design: var(--hd-design);
-  --font-sans: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-sans: var(--font-sans-face), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei',
+    sans-serif;
+  --font-serif: var(--font-serif-face), 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  --radius-card: 1.5rem;
+  --radius-pill: 9999px;
+  --shadow-soft: 6px 8px 18px rgb(15 81 50 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
 }
 
 html {
@@ -78,6 +100,93 @@ body {
   background: var(--app-bg);
   color: var(--app-fg);
   font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--app-accent);
+  letter-spacing: 0.01em;
+}
+
+/* Soft raised card (neumorphic surface) */
+.surface-card {
+  border-radius: var(--radius-card);
+  border: 1px solid rgb(214 211 200 / 0.55);
+  background: var(--app-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.surface-inset {
+  border-radius: var(--radius-control);
+  border: 1px solid rgb(214 211 200 / 0.45);
+  background: var(--app-bg);
+  box-shadow: var(--shadow-inset);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background: var(--app-accent);
+  color: var(--app-accent-fg);
+  font-weight: 500;
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-primary:hover {
+  opacity: 0.92;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  border: 1px solid rgb(214 211 200 / 0.7);
+  background: var(--app-surface);
+  color: var(--app-fg);
+  font-weight: 500;
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-secondary:hover {
+  background: var(--app-surface-2);
+}
+
+.tab-pill {
+  display: inline-flex;
+  gap: 0.25rem;
+  border-radius: var(--radius-control);
+  background: var(--app-surface-2);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-inset);
+}
+
+.tab-pill [role='tab'],
+.tab-pill-item {
+  border-radius: var(--radius-control);
+  border: none;
+  background: transparent;
+  color: var(--app-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+}
+
+.tab-pill [role='tab'][aria-selected='true'],
+.tab-pill-item[aria-selected='true'],
+.tab-pill-item[data-active='true'] {
+  background: var(--app-accent);
+  color: var(--app-accent-fg);
+  box-shadow: var(--shadow-soft);
 }
 
 /* Visible keyboard focus everywhere (§11.3), except form fields (no ring). */
@@ -99,6 +208,57 @@ body {
 
 .mantine-Input-wrapper {
   --input-bd-focus: var(--app-border);
+}
+
+.mantine-Input-input {
+  border-radius: var(--radius-control) !important;
+  border-color: rgb(214 211 200 / 0.7) !important;
+  background: var(--app-bg) !important;
+  box-shadow: var(--shadow-inset);
+}
+
+.mantine-Button-root {
+  border-radius: var(--radius-control) !important;
+  font-weight: 500;
+}
+
+.mantine-Button-root[data-variant='filled'] {
+  box-shadow: var(--shadow-soft);
+}
+
+.mantine-Paper-root {
+  border-radius: var(--radius-card) !important;
+  border-color: rgb(214 211 200 / 0.55) !important;
+  box-shadow: var(--shadow-soft);
+}
+
+.mantine-Checkbox-input:checked,
+.mantine-Radio-radio:checked {
+  background-color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.mantine-Tabs-list {
+  border: none !important;
+  gap: 0.25rem;
+  border-radius: var(--radius-control);
+  background: var(--app-surface-2);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-inset);
+  width: fit-content;
+}
+
+.mantine-Tabs-tab {
+  border: none !important;
+  border-radius: var(--radius-control) !important;
+  color: var(--app-muted);
+  font-weight: 500;
+}
+
+.mantine-Tabs-tab[data-active] {
+  background: var(--app-accent) !important;
+  color: var(--app-accent-fg) !important;
+  box-shadow: var(--shadow-soft);
 }
 
 /* BodyGraph gate buttons live in an SVG overlay: draw the focus ring on the circle itself. */

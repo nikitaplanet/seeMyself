@@ -236,7 +236,7 @@ export function ZiweiBoard({
   const bundle = scopeBundle(chart, scope, monthStart);
   return (
     <div
-      className="ziwei-board grid w-full gap-px overflow-hidden rounded-lg border border-border bg-border"
+      className="ziwei-board surface-card grid w-full gap-px overflow-hidden bg-border"
       style={{
         gridTemplateColumns: '1fr 1fr 1fr 1fr',
         gridTemplateRows:
