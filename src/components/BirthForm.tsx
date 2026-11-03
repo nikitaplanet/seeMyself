@@ -16,7 +16,7 @@ import {
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useRouter } from 'next/navigation';
-import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { DEFAULT_SENSITIVITY_MINUTES, MAX_DATE, MIN_DATE } from '@/lib/hd/constants';
 import type { BirthInput, Gender, NodeMode } from '@/lib/hd/types';
 import {
@@ -46,6 +46,29 @@ const MINUTE_OPTIONS = [
     { value: '', label: '分' },
     ...MINUTES.map((m) => ({ value: m, label: m })),
 ];
+
+function CalendarIcon() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect
+                x="2"
+                y="3"
+                width="12"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+            />
+            <path d="M2 6.5h12" stroke="currentColor" strokeWidth="1.5" />
+            <path
+                d="M5 1.5v3M11 1.5v3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
 
 /** Accessible names for the calendar's otherwise icon-only navigation buttons. */
 const CALENDAR_ARIA_LABELS = {
@@ -80,24 +103,6 @@ function isValidDate(s: string): boolean {
     const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
     const dt = new Date(Date.UTC(y, mo - 1, d));
     return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
-}
-
-/**
- * Today's date for the calendar's initial view. Mantine computes it with `dayjs()` during render,
- * which Cache Components rejects in a prerender; here the prerender gets a fixed placeholder (the
- * calendar is never open in the prerendered HTML) and the browser gets the real date.
- */
-let todayCache: string | null = null;
-function todayString(): string {
-    if (todayCache === null) {
-        const d = new Date();
-        todayCache = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-    return todayCache;
-}
-const noopSubscribe = () => () => {};
-function useToday(): string {
-    return useSyncExternalStore(noopSubscribe, todayString, () => '2000-01-01');
 }
 
 function listTimezones(): string[] {
@@ -146,7 +151,6 @@ export function BirthForm({
     const [ambiguous, setAmbiguous] = useState<AmbiguousState | null>(null);
     const hourRef = useRef<HTMLSelectElement>(null);
     const minuteRef = useRef<HTMLSelectElement>(null);
-    const today = useToday();
 
     const dateId = `${ids}-date`;
     const genderId = `${ids}-gender`;
@@ -314,7 +318,7 @@ export function BirthForm({
                     minDate={MIN_DATE}
                     maxDate={MAX_DATE}
                     defaultLevel="decade"
-                    defaultDate={date || (today < MAX_DATE ? today : MAX_DATE)}
+                    defaultDate={date || '1990-01-01'}
                     valueFormat="YYYY年M月D日"
                     value={date || null}
                     onChange={(v) => {
@@ -324,10 +328,17 @@ export function BirthForm({
                     popoverProps={{ position: 'bottom-start' }}
                     ariaLabels={CALENDAR_ARIA_LABELS}
                     error={errors.date}
+                    leftSection={<CalendarIcon />}
+                    leftSectionPointerEvents="none"
+                    rightSection={<span aria-hidden="true">▾</span>}
+                    rightSectionPointerEvents="none"
+                    classNames={{ input: 'cursor-pointer font-medium' }}
                     styles={{
                         root: { display: 'flex', flexDirection: 'column', gap: '1rem' },
                         label: { marginBottom: 0 },
                         error: { fontSize: 'var(--mantine-font-size-sm)' },
+                        input: { cursor: 'pointer' },
+                        placeholder: { color: 'var(--app-fg)', fontWeight: 500 },
                     }}
                     className="sm:w-64"
                 />
@@ -354,8 +365,8 @@ export function BirthForm({
                     error={errors.gender}
                 >
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <Radio size="md" value="female" label="女" />
-                        <Radio size="md" value="male" label="男" />
+                        <Radio size="sm" value="female" label="女" />
+                        <Radio size="sm" value="male" label="男" />
                     </div>
                 </Radio.Group>
 
@@ -401,7 +412,8 @@ export function BirthForm({
                         />
                     </div>
                     <Checkbox
-                        size="md"
+                        size="sm"
+                        radius={4}
                         checked={timeUnknown}
                         onChange={(e) => {
                             setTimeUnknown(e.currentTarget.checked);
@@ -416,6 +428,7 @@ export function BirthForm({
                                 alignItems: 'center',
                                 minHeight: '1.5em',
                             },
+                            input: { borderRadius: 4 },
                             label: { fontSize: '1rem', lineHeight: 1.5 },
                             description: { fontSize: 'var(--mantine-font-size-sm)' },
                         }}
@@ -440,22 +453,24 @@ export function BirthForm({
                 />
 
                 {/* 進階 */}
-                <div>
+                <div className="overflow-hidden rounded-[1.5rem] border border-border bg-surface-2">
                     <UnstyledButton
                         aria-expanded={advancedOpen}
                         aria-controls={advancedId}
                         onClick={toggleAdvanced}
-                        className="flex w-full items-center justify-between py-1 text-left font-medium"
+                        className="flex w-full items-center justify-between px-4 py-3 text-left font-medium"
                     >
                         <span>進階選項</span>
-                        <span aria-hidden="true">{advancedOpen ? '−' : '+'}</span>
+                        <span aria-hidden="true" className="text-xl leading-none">
+                            {advancedOpen ? '−' : '+'}
+                        </span>
                     </UnstyledButton>
                     <Collapse
                         id={advancedId}
                         expanded={advancedOpen}
                         keepMountedMode="display-none"
                     >
-                        <Stack gap="lg" className="pt-3">
+                        <Stack gap="lg" className="border-t border-border px-4 py-4">
                             <Select
                                 id={tzId}
                                 size="md"
@@ -509,15 +524,13 @@ export function BirthForm({
                     </Collapse>
                 </div>
 
-                <p className="text-sm text-muted" aria-live="polite">
-                    {effectiveTz ? (
-                        <>
-                            計算時區：
-                            <span className="font-medium text-fg">{effectiveTz}</span>
-                            {manualTz ? '（手動選擇）' : ''}
-                        </>
-                    ) : null}
-                </p>
+                {effectiveTz ? (
+                    <p className="text-sm text-muted" aria-live="polite">
+                        計算時區：
+                        <span className="font-medium text-fg">{effectiveTz}</span>
+                        {manualTz ? '（手動選擇）' : ''}
+                    </p>
+                ) : null}
 
                 {formError ? (
                     <Alert variant="outline" color="var(--app-danger)" className="text-base">
@@ -525,16 +538,9 @@ export function BirthForm({
                     </Alert>
                 ) : null}
 
-                <div>
-                    <Button
-                        type="submit"
-                        size="lg"
-                        loading={submitting}
-                        className="w-full sm:w-auto"
-                    >
-                        {submitting ? '計算中…' : submitLabel}
-                    </Button>
-                </div>
+                <Button type="submit" size="lg" loading={submitting} fullWidth>
+                    {submitting ? '計算中…' : submitLabel}
+                </Button>
 
                 {submitting ? (
                     <div aria-hidden="true" className="flex flex-col gap-3">

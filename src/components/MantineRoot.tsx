@@ -72,22 +72,22 @@ const theme = createTheme({
             defaultProps: { radius: 'xl' },
         },
         TextInput: {
-            defaultProps: { radius: 'xl' },
+            defaultProps: { radius: 'xs' },
         },
         PasswordInput: {
-            defaultProps: { radius: 'xl' },
+            defaultProps: { radius: 'xs' },
         },
         Textarea: {
-            defaultProps: { radius: 'md' },
+            defaultProps: { radius: 'xs' },
         },
         Select: {
-            defaultProps: { radius: 'xl' },
+            defaultProps: { radius: 'xs' },
         },
         NativeSelect: {
-            defaultProps: { radius: 'xl' },
+            defaultProps: { radius: 'xs' },
         },
         DatePickerInput: {
-            defaultProps: { radius: 'xl' },
+            defaultProps: { radius: 'xs' },
         },
         Paper: {
             defaultProps: { radius: 'md', shadow: 'md' },

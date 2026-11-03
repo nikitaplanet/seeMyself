@@ -190,13 +190,13 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
                 </Combobox.Dropdown>
             </Combobox>
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted">快速選擇</span>
+                <span className="text-sm text-muted">快速選擇：</span>
                 {QUICK_PLACES.map((name) => (
                     <button
                         key={name}
                         type="button"
                         onClick={() => handleInput(name, true)}
-                        className="btn-secondary cursor-pointer px-3 py-1 text-sm"
+                        className="btn-secondary cursor-pointer px-3 py-1 text-sm !shadow-none"
                     >
                         {name}
                     </button>

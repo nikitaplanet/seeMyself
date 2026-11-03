@@ -29,7 +29,8 @@
     --app-mint: var(--mint);
 
     --radius-card: 1.5rem;
-    --radius-control: 9999px;
+    --radius-control: 0.75rem;
+    --radius-pill: 9999px;
     --shadow-soft: 6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
     --shadow-inset: inset 3px 3px 8px rgb(0 0 0 / 0.07), inset -2px -2px 6px rgb(255 255 255 / 0.9);
 
@@ -129,7 +130,7 @@ h6 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-pill);
     background: var(--app-accent);
     color: var(--app-accent-fg);
     font-weight: 500;
@@ -144,7 +145,7 @@ h6 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-pill);
     border: 1px solid rgb(214 211 200 / 0.7);
     background: var(--app-surface);
     color: var(--app-fg);
@@ -159,15 +160,14 @@ h6 {
 .tab-pill {
     display: inline-flex;
     gap: 0.25rem;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-pill);
     background: var(--app-surface-2);
     padding: 0.25rem;
-    box-shadow: var(--shadow-inset);
 }
 
 .tab-pill [role='tab'],
 .tab-pill-item {
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-pill);
     border: none;
     background: transparent;
     color: var(--app-muted);
@@ -181,7 +181,6 @@ h6 {
 .tab-pill-item[data-active='true'] {
     background: var(--app-accent);
     color: var(--app-accent-fg);
-    box-shadow: var(--shadow-soft);
 }
 
 /* Visible keyboard focus everywhere (§11.3), except form fields (no ring). */
@@ -213,7 +212,7 @@ h6 {
 }
 
 .mantine-Button-root {
-    border-radius: var(--radius-control) !important;
+    border-radius: var(--radius-pill) !important;
     font-weight: 500;
 }
 
@@ -248,16 +247,15 @@ h6 {
 .mantine-Tabs-list {
     border: none !important;
     gap: 0.25rem;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-pill);
     background: var(--app-surface-2);
     padding: 0.25rem;
-    box-shadow: var(--shadow-inset);
     width: fit-content;
 }
 
 .mantine-Tabs-tab {
     border: none !important;
-    border-radius: var(--radius-control) !important;
+    border-radius: var(--radius-pill) !important;
     color: var(--app-muted);
     font-weight: 500;
 }
@@ -265,7 +263,6 @@ h6 {
 .mantine-Tabs-tab[data-active] {
     background: var(--app-accent) !important;
     color: var(--app-accent-fg) !important;
-    box-shadow: var(--shadow-soft);
 }
 
 /* BodyGraph gate buttons live in an SVG overlay: draw the focus ring on the circle itself. */

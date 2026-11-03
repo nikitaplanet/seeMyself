@@ -3,7 +3,7 @@ import { MantineRoot } from '@/components/MantineRoot';
 
 export default function Home() {
     return (
-        <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
                 <h1 className="font-serif text-3xl font-medium tracking-wide sm:text-4xl">排盤</h1>
                 <p className="text-muted leading-relaxed">
