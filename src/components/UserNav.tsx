@@ -102,7 +102,7 @@ export function UserNav() {
     return (
         <div className="flex items-center gap-1">
             <Link href="/charts" className={LINK}>
-                我的命盤
+                命盤列表
             </Link>
             <div ref={wrapRef} className="relative">
                 <button
@@ -129,7 +129,7 @@ export function UserNav() {
                             onClick={() => setOpen(false)}
                             className="block rounded px-2 py-1.5 hover:bg-surface-2"
                         >
-                            我的命盤
+                            命盤列表
                         </Link>
                         {googleOn && !auth.user.googleLinked ? (
                             <button

@@ -16,7 +16,7 @@ export function placeLabel(p: Place): string {
 }
 
 const DEBOUNCE_MS = 300;
-const QUICK_PLACES = ['台北市'] as const;
+const QUICK_PLACES = ['臺北市'] as const;
 
 interface Props {
     value: Place | null;
@@ -132,7 +132,7 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
                         description={
                             value ? (
                                 <>
-                                    時區：
+                                    地點時區：
                                     <span className="font-medium text-fg">{value.timezone}</span>
                                     {value.admin1 ? `（${value.admin1}）` : null}
                                 </>

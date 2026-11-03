@@ -526,9 +526,9 @@ export function BirthForm({
 
                 {effectiveTz ? (
                     <p className="text-sm text-muted" aria-live="polite">
-                        計算時區：
+                        排盤使用時區：
                         <span className="font-medium text-fg">{effectiveTz}</span>
-                        {manualTz ? '（手動選擇）' : ''}
+                        {manualTz ? '（手動選擇）' : '（依出生地點）'}
                     </p>
                 ) : null}
 

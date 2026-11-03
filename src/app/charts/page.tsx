@@ -6,14 +6,14 @@ import { MantineRoot } from '@/components/MantineRoot';
 // renders; ChartsView repeats the check client-side, and RLS protects the data itself.
 
 export const metadata: Metadata = {
-    title: '我的命盤',
+    title: '命盤列表',
     robots: { index: false, follow: false },
 };
 
 export default function ChartsPage() {
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="font-serif text-3xl font-medium tracking-wide">我的命盤</h1>
+            <h1 className="font-serif text-3xl font-medium tracking-wide">命盤列表</h1>
             <MantineRoot>
                 <ChartsView />
             </MantineRoot>

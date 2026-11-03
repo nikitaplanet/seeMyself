@@ -50,7 +50,7 @@ export function ResetPasswordView() {
                 <Text>密碼已更新。</Text>
                 <div>
                     <Button component={Link} href="/charts">
-                        前往我的命盤
+                        前往命盤列表
                     </Button>
                 </div>
             </Stack>

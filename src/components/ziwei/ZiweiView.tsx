@@ -13,6 +13,7 @@ import { buildZiweiAiPrompt } from '@/lib/ziwei/prompt';
 import { TIME_INDEX_NAMES, type ZiweiChart } from '@/lib/ziwei/types';
 import { postZiwei } from '@/lib/ui/chartClient';
 import { AiPromptCard } from '../AiPromptCard';
+import { ZiweiMeaningCard } from '../ChartMeaningCard';
 import { ZiweiBoard, type MonthStart } from './ZiweiBoard';
 
 function scopeSoulIndex(chart: ZiweiChart, scope: ZiweiScope, monthStart: MonthStart): number {
@@ -350,6 +351,7 @@ function ZiweiChartPanel({
                 </div>
             </section>
 
+            <ZiweiMeaningCard chart={natal} />
             <AiPromptCard
                 heading="提供給 AI 的提示詞"
                 description="複製後可貼到 ChatGPT、Claude 等，請它依這份紫微本命盤做解讀。內容含出生資料。"
