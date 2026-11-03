@@ -4,103 +4,99 @@
 
 /*
  * Calm / System — softer digital space.
- * Palette: Forest · Mint · Ivory · Stone. Light is the only theme.
+ * Palette: Ink · Mint · Ivory · Stone. Light is the only theme.
  */
 :root {
-  color-scheme: light;
+    color-scheme: light;
 
-  --forest: #0f5132;
-  --mint: #b7d9c1;
-  --ivory: #faf9f4;
-  --stone: #d6d3c8;
+    --ink: #1a1a1a;
+    --mint: #b7d9c1;
+    --ivory: #faf9f4;
+    --stone: #d6d3c8;
 
-  /* app */
-  --app-bg: var(--ivory);
-  --app-fg: #163528;
-  --app-muted: #5f6d65;
-  --app-border: var(--stone);
-  --app-surface: #fffefb;
-  --app-surface-2: #eef4ef;
-  --app-accent: var(--forest);
-  --app-accent-fg: #ffffff;
-  --app-danger: #9b2c2c;
-  --app-warning: #8a5a00;
-  --app-focus: var(--forest);
-  --app-mint: var(--mint);
+    /* app */
+    --app-bg: var(--ivory);
+    --app-fg: var(--ink);
+    --app-muted: #6b6b6b;
+    --app-border: var(--stone);
+    --app-surface: #fffefb;
+    --app-surface-2: #f3f1eb;
+    --app-accent: var(--ink);
+    --app-accent-fg: #ffffff;
+    --app-danger: #9b2c2c;
+    --app-warning: #8a5a00;
+    --app-focus: var(--ink);
+    --app-mint: var(--mint);
 
-  --radius-card: 1.5rem;
-  --radius-control: 9999px;
-  --shadow-soft:
-    6px 8px 18px rgb(15 81 50 / 0.08),
-    -4px -4px 14px rgb(255 255 255 / 0.85);
-  --shadow-inset:
-    inset 3px 3px 8px rgb(15 81 50 / 0.07),
-    inset -2px -2px 6px rgb(255 255 255 / 0.9);
+    --radius-card: 1.5rem;
+    --radius-control: 9999px;
+    --shadow-soft: 6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
+    --shadow-inset: inset 3px 3px 8px rgb(0 0 0 / 0.07), inset -2px -2px 6px rgb(255 255 255 / 0.9);
 
-  /* BodyGraph — keep domain semantics; soften inactive to ivory/stone */
-  --hd-personality: #1a1a1a;
-  --hd-design: #c8312f;
-  --hd-inactive: #e8e6df;
-  --hd-surface: #fffefb;
-  --hd-yellow: #f2c94c;
-  --hd-green: #6fcf97;
-  --hd-red: #eb5757;
-  --hd-brown: #b08968;
-  --hd-center-stroke: #a8a59c;
-  --hd-center-stroke-defined: var(--forest);
-  --hd-gate-on: var(--forest);
-  --hd-gate-on-text: #ffffff;
-  --hd-gate-off: rgb(255 255 255 / 0.7);
-  --hd-gate-off-text: #4a4a4a;
+    /* BodyGraph — keep domain semantics; soften inactive to ivory/stone */
+    --hd-personality: #1a1a1a;
+    --hd-design: #c8312f;
+    --hd-inactive: #e8e6df;
+    --hd-surface: #fffefb;
+    --hd-yellow: #f2c94c;
+    --hd-green: #6fcf97;
+    --hd-red: #eb5757;
+    --hd-brown: #b08968;
+    --hd-center-stroke: #a8a59c;
+    --hd-center-stroke-defined: var(--ink);
+    --hd-gate-on: var(--ink);
+    --hd-gate-on-text: #ffffff;
+    --hd-gate-off: rgb(255 255 255 / 0.7);
+    --hd-gate-off-text: #4a4a4a;
 
-  --ziwei-lu: #0f5132;
-  --ziwei-quan: #9b2c2c;
-  --ziwei-ke: #3d6b56;
-  --ziwei-ji: #5b3a8a;
-  --ziwei-soul-bg: #f3ead6;
-  --ziwei-scope-bg: #d9ebd8;
+    --ziwei-lu: #0f5132;
+    --ziwei-quan: #9b2c2c;
+    --ziwei-ke: #3d6b56;
+    --ziwei-ji: #5b3a8a;
+    --ziwei-soul-bg: #f3ead6;
+    --ziwei-scope-bg: #d9ebd8;
 
-  --bazi-header: var(--forest);
-  --bazi-header-fg: #ffffff;
-  --bazi-note: #eef4ef;
-  --bazi-xi: #dcebd9;
-  --bazi-yong: #e4efe8;
-  --bazi-ji: #f3e4e4;
-  --bazi-tiao: #e8efe6;
+    --bazi-header: var(--ink);
+    --bazi-header-fg: #ffffff;
+    --bazi-note: #eef4ef;
+    --bazi-xi: #dcebd9;
+    --bazi-yong: #e4efe8;
+    --bazi-ji: #f3e4e4;
+    --bazi-tiao: #e8efe6;
 }
 
 @theme inline {
-  --color-bg: var(--app-bg);
-  --color-fg: var(--app-fg);
-  --color-muted: var(--app-muted);
-  --color-border: var(--app-border);
-  --color-surface: var(--app-surface);
-  --color-surface-2: var(--app-surface-2);
-  --color-accent: var(--app-accent);
-  --color-accent-fg: var(--app-accent-fg);
-  --color-danger: var(--app-danger);
-  --color-warning: var(--app-warning);
-  --color-focus: var(--app-focus);
-  --color-mint: var(--app-mint);
-  --color-personality: var(--hd-personality);
-  --color-design: var(--hd-design);
-  --font-sans: var(--font-sans-face), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei',
-    sans-serif;
-  --font-serif: var(--font-serif-face), 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
-  --radius-card: 1.5rem;
-  --radius-pill: 9999px;
-  --shadow-soft: 6px 8px 18px rgb(15 81 50 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
+    --color-bg: var(--app-bg);
+    --color-fg: var(--app-fg);
+    --color-muted: var(--app-muted);
+    --color-border: var(--app-border);
+    --color-surface: var(--app-surface);
+    --color-surface-2: var(--app-surface-2);
+    --color-accent: var(--app-accent);
+    --color-accent-fg: var(--app-accent-fg);
+    --color-danger: var(--app-danger);
+    --color-warning: var(--app-warning);
+    --color-focus: var(--app-focus);
+    --color-mint: var(--app-mint);
+    --color-personality: var(--hd-personality);
+    --color-design: var(--hd-design);
+    --font-sans:
+        var(--font-sans-face), 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --font-serif: var(--font-serif-face), 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+    --radius-card: 1.5rem;
+    --radius-pill: 9999px;
+    --shadow-soft: 6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
 }
 
 html {
-  background: var(--app-bg);
+    background: var(--app-bg);
 }
 
 body {
-  background: var(--app-bg);
-  color: var(--app-fg);
-  font-family: var(--font-sans);
-  font-weight: 400;
+    background: var(--app-bg);
+    color: var(--app-fg);
+    font-family: var(--font-sans);
+    font-weight: 400;
 }
 
 h1,
@@ -109,90 +105,89 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  color: var(--app-accent);
-  letter-spacing: 0.01em;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    color: var(--app-accent);
+    letter-spacing: 0.01em;
 }
 
 /* Soft raised card (neumorphic surface) */
 .surface-card {
-  border-radius: var(--radius-card);
-  border: 1px solid rgb(214 211 200 / 0.55);
-  background: var(--app-surface);
-  box-shadow: var(--shadow-soft);
+    border-radius: var(--radius-card);
+    border: 1px solid rgb(214 211 200 / 0.55);
+    background: var(--app-surface);
+    box-shadow: var(--shadow-soft);
 }
 
 .surface-inset {
-  border-radius: var(--radius-control);
-  border: 1px solid rgb(214 211 200 / 0.45);
-  background: var(--app-bg);
-  box-shadow: var(--shadow-inset);
+    border-radius: var(--radius-control);
+    border: 1px solid rgb(214 211 200 / 0.7);
+    background: var(--app-surface);
 }
 
 .btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-control);
-  background: var(--app-accent);
-  color: var(--app-accent-fg);
-  font-weight: 500;
-  box-shadow: var(--shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    background: var(--app-accent);
+    color: var(--app-accent-fg);
+    font-weight: 500;
+    box-shadow: var(--shadow-soft);
 }
 
 .btn-primary:hover {
-  opacity: 0.92;
+    opacity: 0.92;
 }
 
 .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-control);
-  border: 1px solid rgb(214 211 200 / 0.7);
-  background: var(--app-surface);
-  color: var(--app-fg);
-  font-weight: 500;
-  box-shadow: var(--shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    border: 1px solid rgb(214 211 200 / 0.7);
+    background: var(--app-surface);
+    color: var(--app-fg);
+    font-weight: 500;
+    box-shadow: var(--shadow-soft);
 }
 
 .btn-secondary:hover {
-  background: var(--app-surface-2);
+    background: var(--app-surface-2);
 }
 
 .tab-pill {
-  display: inline-flex;
-  gap: 0.25rem;
-  border-radius: var(--radius-control);
-  background: var(--app-surface-2);
-  padding: 0.25rem;
-  box-shadow: var(--shadow-inset);
+    display: inline-flex;
+    gap: 0.25rem;
+    border-radius: var(--radius-control);
+    background: var(--app-surface-2);
+    padding: 0.25rem;
+    box-shadow: var(--shadow-inset);
 }
 
 .tab-pill [role='tab'],
 .tab-pill-item {
-  border-radius: var(--radius-control);
-  border: none;
-  background: transparent;
-  color: var(--app-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
+    border-radius: var(--radius-control);
+    border: none;
+    background: transparent;
+    color: var(--app-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
 }
 
 .tab-pill [role='tab'][aria-selected='true'],
 .tab-pill-item[aria-selected='true'],
 .tab-pill-item[data-active='true'] {
-  background: var(--app-accent);
-  color: var(--app-accent-fg);
-  box-shadow: var(--shadow-soft);
+    background: var(--app-accent);
+    color: var(--app-accent-fg);
+    box-shadow: var(--shadow-soft);
 }
 
 /* Visible keyboard focus everywhere (§11.3), except form fields (no ring). */
 :focus-visible {
-  outline: 3px solid var(--app-focus);
-  outline-offset: 2px;
+    outline: 3px solid var(--app-focus);
+    outline-offset: 2px;
 }
 
 :is(input, textarea, select):focus,
@@ -202,108 +197,120 @@ h6 {
 .mantine-Input-input:focus-within,
 .mantine-PasswordInput-innerInput:focus,
 .mantine-PasswordInput-innerInput:focus-visible {
-  outline: none;
-  box-shadow: none;
+    outline: none;
+    box-shadow: none;
 }
 
 .mantine-Input-wrapper {
-  --input-bd-focus: var(--app-border);
+    --input-bd-focus: var(--app-border);
 }
 
 .mantine-Input-input {
-  border-radius: var(--radius-control) !important;
-  border-color: rgb(214 211 200 / 0.7) !important;
-  background: var(--app-bg) !important;
-  box-shadow: var(--shadow-inset);
+    border-radius: var(--radius-control) !important;
+    border-color: rgb(214 211 200 / 0.7) !important;
+    background: var(--app-surface) !important;
+    box-shadow: none;
 }
 
 .mantine-Button-root {
-  border-radius: var(--radius-control) !important;
-  font-weight: 500;
+    border-radius: var(--radius-control) !important;
+    font-weight: 500;
 }
 
 .mantine-Button-root[data-variant='filled'] {
-  box-shadow: var(--shadow-soft);
+    box-shadow: var(--shadow-soft);
 }
 
 .mantine-Paper-root {
-  border-radius: var(--radius-card) !important;
-  border-color: rgb(214 211 200 / 0.55) !important;
-  box-shadow: var(--shadow-soft);
+    border-radius: var(--radius-card) !important;
+    border-color: rgb(214 211 200 / 0.55) !important;
+    box-shadow: var(--shadow-soft);
 }
 
 .mantine-Checkbox-input:checked,
 .mantine-Radio-radio:checked {
-  background-color: var(--app-accent);
-  border-color: var(--app-accent);
+    background-color: var(--app-accent);
+    border-color: var(--app-accent);
+}
+
+.mantine-Checkbox-body,
+.mantine-Radio-body {
+    align-items: flex-start;
+}
+
+.mantine-Checkbox-inner,
+.mantine-Radio-inner {
+    display: flex;
+    align-items: center;
+    min-height: 1.5em;
 }
 
 .mantine-Tabs-list {
-  border: none !important;
-  gap: 0.25rem;
-  border-radius: var(--radius-control);
-  background: var(--app-surface-2);
-  padding: 0.25rem;
-  box-shadow: var(--shadow-inset);
-  width: fit-content;
+    border: none !important;
+    gap: 0.25rem;
+    border-radius: var(--radius-control);
+    background: var(--app-surface-2);
+    padding: 0.25rem;
+    box-shadow: var(--shadow-inset);
+    width: fit-content;
 }
 
 .mantine-Tabs-tab {
-  border: none !important;
-  border-radius: var(--radius-control) !important;
-  color: var(--app-muted);
-  font-weight: 500;
+    border: none !important;
+    border-radius: var(--radius-control) !important;
+    color: var(--app-muted);
+    font-weight: 500;
 }
 
 .mantine-Tabs-tab[data-active] {
-  background: var(--app-accent) !important;
-  color: var(--app-accent-fg) !important;
-  box-shadow: var(--shadow-soft);
+    background: var(--app-accent) !important;
+    color: var(--app-accent-fg) !important;
+    box-shadow: var(--shadow-soft);
 }
 
 /* BodyGraph gate buttons live in an SVG overlay: draw the focus ring on the circle itself. */
 .hd-gate-hit {
-  outline: none;
+    outline: none;
 }
 .hd-gate-hit circle {
-  fill: transparent;
-  stroke: transparent;
-  stroke-width: 2.5;
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 2.5;
 }
 .hd-gate-hit:hover circle,
 .hd-gate-hit:focus-visible circle {
-  stroke: var(--app-focus);
+    stroke: var(--app-focus);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .hd-skeleton {
-    animation: hd-pulse 1.4s ease-in-out infinite;
-  }
+    .hd-skeleton {
+        animation: hd-pulse 1.4s ease-in-out infinite;
+    }
 }
 @keyframes hd-pulse {
-  50% {
-    opacity: 0.55;
-  }
+    50% {
+        opacity: 0.55;
+    }
 }
 
 .ziwei-lu {
-  color: var(--ziwei-lu);
+    color: var(--ziwei-lu);
 }
 .ziwei-quan {
-  color: var(--ziwei-quan);
+    color: var(--ziwei-quan);
 }
 .ziwei-ke {
-  color: var(--ziwei-ke);
+    color: var(--ziwei-ke);
 }
 .ziwei-ji {
-  color: var(--ziwei-ji);
+    color: var(--ziwei-ji);
 }
 .ziwei-tough {
-  color: var(--app-danger);
+    color: var(--app-danger);
 }
 .ziwei-palace-soul {
-  background: var(--ziwei-soul-bg);
+    background: var(--ziwei-soul-bg);
 }
 .ziwei-palace-scope {
-  background: var(--ziwei-scope-bg);
+    background: var(--ziwei-scope-bg);
 }

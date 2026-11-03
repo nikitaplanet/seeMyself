@@ -3,138 +3,137 @@
 import 'dayjs/locale/zh-tw';
 import '@/app/mantine.css';
 import {
-  createTheme,
-  MantineProvider,
-  type CSSVariablesResolver,
-  type MantineColorsTuple,
+    createTheme,
+    MantineProvider,
+    type CSSVariablesResolver,
+    type MantineColorsTuple,
 } from '@mantine/core';
 import { DatesProvider } from '@mantine/dates';
 
 // Mantine is used for the input form and the account UI (login, /charts, save dialog). Everything else keeps its own
 // Tailwind styling; see src/app/mantine.css for how the cascade layers keep the two apart.
 
-/** Shade 6 is Forest (--app-accent): #0f5132. */
+/** Shade 6 is Ink (--app-accent): #1a1a1a. */
 const ACCENT: MantineColorsTuple = [
-  '#e8f2ec',
-  '#d2e5da',
-  '#b7d9c1',
-  '#8fbe9c',
-  '#5f9774',
-  '#357a54',
-  '#0f5132',
-  '#0c4229',
-  '#093420',
-  '#062517',
+    '#f5f5f5',
+    '#e8e8e8',
+    '#d4d4d4',
+    '#b0b0b0',
+    '#888888',
+    '#5c5c5c',
+    '#1a1a1a',
+    '#141414',
+    '#0d0d0d',
+    '#000000',
 ];
-/** Stone greys matching Ivory / Stone tokens (gray-4 ≈ --app-border). */
+/** Warm greys matching Ivory / Stone tokens (gray-4 ≈ --app-border). */
 const GRAY: MantineColorsTuple = [
-  '#faf9f4',
-  '#eef4ef',
-  '#e6e3dc',
-  '#ddd9d0',
-  '#d6d3c8',
-  '#a9a69f',
-  '#7a7f78',
-  '#5f6d65',
-  '#2f4338',
-  '#163528',
+    '#faf9f4',
+    '#f3f1eb',
+    '#e6e3dc',
+    '#ddd9d0',
+    '#d6d3c8',
+    '#a9a69f',
+    '#7a7a7a',
+    '#6b6b6b',
+    '#3d3d3d',
+    '#1a1a1a',
 ];
 
 const FONT_SANS =
-  'var(--font-sans-face), "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
-const FONT_SERIF =
-  'var(--font-serif-face), "Noto Serif TC", "Songti TC", "PMingLiU", serif';
+    'var(--font-sans-face), "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+const FONT_SERIF = 'var(--font-serif-face), "Noto Serif TC", "Songti TC", "PMingLiU", serif';
 
 const theme = createTheme({
-  fontFamily: FONT_SANS,
-  headings: { fontFamily: FONT_SERIF, fontWeight: '500' },
-  colors: {
-    accent: ACCENT,
-    gray: GRAY,
-  },
-  primaryColor: 'accent',
-  primaryShade: 6,
-  autoContrast: true,
-  radius: {
-    xs: '0.75rem',
-    sm: '1rem',
-    md: '1.5rem',
-    lg: '1.75rem',
-    xl: '9999px',
-  },
-  defaultRadius: 'md',
-  shadows: {
-    sm: '4px 6px 12px rgb(15 81 50 / 0.06), -2px -2px 8px rgb(255 255 255 / 0.8)',
-    md: '6px 8px 18px rgb(15 81 50 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85)',
-    lg: '10px 14px 28px rgb(15 81 50 / 0.1), -6px -6px 18px rgb(255 255 255 / 0.9)',
-  },
-  components: {
-    Button: {
-      defaultProps: { radius: 'xl' },
+    fontFamily: FONT_SANS,
+    headings: { fontFamily: FONT_SERIF, fontWeight: '500' },
+    colors: {
+        accent: ACCENT,
+        gray: GRAY,
     },
-    TextInput: {
-      defaultProps: { radius: 'xl' },
+    primaryColor: 'accent',
+    primaryShade: 6,
+    autoContrast: true,
+    radius: {
+        xs: '0.75rem',
+        sm: '1rem',
+        md: '1.5rem',
+        lg: '1.75rem',
+        xl: '9999px',
     },
-    PasswordInput: {
-      defaultProps: { radius: 'xl' },
+    defaultRadius: 'md',
+    shadows: {
+        sm: '4px 6px 12px rgb(0 0 0 / 0.06), -2px -2px 8px rgb(255 255 255 / 0.8)',
+        md: '6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85)',
+        lg: '10px 14px 28px rgb(0 0 0 / 0.1), -6px -6px 18px rgb(255 255 255 / 0.9)',
     },
-    Textarea: {
-      defaultProps: { radius: 'md' },
+    components: {
+        Button: {
+            defaultProps: { radius: 'xl' },
+        },
+        TextInput: {
+            defaultProps: { radius: 'xl' },
+        },
+        PasswordInput: {
+            defaultProps: { radius: 'xl' },
+        },
+        Textarea: {
+            defaultProps: { radius: 'md' },
+        },
+        Select: {
+            defaultProps: { radius: 'xl' },
+        },
+        NativeSelect: {
+            defaultProps: { radius: 'xl' },
+        },
+        DatePickerInput: {
+            defaultProps: { radius: 'xl' },
+        },
+        Paper: {
+            defaultProps: { radius: 'md', shadow: 'md' },
+        },
+        Modal: {
+            defaultProps: { radius: 'md' },
+        },
+        Checkbox: {
+            defaultProps: { color: 'accent', radius: 'sm' },
+        },
+        Radio: {
+            defaultProps: { color: 'accent' },
+        },
+        Tabs: {
+            defaultProps: { variant: 'pills', radius: 'xl' },
+        },
     },
-    Select: {
-      defaultProps: { radius: 'xl' },
-    },
-    NativeSelect: {
-      defaultProps: { radius: 'xl' },
-    },
-    DatePickerInput: {
-      defaultProps: { radius: 'xl' },
-    },
-    Paper: {
-      defaultProps: { radius: 'md', shadow: 'md' },
-    },
-    Modal: {
-      defaultProps: { radius: 'md' },
-    },
-    Checkbox: {
-      defaultProps: { color: 'accent', radius: 'sm' },
-    },
-    Radio: {
-      defaultProps: { color: 'accent' },
-    },
-    Tabs: {
-      defaultProps: { variant: 'pills', radius: 'xl' },
-    },
-  },
 });
 
 const APP_SEMANTIC_VARS = {
-  '--mantine-color-body': 'var(--app-surface)',
-  '--mantine-color-text': 'var(--app-fg)',
-  '--mantine-color-dimmed': 'var(--app-muted)',
-  '--mantine-color-default': 'var(--app-surface)',
-  '--mantine-color-default-hover': 'var(--app-surface-2)',
-  '--mantine-color-default-color': 'var(--app-fg)',
-  '--mantine-color-default-border': 'var(--app-border)',
-  '--mantine-color-error': 'var(--app-danger)',
+    '--mantine-color-body': 'var(--app-surface)',
+    '--mantine-color-text': 'var(--app-fg)',
+    '--mantine-color-dimmed': 'var(--app-muted)',
+    '--mantine-color-default': 'var(--app-surface)',
+    '--mantine-color-default-hover': 'var(--app-surface-2)',
+    '--mantine-color-default-color': 'var(--app-fg)',
+    '--mantine-color-default-border': 'var(--app-border)',
+    '--mantine-color-error': 'var(--app-danger)',
 };
 const cssVariablesResolver: CSSVariablesResolver = () => ({
-  variables: {},
-  light: APP_SEMANTIC_VARS,
-  dark: APP_SEMANTIC_VARS,
+    variables: {},
+    light: APP_SEMANTIC_VARS,
+    dark: APP_SEMANTIC_VARS,
 });
 
 export function MantineRoot({ children }: { children: React.ReactNode }) {
-  return (
-    <MantineProvider
-      theme={theme}
-      defaultColorScheme="light"
-      forceColorScheme="light"
-      cssVariablesResolver={cssVariablesResolver}
-    >
-      <DatesProvider settings={{ locale: 'zh-tw', firstDayOfWeek: 0 }}>
-        {children}
-      </DatesProvider>
-    </MantineProvider>
-  );
+    return (
+        <MantineProvider
+            theme={theme}
+            defaultColorScheme="light"
+            forceColorScheme="light"
+            cssVariablesResolver={cssVariablesResolver}
+        >
+            <DatesProvider settings={{ locale: 'zh-tw', firstDayOfWeek: 0 }}>
+                {children}
+            </DatesProvider>
+        </MantineProvider>
+    );
 }
