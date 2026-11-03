@@ -28,7 +28,7 @@ export function ChartMetaFields({ value, onChange, errors, idPrefix, showKind = 
                 id={`${idPrefix}-name`}
                 size="md"
                 label="名稱"
-                labelProps={{ className: 'font-medium' }}
+                labelProps={{ className: `font-medium${errors.name ? ' text-danger' : ''}` }}
                 placeholder={value.kind === 'friend' ? '例如：小明' : '例如：我（出生證明時間）'}
                 maxLength={CHART_NAME_MAX}
                 value={value.name}
@@ -73,7 +73,7 @@ export function ChartMetaFields({ value, onChange, errors, idPrefix, showKind = 
                 id={`${idPrefix}-note`}
                 size="md"
                 label="備註（選填）"
-                labelProps={{ className: 'font-medium' }}
+                labelProps={{ className: `font-medium${errors.note ? ' text-danger' : ''}` }}
                 autosize
                 minRows={2}
                 maxRows={6}

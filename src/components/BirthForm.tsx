@@ -311,7 +311,7 @@ export function BirthForm({
                     id={dateId}
                     size="md"
                     label="出生日期（西元）"
-                    labelProps={{ className: 'font-medium' }}
+                    labelProps={{ className: `font-medium${errors.date ? ' text-danger' : ''}` }}
                     placeholder="選擇日期"
                     required
                     withAsterisk={false}
@@ -346,7 +346,7 @@ export function BirthForm({
                 <Radio.Group
                     id={genderId}
                     label="性別"
-                    labelProps={{ className: 'font-medium' }}
+                    labelProps={{ className: `font-medium${errors.gender ? ' text-danger' : ''}` }}
                     description=""
                     inputWrapperOrder={['label', 'input', 'description', 'error']}
                     styles={{
@@ -376,7 +376,9 @@ export function BirthForm({
                     className="flex flex-col gap-4"
                 >
                     <legend className="contents">
-                        <span className="font-medium">出生時間（24 小時制，當地時間）</span>
+                        <span className={`font-medium${errors.time ? ' text-danger' : ''}`}>
+                            出生時間（24 小時制，當地時間）
+                        </span>
                     </legend>
                     <div className="flex flex-wrap items-center gap-2">
                         <NativeSelect
@@ -392,7 +394,6 @@ export function BirthForm({
                                 setHour(e.currentTarget.value);
                                 setErrors((x) => ({ ...x, time: undefined }));
                             }}
-                            error={Boolean(errors.time)}
                         />
                         <span aria-hidden="true">:</span>
                         <NativeSelect
@@ -408,7 +409,6 @@ export function BirthForm({
                                 setMinute(e.currentTarget.value);
                                 setErrors((x) => ({ ...x, time: undefined }));
                             }}
-                            error={Boolean(errors.time)}
                         />
                     </div>
                     <Checkbox
@@ -434,7 +434,7 @@ export function BirthForm({
                         }}
                     />
                     {errors.time ? (
-                        <Text id={timeErrId} role="alert" size="sm" c="var(--app-danger)">
+                        <Text id={timeErrId} role="alert" className="sr-only">
                             {errors.time}
                         </Text>
                     ) : null}

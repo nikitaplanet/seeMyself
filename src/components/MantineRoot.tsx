@@ -89,6 +89,12 @@ const theme = createTheme({
         DatePickerInput: {
             defaultProps: { radius: 'xs' },
         },
+        Input: {
+            defaultProps: { withErrorStyles: false },
+        },
+        InputWrapper: {
+            defaultProps: { errorProps: { className: 'sr-only' } },
+        },
         Paper: {
             defaultProps: { radius: 'md', shadow: 'md' },
         },
@@ -99,7 +105,7 @@ const theme = createTheme({
             defaultProps: { color: 'accent', radius: 'sm' },
         },
         Radio: {
-            defaultProps: { color: 'accent' },
+            defaultProps: { color: 'accent', withErrorStyles: false },
         },
         Tabs: {
             defaultProps: { variant: 'pills', radius: 'xl' },

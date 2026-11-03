@@ -23,7 +23,7 @@
     --app-surface-2: #f3f1eb;
     --app-accent: var(--ink);
     --app-accent-fg: #ffffff;
-    --app-danger: #9b2c2c;
+    --app-danger: #fa3f3f;
     --app-warning: #8a5a00;
     --app-focus: var(--ink);
     --app-mint: var(--mint);
@@ -204,11 +204,21 @@ h6 {
     --input-bd-focus: var(--app-border);
 }
 
+.mantine-Input-wrapper[data-error] {
+    --input-color: var(--app-fg);
+    --input-placeholder-color: var(--mantine-color-placeholder);
+    --input-section-color: inherit;
+}
+
 .mantine-Input-input {
     border-radius: var(--radius-control) !important;
     border-color: rgb(214 211 200 / 0.7) !important;
     background: var(--app-surface) !important;
     box-shadow: none;
+}
+
+.mantine-InputWrapper-root[data-error] .mantine-InputWrapper-label {
+    color: var(--app-danger);
 }
 
 .mantine-Button-root {

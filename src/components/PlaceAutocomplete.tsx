@@ -124,7 +124,7 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
                                 ) : null}
                             </span>
                         }
-                        labelProps={{ className: 'font-medium' }}
+                        labelProps={{ className: `font-medium${error ? ' text-danger' : ''}` }}
                         type="text"
                         autoComplete="off"
                         spellCheck={false}
