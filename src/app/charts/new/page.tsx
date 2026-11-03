@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function NewChartPage() {
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex max-w-2xl flex-col gap-6">
             <div className="flex flex-col gap-2">
                 <h1 className="font-serif text-3xl font-medium tracking-wide">新增命盤</h1>
                 <p className="text-muted">

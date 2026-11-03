@@ -49,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                     跳到主要內容
                 </a>
                 <header className="border-b border-border/60 bg-bg/80 backdrop-blur-sm">
-                    <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4">
+                    <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
                         <Link
                             href="/"
                             className="font-serif text-2xl font-medium tracking-wide text-accent hover:opacity-80"
@@ -59,7 +59,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                         <UserNav />
                     </div>
                 </header>
-                <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:py-12">
+                <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-12">
                     {children}
                 </main>
                 <SiteFooter />

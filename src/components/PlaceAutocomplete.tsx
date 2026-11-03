@@ -196,7 +196,7 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
                         key={name}
                         type="button"
                         onClick={() => handleInput(name, true)}
-                        className="btn-secondary cursor-pointer px-3 py-1 text-sm !shadow-none"
+                        className="btn-secondary cursor-pointer px-3 py-1 text-sm"
                     >
                         {name}
                     </button>

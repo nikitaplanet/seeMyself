@@ -55,7 +55,7 @@ export function UserNav() {
 
     if (auth.status === 'unavailable') return null;
     if (auth.status === 'loading')
-        return <span aria-hidden="true" className="inline-block h-8 w-14" />;
+        return <span aria-hidden="true" className="inline-block size-9 rounded-full" />;
     if (auth.status === 'signedOut') {
         return (
             <Link href="/login" className={LINK}>
@@ -98,6 +98,7 @@ export function UserNav() {
     }
 
     const email = auth.user.email ?? '已登入';
+    const initial = (auth.user.email?.trim().charAt(0) || '?').toUpperCase();
     return (
         <div className="flex items-center gap-1">
             <Link href="/charts" className={LINK}>
@@ -109,14 +110,11 @@ export function UserNav() {
                     aria-haspopup="true"
                     aria-expanded={open}
                     aria-controls={menuId}
+                    aria-label={`帳號選單：${email}`}
                     onClick={() => setOpen((o) => !o)}
-                    className="btn-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm !shadow-none"
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface text-sm font-medium text-fg hover:bg-surface-2"
                 >
-                    <span className="sr-only">帳號選單：</span>
-                    <span aria-hidden="true">帳號</span>
-                    <span aria-hidden="true" className="text-xs">
-                        ▾
-                    </span>
+                    <span aria-hidden="true">{initial}</span>
                 </button>
                 {open ? (
                     <div

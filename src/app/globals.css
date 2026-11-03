@@ -31,8 +31,8 @@
     --radius-card: 1.5rem;
     --radius-control: 0.75rem;
     --radius-pill: 9999px;
-    --shadow-soft: 6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
-    --shadow-inset: inset 3px 3px 8px rgb(0 0 0 / 0.07), inset -2px -2px 6px rgb(255 255 255 / 0.9);
+    --shadow-soft: none;
+    --shadow-inset: none;
 
     /* BodyGraph — keep domain semantics; soften inactive to ivory/stone */
     --hd-personality: #1a1a1a;
@@ -86,7 +86,7 @@
     --font-serif: var(--font-serif-face), 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
     --radius-card: 1.5rem;
     --radius-pill: 9999px;
-    --shadow-soft: 6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85);
+    --shadow-soft: none;
 }
 
 html {
@@ -117,7 +117,6 @@ h6 {
     border-radius: var(--radius-card);
     border: 1px solid rgb(214 211 200 / 0.55);
     background: var(--app-surface);
-    box-shadow: var(--shadow-soft);
 }
 
 .surface-inset {
@@ -134,7 +133,6 @@ h6 {
     background: var(--app-accent);
     color: var(--app-accent-fg);
     font-weight: 500;
-    box-shadow: var(--shadow-soft);
 }
 
 .btn-primary:hover {
@@ -150,7 +148,6 @@ h6 {
     background: var(--app-surface);
     color: var(--app-fg);
     font-weight: 500;
-    box-shadow: var(--shadow-soft);
 }
 
 .btn-secondary:hover {
@@ -226,14 +223,12 @@ h6 {
     font-weight: 500;
 }
 
-.mantine-Button-root[data-variant='filled'] {
-    box-shadow: var(--shadow-soft);
-}
-
-.mantine-Paper-root {
+.mantine-Paper-root,
+.mantine-Modal-content,
+.mantine-Popover-dropdown {
     border-radius: var(--radius-card) !important;
     border-color: rgb(214 211 200 / 0.55) !important;
-    box-shadow: var(--shadow-soft);
+    box-shadow: none !important;
 }
 
 .mantine-Checkbox-input:checked,

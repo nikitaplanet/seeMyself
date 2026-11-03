@@ -3,7 +3,7 @@
 export function SiteFooter() {
     return (
         <footer className="border-t border-border/60 bg-surface-2 text-sm leading-relaxed text-muted">
-            <div className="mx-auto grid max-w-2xl gap-6 px-4 py-10 sm:grid-cols-2">
+            <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-2">
                 <section aria-labelledby="footer-privacy" className="flex flex-col gap-1">
                     <h2
                         id="footer-privacy"

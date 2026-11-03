@@ -63,9 +63,11 @@ const theme = createTheme({
     },
     defaultRadius: 'md',
     shadows: {
-        sm: '4px 6px 12px rgb(0 0 0 / 0.06), -2px -2px 8px rgb(255 255 255 / 0.8)',
-        md: '6px 8px 18px rgb(0 0 0 / 0.08), -4px -4px 14px rgb(255 255 255 / 0.85)',
-        lg: '10px 14px 28px rgb(0 0 0 / 0.1), -6px -6px 18px rgb(255 255 255 / 0.9)',
+        xs: 'none',
+        sm: 'none',
+        md: 'none',
+        lg: 'none',
+        xl: 'none',
     },
     components: {
         Button: {
@@ -96,10 +98,10 @@ const theme = createTheme({
             defaultProps: { errorProps: { className: 'sr-only' } },
         },
         Paper: {
-            defaultProps: { radius: 'md', shadow: 'md' },
+            defaultProps: { radius: 'md', shadow: 'none' },
         },
         Modal: {
-            defaultProps: { radius: 'md' },
+            defaultProps: { radius: 'md', shadow: 'none' },
         },
         Checkbox: {
             defaultProps: { color: 'accent', radius: 'sm' },
