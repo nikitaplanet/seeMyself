@@ -11,8 +11,8 @@ import type { ZiweiChart } from '@/lib/ziwei/types';
 export function HdMeaningCard({ chart }: { chart: ChartResult }) {
     return (
         <ChartMeaningCard
-            heading="這個人在人類圖裡"
-            lead="依這份排盤解說此人怎麼運作、怎麼想、怎麼相處。名詞可上網對照公開資料。"
+            heading="人類圖說明"
+            lead="標題旁是欄位含義；意思說明依這份排盤解說此人。名詞可上網對照公開資料。"
             items={hdMeaningItems(chart)}
         />
     );
@@ -21,8 +21,8 @@ export function HdMeaningCard({ chart }: { chart: ChartResult }) {
 export function ZiweiMeaningCard({ chart }: { chart: ZiweiChart }) {
     return (
         <ChartMeaningCard
-            heading="這個人在紫微斗數裡"
-            lead="依命宮與各宮主星，解說此人各領域怎麼運作。名詞可上網對照公開資料。"
+            heading="紫微斗數說明"
+            lead="標題旁是宮位含義；意思說明依這份排盤的主星解說此人。名詞可上網對照公開資料。"
             items={ziweiMeaningItems(chart)}
         />
     );
@@ -31,8 +31,8 @@ export function ZiweiMeaningCard({ chart }: { chart: ZiweiChart }) {
 export function BaziMeaningCard({ chart }: { chart: BaziChart }) {
     return (
         <ChartMeaningCard
-            heading="這個人在八字裡"
-            lead="依日主、四柱與用神，解說此人底色與節奏。名詞可上網對照公開資料。"
+            heading="八字說明"
+            lead="標題旁是欄位含義；意思說明依這份排盤解說此人。名詞可上網對照公開資料。"
             items={baziMeaningItems(chart)}
         />
     );
@@ -49,21 +49,30 @@ function ChartMeaningCard({
 }) {
     const headingId = `${heading}-title`;
     return (
-        <section aria-labelledby={headingId} className="surface-card flex flex-col gap-4 p-5">
+        <section aria-labelledby={headingId} className="surface-card flex flex-col gap-5 p-5">
             <div className="flex flex-col gap-1">
                 <h2 id={headingId} className="font-serif text-xl font-medium">
                     {heading}
                 </h2>
                 <p className="text-sm text-muted">{lead}</p>
             </div>
-            <dl className="flex flex-col gap-3 text-sm">
-                {items.map(([term, meaning]) => (
-                    <div
-                        key={term}
-                        className="flex flex-col gap-1 sm:grid sm:grid-cols-[8rem_1fr] sm:gap-x-4"
-                    >
-                        <dt className="font-medium">{term}</dt>
-                        <dd className="leading-relaxed text-muted">{meaning}</dd>
+            <dl className="flex flex-col gap-5">
+                {items.map((entry) => (
+                    <div key={entry.term} className="flex flex-col gap-2">
+                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                            <dt className="font-medium">{entry.term}</dt>
+                            <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
+                                {entry.field}
+                            </p>
+                        </div>
+                        <dd className="grid grid-cols-[4.5rem_1fr] gap-x-3 rounded-md bg-surface-2 px-3 py-2 text-sm sm:grid-cols-[5.5rem_1fr]">
+                            <span className="pt-0.5 text-xs tracking-wide text-muted">
+                                意思說明
+                            </span>
+                            <p className="leading-relaxed whitespace-pre-line text-fg">
+                                {entry.meaning}
+                            </p>
+                        </dd>
                     </div>
                 ))}
             </dl>

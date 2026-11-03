@@ -1,15 +1,28 @@
+import type { BaziChart } from '@/lib/bazi/types';
 import {
     AUTHORITY_NAMES_ZH,
     CENTER_NAMES_ZH,
+    CENTER_ORDER,
+    CROSS_ANGLE_NAMES_ZH,
     DEFINITION_NAMES_ZH,
     TYPE_NAMES_ZH,
 } from '@/lib/hd/constants';
-import type { Authority, CenterId, ChartResult, Definition, HDType } from '@/lib/hd/types';
-import type { BaziChart } from '@/lib/bazi/types';
+import type {
+    Authority,
+    CenterId,
+    ChartResult,
+    CrossAngle,
+    Definition,
+    HDType,
+} from '@/lib/hd/types';
 import { displayPalaceName } from '@/lib/ziwei/labels';
 import type { ZiweiChart, ZiweiPalace } from '@/lib/ziwei/types';
 
-export type MeaningItem = [string, string];
+export interface MeaningItem {
+    term: string;
+    field: string;
+    meaning: string;
+}
 
 const TYPE_OPERATE: Record<HDType, string> = {
     generator: '能量靠薦骨對生活的「對／不對」來發動；對真正有感覺的事才有持續力，硬推容易空轉。',
@@ -112,6 +125,84 @@ const CHANNEL_TRAIT: Record<string, string> = {
     '47-64': '抽象的領悟需要時間發酵，混濁過後才會突然清楚。',
 };
 
+const ANGLE_TRAIT: Record<CrossAngle, string> = {
+    rightAngle: '主題主要在自己這一生把功課走完，不必為別人的劇本負責。',
+    juxtaposition: '路徑很固定，方向窄也清楚，不太靠別人改寫，也不易被帶偏。',
+    leftAngle: '主題常透過與人相遇、被看見或去影響他人才完成。',
+};
+
+const GATE_THEME: Record<number, string> = {
+    1: '創造與自我表達的源頭',
+    2: '接收方向，當別人的羅盤',
+    3: '在混亂裡長出秩序',
+    4: '用答案化解懷疑',
+    5: '固定節奏，等待對的時機',
+    6: '在摩擦裡學親密與界線',
+    7: '被推到帶領的位置',
+    8: '貢獻自己的創造，而不是複製',
+    9: '專注，把力用在一件事上',
+    10: '活出自己的樣子，形式對了才自在',
+    11: '想法與和平的願景',
+    12: '謹慎表達，等對的時機開口',
+    13: '傾聽，當別人故事的容器',
+    14: '技能與資源的力量',
+    15: '極端裡找中道，磁場寬、能容不同節奏',
+    16: '熱情與技巧，靠熟練發光',
+    17: '意見與組織看法',
+    18: '看見不完美就想修',
+    19: '敏感於需求，靠近或退開',
+    20: '活在當下，此刻怎麼做就是表達',
+    21: '控制與管理資源',
+    22: '優雅；情緒來了才開口',
+    23: '把突然的洞見說清楚',
+    24: '反覆想一件事直到「知道了」',
+    25: '普遍的愛與純真，衝擊後仍能回到中心',
+    26: '把東西傳達給對的人',
+    27: '照顧與滋養',
+    28: '生命要有目的才肯拼',
+    29: '答應了就投入',
+    30: '感覺與慾望推動經驗',
+    31: '被選出來帶領',
+    32: '延續與保存，也怕失敗',
+    33: '退一步記得，再分享',
+    34: '原始的力量，要動',
+    35: '靠經驗換頻道學習',
+    36: '危機中的光明，情緒的深水',
+    37: '家與社群的契約',
+    38: '為意義而鬥',
+    39: '挑動情緒，把真實逼出來',
+    40: '獨處與付出的界線',
+    41: '想像，經驗還沒開始的那一下',
+    42: '把事情做完、讓循環成熟',
+    43: '洞見來得突然，自己先知道',
+    44: '辨識模式，嗅到時機',
+    45: '聚集人與資源',
+    46: '身體在場，成功感來自「在這裡」',
+    47: '領悟，把混濁變清楚',
+    48: '深度與井，怕自己不夠',
+    49: '原則：接納或革命',
+    50: '價值觀與照顧的責任',
+    51: '震醒、跨越',
+    52: '靜下來，把能量壓住',
+    53: '開始，啟動下一個循環',
+    54: '野心，往上爬',
+    55: '精神的豐盛，情緒裡的信念',
+    56: '說故事、帶人走一程',
+    57: '直覺，聽得見微風',
+    58: '有活力地改善',
+    59: '親密，打破牆',
+    60: '在限制裡突變',
+    61: '內在的奧祕，追問為什麼',
+    62: '細節，把話說準',
+    63: '懷疑，問完才肯信',
+    64: '混濁中的啟發，畫面還沒完成',
+};
+
+function gateLine(role: string, gate: number): string {
+    const theme = GATE_THEME[gate];
+    return theme ? `${role} ${gate}：${theme}` : `${role} ${gate}`;
+}
+
 const STAR_TRAIT: Record<string, string> = {
     紫微: '尊貴、要有主見與位置',
     天機: '善變、機巧、想得快',
@@ -129,19 +220,19 @@ const STAR_TRAIT: Record<string, string> = {
     破軍: '求變、破壞再建、不喜重複',
 };
 
-const PALACE_LIFE: Record<string, string> = {
-    命宮: '自身格局與人生方向',
-    兄弟: '手足、同儕與合作',
-    夫妻: '親密關係與伴侶互動',
-    子女: '子女、晚輩與創作產出',
-    財帛: '收入與物質資源',
-    疾厄: '身心負荷與保養',
-    遷移: '外出、環境與對外發展',
-    僕役: '朋友、部屬與社交',
-    官祿: '工作、志向與社會角色',
-    田宅: '居住與生活根基',
-    福德: '精神享受與內心滿足',
-    父母: '長輩、貴人與來源',
+const PALACE_FIELD: Record<string, string> = {
+    命宮: '自身格局、性格與人生方向的主軸。',
+    兄弟: '手足、同儕與合作關係。',
+    夫妻: '親密關係與伴侶互動。',
+    子女: '子女、晚輩與創作產出。',
+    財帛: '收入、理財與物質資源。',
+    疾厄: '身心負荷、需要保養之處。',
+    遷移: '外出、環境轉換與對外發展。',
+    僕役: '朋友、部屬與社交圈。',
+    官祿: '工作、志向與社會角色。',
+    田宅: '居住、不動產與生活根基。',
+    福德: '精神享受與內心滿足。',
+    父母: '長輩、貴人、來源與家風。',
 };
 
 const STEM_TRAIT: Record<string, string> = {
@@ -174,58 +265,102 @@ function joinZh(parts: string[]): string {
     return parts.filter(Boolean).join('');
 }
 
+function item(term: string, field: string, meaning: string): MeaningItem {
+    return { term, field, meaning };
+}
+
 export function hdMeaningItems(chart: ChartResult): MeaningItem[] {
     const typeName = TYPE_NAMES_ZH[chart.type];
     const authName = AUTHORITY_NAMES_ZH[chart.authority];
     const profile = `${chart.profile.personality}/${chart.profile.design}`;
-    const defined = chart.definedCenters;
-    const open = (
-        ['head', 'ajna', 'throat', 'g', 'heart', 'sacral', 'solarPlexus', 'spleen', 'root'] as const
-    ).filter((c) => !defined.includes(c));
+    const defined = CENTER_ORDER.filter((c) => chart.definedCenters.includes(c));
+    const open = CENTER_ORDER.filter((c) => !chart.definedCenters.includes(c));
+    const [pSun, pEarth, dSun, dEarth] = chart.cross.gates;
 
     const items: MeaningItem[] = [
-        ['底層運作', joinZh([`以${typeName}來看，`, TYPE_OPERATE[chart.type]])],
-        ['思考與決定', joinZh([`內在權威是${authName}。`, AUTHORITY_THINK[chart.authority]])],
-        [
-            '相處方式',
+        item(
+            '類型',
+            '能量怎麼運作、與世界互動的節奏（例如生產者、投射者）。',
+            joinZh([`${typeName}。`, TYPE_OPERATE[chart.type]]),
+        ),
+        item(
+            '策略',
+            '與人、機會相遇時較順的進入方式。',
+            joinZh([`${chart.strategy}。`, TYPE_RELATE[chart.type]]),
+        ),
+        item(
+            '內在權威',
+            '做決定時較可靠的內在依據，而不是只用頭腦硬想。',
+            joinZh([`${authName}。`, AUTHORITY_THINK[chart.authority]]),
+        ),
+        item(
+            '人生角色',
+            '意識與身體兩側的線條組合，影響學習與相處風格。',
+            joinZh([`${profile}。`, PROFILE_RELATE[profile] ?? '影響學習與被看見的方式。']),
+        ),
+        item(
+            '定義型態',
+            '已定義中心如何連成一塊或分開，影響專注與溝通。',
             joinZh([
-                TYPE_RELATE[chart.type],
-                PROFILE_RELATE[profile] ? `人生角色 ${profile}：${PROFILE_RELATE[profile]}` : '',
+                `${DEFINITION_NAMES_ZH[chart.definition]}。`,
+                DEFINITION_NOTE[chart.definition],
             ]),
-        ],
+        ),
+        item(
+            '輪迴交叉',
+            '個性太陽／地球與設計太陽／地球四個閘門，組成這一生的主題軸；角度決定這主題偏自己走，還是會牽連他人。',
+            [
+                `${CROSS_ANGLE_NAMES_ZH[chart.cross.angle]}（${pSun}/${pEarth} | ${dSun}/${dEarth}）${chart.cross.name ? `，${chart.cross.name}` : ''}。${ANGLE_TRAIT[chart.cross.angle]}`,
+                gateLine('個性太陽', pSun),
+                gateLine('個性地球', pEarth),
+                gateLine('設計太陽', dSun),
+                gateLine('設計地球', dEarth),
+            ].join('\n'),
+        ),
     ];
 
-    if (chart.channels.length > 0) {
-        const lines = chart.channels.map((ch) => {
-            const trait = CHANNEL_TRAIT[ch.id] ?? '這是兩個中心之間已接通的固定能力。';
-            const a = CENTER_NAMES_ZH[ch.centers[0]];
-            const b = CENTER_NAMES_ZH[ch.centers[1]];
-            return `${ch.id}（${a}—${b}）：${trait}`;
-        });
-        items.push(['通道與特色', lines.join(' ')]);
-    } else {
-        items.push([
-            '通道與特色',
-            '目前沒有已成立的通道，個人特色較分散在閘門與開放中心的學習上。',
-        ]);
-    }
-
     if (defined.length > 0) {
-        items.push([
-            '穩定之處',
-            `已定義${defined.map((c) => `${CENTER_NAMES_ZH[c]}（${CENTER_TRAIT[c]}）`).join('、')}。`,
-        ]);
+        items.push(
+            item(
+                '已定義中心',
+                '穩定一致的特質，是比較固定的運作方式。',
+                defined.map((c) => `${CENTER_NAMES_ZH[c]}（${CENTER_TRAIT[c]}）`).join('、') + '。',
+            ),
+        );
     }
     if (open.length > 0) {
-        items.push([
-            '較受環境影響',
-            `${open.map((c) => CENTER_NAMES_ZH[c]).join('、')}未定義，這些領域較會吸收身邊的人，也較能彈性學習。定義型態是${DEFINITION_NAMES_ZH[chart.definition]}。${DEFINITION_NOTE[chart.definition]}`,
-        ]);
+        items.push(
+            item(
+                '未定義中心',
+                '較易受環境影響，也較能彈性學習。',
+                `${open.map((c) => CENTER_NAMES_ZH[c]).join('、')}未定義，這些領域較會吸收身邊的人。`,
+            ),
+        );
+    }
+
+    if (chart.channels.length > 0) {
+        items.push(
+            item(
+                '通道',
+                '兩個中心之間已接通的固定能力，是較穩定的個人特色。',
+                chart.channels
+                    .map((ch) => {
+                        const trait = CHANNEL_TRAIT[ch.id] ?? '這是兩個中心之間已接通的固定能力。';
+                        const a = CENTER_NAMES_ZH[ch.centers[0]];
+                        const b = CENTER_NAMES_ZH[ch.centers[1]];
+                        return `${ch.id}（${a}—${b}）：${trait}`;
+                    })
+                    .join('\n'),
+            ),
+        );
     } else {
-        items.push([
-            '定義型態',
-            `${DEFINITION_NAMES_ZH[chart.definition]}。${DEFINITION_NOTE[chart.definition]}`,
-        ]);
+        items.push(
+            item(
+                '通道',
+                '兩個中心之間已接通的固定能力，是較穩定的個人特色。',
+                '目前沒有已成立的通道，個人特色較分散在閘門與開放中心的學習上。',
+            ),
+        );
     }
 
     return items;
@@ -241,42 +376,55 @@ function palaceStarsLine(p: ZiweiPalace): string {
     return majors.join('；') + '。';
 }
 
+function palaceField(name: string, extra?: string): string {
+    return joinZh([
+        PALACE_FIELD[name] ?? `${displayPalaceName(name)}對應人生的一塊領域。`,
+        extra ?? '',
+    ]);
+}
+
 export function ziweiMeaningItems(chart: ZiweiChart): MeaningItem[] {
     const soul = chart.palaces.find((p) => p.isSoulPalace);
     const body = chart.palaces.find((p) => p.isBodyPalace);
     const items: MeaningItem[] = [];
 
     if (soul) {
-        items.push([
-            displayPalaceName(soul.name, { isSoulPalace: true, isBodyPalace: soul.isBodyPalace }),
-            joinZh([
-                `這是此人自身格局的主軸（${PALACE_LIFE[soul.name] ?? '自身'}）。`,
+        const sameBody = soul.isBodyPalace;
+        items.push(
+            item(
+                displayPalaceName(soul.name, {
+                    isSoulPalace: true,
+                    isBodyPalace: sameBody,
+                }),
+                palaceField(soul.name, sameBody ? '身宮同落此宮，身心安放也在這裡。' : ''),
                 palaceStarsLine(soul),
-            ]),
-        ]);
+            ),
+        );
     }
     if (body && body.index !== soul?.index) {
-        items.push([
-            displayPalaceName(body.name, { isBodyPalace: true }),
-            joinZh(['身宮看身心安放與著力處。', palaceStarsLine(body)]),
-        ]);
+        items.push(
+            item(
+                displayPalaceName(body.name, { isBodyPalace: true }),
+                '身宮落在哪一宮，表示身心安放與人生著力處。',
+                palaceStarsLine(body),
+            ),
+        );
     }
 
     for (const p of chart.palaces) {
         if (p.isSoulPalace || p.isBodyPalace) continue;
         if (p.majorStars.length === 0) continue;
-        const life = PALACE_LIFE[p.name] ?? displayPalaceName(p.name);
-        items.push([
-            displayPalaceName(p.name),
-            joinZh([`這一宮對應${life}。`, palaceStarsLine(p)]),
-        ]);
+        items.push(item(displayPalaceName(p.name), palaceField(p.name), palaceStarsLine(p)));
     }
 
     if (chart.mutagens.length > 0) {
-        items.push([
-            '生年四化',
-            `祿權科忌落在：${chart.mutagens.map((m) => `${m.star}化${m.mutagen}`).join('、')}。化祿偏順與收穫，化權偏主導，化科偏名聲與文書，化忌偏卡點與在意之處。`,
-        ]);
+        items.push(
+            item(
+                '生年四化',
+                '落宮主星與祿權科忌，標出該宮較突出的作用。化祿偏順與收穫，化權偏主導，化科偏名聲與文書，化忌偏卡點與在意之處。',
+                `${chart.mutagens.map((m) => `${m.star}化${m.mutagen}`).join('、')}。`,
+            ),
+        );
     }
 
     return items;
@@ -285,64 +433,71 @@ export function ziweiMeaningItems(chart: ZiweiChart): MeaningItem[] {
 export function baziMeaningItems(chart: BaziChart): MeaningItem[] {
     const dm = chart.dayMaster;
     const stem = dm.charAt(0);
-    const items: MeaningItem[] = [
-        [
-            `日主 ${dm}`,
-            joinZh([
-                `盤上的「自己」是${dm}。`,
-                STEM_TRAIT[stem] ?? '',
-                `強弱看${chart.strength}，旺衰為${chart.wangShuai}。`,
-            ]),
-        ],
-        ['命格', `結構是${chart.geJu}。這是解讀骨架，不是一句話定終身。`],
-    ];
-
     const dayPillar = chart.pillars.find((p) => p.key === 'day');
     const monthPillar = chart.pillars.find((p) => p.key === 'month');
     const yearPillar = chart.pillars.find((p) => p.key === 'year');
     const timePillar = chart.pillars.find((p) => p.key === 'time');
+    const tenGods = [...new Set(chart.pillars.map((p) => p.ganTenGod).filter(Boolean))];
+    const topWx = [...chart.wuXing].sort((a, b) => b.percent - a.percent)[0];
 
-    if (monthPillar) {
-        const g = TEN_GOD_TRAIT[monthPillar.ganTenGod];
-        items.push([
-            '月令與思考',
-            `月柱${monthPillar.gan}${monthPillar.zhi}（${monthPillar.ganTenGod}）是成長環境與思考底色。${g ?? ''}`,
-        ]);
-    }
-    if (dayPillar) {
-        items.push([
-            '日柱與相處',
-            `日支${dayPillar.zhi}靠近自身與伴侶場域；十神${dayPillar.ganTenGod}描述自我與親近關係的互動。`,
-        ]);
-    }
-    if (yearPillar || timePillar) {
-        items.push([
-            '四柱層次',
+    const items: MeaningItem[] = [
+        item(
+            '日主',
+            '自己在盤中的核心（日干），其他字都相對它來看。',
+            joinZh([
+                `${dm}。`,
+                STEM_TRAIT[stem] ?? '',
+                `強弱看${chart.strength}，旺衰為${chart.wangShuai}。`,
+            ]),
+        ),
+        item(
+            '四柱',
+            '年、月、日、時，對應根源、環境、自身與內在時段。',
             [
                 yearPillar
                     ? `年柱${yearPillar.gan}${yearPillar.zhi}（${yearPillar.ganTenGod}）偏根源與長輩場。`
                     : '',
+                monthPillar
+                    ? `月柱${monthPillar.gan}${monthPillar.zhi}（${monthPillar.ganTenGod}）是成長環境與思考底色。`
+                    : '',
+                dayPillar ? `日柱${dayPillar.gan}${dayPillar.zhi}，日支靠近自身與伴侶場域。` : '',
                 timePillar
                     ? `時柱${timePillar.gan}${timePillar.zhi}（${timePillar.ganTenGod}）偏內在與後期節奏。`
                     : '',
             ]
                 .filter(Boolean)
                 .join(''),
-        ]);
+        ),
+    ];
+
+    if (tenGods.length > 0) {
+        items.push(
+            item(
+                '十神',
+                '天干相對日主的關係，描述性格與人事角色。',
+                tenGods.map((g) => (TEN_GOD_TRAIT[g] ? `${g}：${TEN_GOD_TRAIT[g]}` : g)).join(''),
+            ),
+        );
     }
 
-    items.push([
-        '用神與節奏',
-        `喜神 ${chart.xiShen}、用神 ${chart.yongShen}、忌神 ${chart.jiShen}。${chart.yongShenSummary} ${chart.yongShenBody}`.trim(),
-    ]);
-
-    const topWx = [...chart.wuXing].sort((a, b) => b.percent - a.percent)[0];
     if (topWx) {
-        items.push([
-            '五行',
-            `目前最重的是${topWx.wx}（${topWx.percent}%）。幫輔：${chart.helpers}；克洩耗：${chart.drainers}。`,
-        ]);
+        items.push(
+            item(
+                '五行與強弱',
+                '五行占比與旺衰，看資源是否均衡、日主是否得力。',
+                `目前最重的是${topWx.wx}（${topWx.percent}%）。幫輔：${chart.helpers}；克洩耗：${chart.drainers}。`,
+            ),
+        );
     }
+
+    items.push(
+        item('格局', '這盤的結構類型，是解讀的骨架。', `${chart.geJu}。`),
+        item(
+            '用神／喜神／忌神',
+            '對日主有益、可配合、需節制的能量。',
+            `喜神 ${chart.xiShen}、用神 ${chart.yongShen}、忌神 ${chart.jiShen}。${chart.yongShenSummary} ${chart.yongShenBody}`.trim(),
+        ),
+    );
 
     return items;
 }

@@ -7,6 +7,7 @@ import { buildHdAiPrompt } from '@/lib/hd/prompt';
 import type { BirthInput, ChartResult, NodeMode } from '@/lib/hd/types';
 import {
     parseStoredChart,
+    postAstro,
     postBazi,
     postChart,
     readStoredChartRaw,
@@ -15,6 +16,7 @@ import {
 } from '@/lib/ui/chartClient';
 import { ActivationTable } from './ActivationTable';
 import { AiPromptCard } from './AiPromptCard';
+import { AstroView } from './astro/AstroView';
 import { HdMeaningCard } from './ChartMeaningCard';
 import { BaziView } from './bazi/BaziView';
 import { BodyGraph } from './BodyGraph/BodyGraph';
@@ -38,7 +40,7 @@ export function ChartView() {
     const stored = useMemo(() => (raw === undefined ? undefined : parseStoredChart(raw)), [raw]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [tab, setTab] = useState<'hd' | 'ziwei' | 'bazi'>('hd');
+    const [tab, setTab] = useState<'hd' | 'ziwei' | 'bazi' | 'astro'>('hd');
 
     if (stored === undefined) return <ChartSkeleton />;
     if (stored === null) return <EmptyState />;
@@ -56,20 +58,17 @@ export function ChartView() {
         setError(null);
         const res = await postChart(input);
         setBusy(false);
-        if (res.ok) saveStoredChart({ ...stored, input, result: res.chart });
+        // The 星盤 north node follows nodeMode, so drop it and let the tab refetch.
+        if (res.ok)
+            saveStoredChart({ ...stored, input, result: res.chart, astro: null, astroError: null });
         else setError(res.error.message);
     }
 
     return (
         <div aria-busy={busy} className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <h1 className="flex flex-wrap items-baseline gap-x-2 font-serif text-3xl font-medium tracking-wide">
-                    排盤結果
-                    {stored.saved ? (
-                        <span className="font-sans text-lg font-medium text-muted">
-                            · {stored.saved.name}
-                        </span>
-                    ) : null}
+                <h1 className="font-serif text-3xl font-medium tracking-wide">
+                    {stored.saved?.name ?? '排盤結果'}
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <SaveChartButton stored={stored} />
@@ -94,6 +93,9 @@ export function ChartView() {
                 <TabButton selected={tab === 'bazi'} onClick={() => setTab('bazi')}>
                     八字
                 </TabButton>
+                <TabButton selected={tab === 'astro'} onClick={() => setTab('astro')}>
+                    星盤
+                </TabButton>
             </div>
 
             {tab === 'ziwei' ? (
@@ -105,6 +107,8 @@ export function ChartView() {
                 />
             ) : tab === 'bazi' ? (
                 <BaziTab stored={stored} />
+            ) : tab === 'astro' ? (
+                <AstroTab stored={stored} />
             ) : (
                 <div
                     className={`flex flex-col gap-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}
@@ -177,6 +181,40 @@ function BaziTab({ stored }: { stored: NonNullable<ReturnType<typeof parseStored
     }
     return (
         <BaziView chart={stored.bazi} timeUnknown={stored.timeUnknown} error={stored.baziError} />
+    );
+}
+
+function AstroTab({ stored }: { stored: NonNullable<ReturnType<typeof parseStoredChart>> }) {
+    useEffect(() => {
+        if (stored.astro || stored.astroError) return;
+        let cancelled = false;
+        void postAstro(stored.input, stored.timeUnknown).then((res) => {
+            if (cancelled) return;
+            if (res.ok) saveStoredChart({ ...stored, astro: res.chart, astroError: null });
+            else
+                saveStoredChart({
+                    ...stored,
+                    astro: null,
+                    astroError: res.error.message,
+                });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [stored]);
+    if (!stored.astro && !stored.astroError) {
+        return (
+            <p className="rounded-md border border-border bg-surface px-4 py-6 text-muted">
+                正在排出星盤…
+            </p>
+        );
+    }
+    return (
+        <AstroView
+            chart={stored.astro}
+            timeUnknown={stored.timeUnknown}
+            error={stored.astroError}
+        />
     );
 }
 

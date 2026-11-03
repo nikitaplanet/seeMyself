@@ -1,14 +1,12 @@
 'use client';
 
 import { Alert, Button, Modal, Stack, Text } from '@mantine/core';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState, useSyncExternalStore } from 'react';
 import { MantineRoot } from '@/components/MantineRoot';
 import { loginUrl } from '@/lib/auth/redirect';
 import { useAuth } from '@/lib/auth/useAuth';
 import {
-    CHART_KIND_NAMES_ZH,
     normalizeChartMeta,
     toSavedRef,
     type ChartMeta,
@@ -93,15 +91,8 @@ function SaveChartInner({ stored }: { stored: StoredChart }) {
 
     if (saved) {
         return (
-            <p className="text-sm" role={justSaved ? 'status' : undefined}>
-                <span className="font-medium text-accent">✓ 已儲存</span>
-                <span className="text-muted">
-                    {' '}
-                    「{saved.name}」於{CHART_KIND_NAMES_ZH[saved.kind]}命盤 ·{' '}
-                </span>
-                <Link href="/charts" className="underline hover:text-accent">
-                    查看命盤列表
-                </Link>
+            <p className="text-sm font-medium text-accent" role={justSaved ? 'status' : undefined}>
+                ✓ 已儲存
             </p>
         );
     }

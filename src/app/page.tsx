@@ -8,7 +8,7 @@ export default function Home() {
                 <h1 className="font-serif text-3xl font-medium tracking-wide sm:text-4xl">排盤</h1>
                 <p className="text-muted leading-relaxed">
                     輸入一次出生日期、時間、地點與性別，同時排出人類圖（個性／設計 26
-                    顆星體啟動）、紫微斗數十二宮與八字命盤。
+                    顆星體啟動）、紫微斗數十二宮、八字命盤與西洋本命星盤。
                 </p>
             </div>
             <MantineRoot>

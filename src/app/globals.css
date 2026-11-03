@@ -64,6 +64,13 @@
     --bazi-yong: #e4efe8;
     --bazi-ji: #f3e4e4;
     --bazi-tiao: #e8efe6;
+
+    /* 星盤 aspect lines: harmonious green/blue, tense red/purple */
+    --astro-trine: #2f855a;
+    --astro-sextile: #2b6cb0;
+    --astro-square: #c53030;
+    --astro-opposition: #6b46c1;
+    --astro-conjunction: #8a5a00;
 }
 
 @theme inline {

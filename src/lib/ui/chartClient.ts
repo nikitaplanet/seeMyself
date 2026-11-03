@@ -1,3 +1,4 @@
+import type { AstroChart } from '@/lib/astro/types';
 import type { BaziChart } from '@/lib/bazi/types';
 import { parseSavedRef, type SavedRef } from '@/lib/charts/mapping';
 import type { BirthInput, ChartResult } from '@/lib/hd/types';
@@ -20,6 +21,9 @@ export type ZiweiResponse =
   | { ok: false; status: number; error: ApiError };
 export type BaziResponse =
   | { ok: true; chart: BaziChart }
+  | { ok: false; status: number; error: ApiError };
+export type AstroResponse =
+  | { ok: true; chart: AstroChart }
   | { ok: false; status: number; error: ApiError };
 
 const NETWORK_ERROR: ApiError = {
@@ -89,6 +93,18 @@ function isBaziChart(v: unknown): v is BaziChart {
     Array.isArray(c.daYun) &&
     Array.isArray(c.wuXing) &&
     c.wuXing.length === 5
+  );
+}
+
+function isAstroChart(v: unknown): v is AstroChart {
+  if (typeof v !== 'object' || v === null) return false;
+  const c = v as Partial<AstroChart>;
+  return (
+    Array.isArray(c.bodies) &&
+    c.bodies.length >= 11 &&
+    Array.isArray(c.aspects) &&
+    typeof c.timeUnknown === 'boolean' &&
+    (c.houses === null || (Array.isArray(c.houses) && c.houses.length === 12))
   );
 }
 
@@ -164,6 +180,42 @@ export async function postBazi(
     // fall through
   }
   if (res.ok && isBaziChart(body)) return { ok: true, chart: body };
+  if (isApiErrorBody(body))
+    return { ok: false, status: res.status, error: body.error };
+  return {
+    ok: false,
+    status: res.status,
+    error: {
+      code: 'UNKNOWN',
+      message: `伺服器回應異常（HTTP ${res.status}），請稍後再試。`,
+    },
+  };
+}
+
+/** 星盤 does not need gender; fetched lazily when its tab is opened. */
+export async function postAstro(
+  input: BirthInput,
+  timeUnknown: boolean,
+  signal?: AbortSignal,
+): Promise<AstroResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/astro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, timeUnknown }),
+      signal,
+    });
+  } catch {
+    return { ok: false, status: 0, error: NETWORK_ERROR };
+  }
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    // fall through
+  }
+  if (res.ok && isAstroChart(body)) return { ok: true, chart: body };
   if (isApiErrorBody(body))
     return { ok: false, status: res.status, error: body.error };
   return {
@@ -257,6 +309,9 @@ export interface StoredChart {
   ziweiError?: string | null;
   bazi?: BaziChart | null;
   baziError?: string | null;
+  /** 星盤; absent in charts stored before the tab existed (then fetched on first open). */
+  astro?: AstroChart | null;
+  astroError?: string | null;
 }
 
 const listeners = new Set<() => void>();
@@ -313,6 +368,8 @@ export function parseStoredChart(raw: string | null): StoredChart | null {
       ziweiError: typeof v.ziweiError === 'string' ? v.ziweiError : null,
       bazi: isBaziChart(v.bazi) ? v.bazi : null,
       baziError: typeof v.baziError === 'string' ? v.baziError : null,
+      astro: isAstroChart(v.astro) ? v.astro : null,
+      astroError: typeof v.astroError === 'string' ? v.astroError : null,
     };
   } catch {
     return null;
