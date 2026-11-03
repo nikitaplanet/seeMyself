@@ -148,6 +148,10 @@ export function BirthForm({
     const [errors, setErrors] = useState<FieldErrors>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    // Cache Components keeps this page alive (hidden by <Activity>) after we navigate away, and a
+    // successful submit deliberately leaves `submitting` on. Clear it when the page is hidden so
+    // coming back shows a usable button instead of a stuck spinner.
+    useLayoutEffect(() => () => setSubmitting(false), []);
     const [ambiguous, setAmbiguous] = useState<AmbiguousState | null>(null);
     const hourRef = useRef<HTMLSelectElement>(null);
     const minuteRef = useRef<HTMLSelectElement>(null);
