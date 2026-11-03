@@ -1,3 +1,5 @@
+import { astroMeaningItems } from '@/lib/astro/meaning';
+import type { AstroChart } from '@/lib/astro/types';
 import type { BaziChart } from '@/lib/bazi/types';
 import type { ChartResult } from '@/lib/hd/types';
 import {
@@ -34,6 +36,16 @@ export function BaziMeaningCard({ chart }: { chart: BaziChart }) {
             heading="八字說明"
             lead="標題旁是欄位含義；意思說明依這份排盤解說此人。名詞可上網對照公開資料。"
             items={baziMeaningItems(chart)}
+        />
+    );
+}
+
+export function AstroMeaningCard({ chart }: { chart: AstroChart }) {
+    return (
+        <ChartMeaningCard
+            heading="星盤說明"
+            lead="標題旁是欄位含義；意思說明依這份星盤解說此人。名詞可上網對照公開資料。"
+            items={astroMeaningItems(chart)}
         />
     );
 }

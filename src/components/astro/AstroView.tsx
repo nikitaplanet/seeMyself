@@ -4,6 +4,7 @@ import { ASPECT_NAMES, ASPECT_ORBS, BODY_NAMES, formatDegMin } from '@/lib/astro
 import { buildAstroAiPrompt } from '@/lib/astro/prompt';
 import type { AstroChart, AstroZodiacPos } from '@/lib/astro/types';
 import { AiPromptCard } from '../AiPromptCard';
+import { AstroMeaningCard } from '../ChartMeaningCard';
 import { ASPECT_COLORS, AstroWheel } from './AstroWheel';
 
 export function AstroView({
@@ -53,6 +54,7 @@ export function AstroView({
             </Section>
             <BodyTable chart={chart} />
             <AspectTable chart={chart} />
+            <AstroMeaningCard chart={chart} />
             <AiPromptCard
                 heading="提供給 AI 的提示詞"
                 description="複製後可貼到 ChatGPT、Claude 等，請它依這份本命星盤做解讀。內容含出生資料。"
