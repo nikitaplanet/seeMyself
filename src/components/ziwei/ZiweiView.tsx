@@ -181,7 +181,7 @@ function ZiweiChartPanel({
   const years = Array.from({ length: 21 }, (_, i) => initial.year - 10 + i);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {timeUnknown || natal.timeUnknown ? (
         <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-muted">
           出生時間不確定，紫微斗數先以午時（11:00～12:59）排盤；時辰一改，十二宮會整盤重排。
@@ -202,13 +202,13 @@ function ZiweiChartPanel({
         </p>
       ) : null}
 
-      <fieldset className="rounded-lg border border-border bg-surface p-4">
+      <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
         <legend className="px-1 text-sm font-semibold">流月起始宮位</legend>
-        <div className="mt-2 flex flex-wrap items-end gap-3">
-          <label className="text-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex items-center gap-1 text-sm">
             年
             <select
-              className="ml-1 rounded-md border border-border bg-surface px-2 py-1"
+              className="rounded-md border border-border bg-surface px-2 py-1"
               value={year}
               onChange={e => setYear(Number(e.target.value))}
             >
@@ -219,10 +219,10 @@ function ZiweiChartPanel({
               ))}
             </select>
           </label>
-          <label className="text-sm">
+          <label className="flex items-center gap-1 text-sm">
             月
             <select
-              className="ml-1 rounded-md border border-border bg-surface px-2 py-1"
+              className="rounded-md border border-border bg-surface px-2 py-1"
               value={month}
               onChange={e => setMonth(Number(e.target.value))}
             >
@@ -233,10 +233,10 @@ function ZiweiChartPanel({
               ))}
             </select>
           </label>
-          <label className="text-sm">
+          <label className="flex items-center gap-1 text-sm">
             日
             <select
-              className="ml-1 rounded-md border border-border bg-surface px-2 py-1"
+              className="rounded-md border border-border bg-surface px-2 py-1"
               value={day}
               onChange={e => setDay(Number(e.target.value))}
             >
@@ -247,10 +247,10 @@ function ZiweiChartPanel({
               ))}
             </select>
           </label>
-          <label className="text-sm">
+          <label className="flex items-center gap-1 text-sm">
             時
             <select
-              className="ml-1 rounded-md border border-border bg-surface px-2 py-1"
+              className="rounded-md border border-border bg-surface px-2 py-1"
               value={timeIndex}
               onChange={e => setTimeIndex(Number(e.target.value))}
             >
@@ -262,7 +262,7 @@ function ZiweiChartPanel({
             </select>
           </label>
         </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm">
           <label className="inline-flex items-center gap-1.5">
             <input
               type="radio"
@@ -282,7 +282,7 @@ function ZiweiChartPanel({
             流年斗君
           </label>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted">查詢：</span>
           {SCOPES.map(s => (
             <button
@@ -301,7 +301,7 @@ function ZiweiChartPanel({
             </button>
           ))}
         </div>
-        <p className="mt-2 text-sm text-muted">
+        <p className="text-sm text-muted">
           目前運限日期 {chart.horoscope.solarDate}
           {chart.horoscope.lunarDate
             ? `（農曆 ${chart.horoscope.lunarDate}）`
@@ -309,7 +309,7 @@ function ZiweiChartPanel({
           ，虛歲 {chart.horoscope.nominalAge}
         </p>
         {queryError ? (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <p role="alert" className="text-sm text-danger">
             {queryError}
           </p>
         ) : null}
@@ -339,12 +339,12 @@ function ZiweiChartPanel({
 
       <section
         aria-labelledby="ziwei-star-analysis"
-        className="rounded-lg border border-border bg-surface p-5"
+        className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
       >
         <h2 id="ziwei-star-analysis" className="text-lg font-semibold">
           主星亮度與吉凶分析
         </h2>
-        <div className="mt-3 overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[28rem] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted">

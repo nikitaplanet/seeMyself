@@ -2,10 +2,10 @@
 
 export function SiteFooter() {
   return (
-    <footer className="mt-12 border-t border-border bg-surface-2 text-sm leading-relaxed text-muted">
+    <footer className="border-t border-border bg-surface-2 text-sm leading-relaxed text-muted">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:grid-cols-2">
-        <section aria-labelledby="footer-privacy">
-          <h2 id="footer-privacy" className="mb-1 font-semibold text-fg">
+        <section aria-labelledby="footer-privacy" className="flex flex-col gap-1">
+          <h2 id="footer-privacy" className="font-semibold text-fg">
             隱私說明
           </h2>
           <p>
@@ -14,8 +14,8 @@ export function SiteFooter() {
             才會把出生資料與命盤摘要存進你的帳號（僅你本人可讀取），並可隨時刪除。本站不使用第三方分析工具。
           </p>
         </section>
-        <section aria-labelledby="footer-node">
-          <h2 id="footer-node" className="mb-1 font-semibold text-fg">
+        <section aria-labelledby="footer-node" className="flex flex-col gap-1">
+          <h2 id="footer-node" className="font-semibold text-fg">
             交點模式
           </h2>
           <p>
@@ -23,11 +23,11 @@ export function SiteFooter() {
             1°，足以改變爻甚至閘門；結果頁可切換比較。
           </p>
         </section>
-        <section aria-labelledby="footer-sources" className="sm:col-span-2">
-          <h2 id="footer-sources" className="mb-1 font-semibold text-fg">
+        <section aria-labelledby="footer-sources" className="flex flex-col gap-1 sm:col-span-2">
+          <h2 id="footer-sources" className="font-semibold text-fg">
             資料來源與授權
           </h2>
-          <ul className="list-disc space-y-1 pl-5">
+          <ul className="flex list-disc flex-col gap-1 pl-5">
             <li>
               地名資料來自{' '}
               <a

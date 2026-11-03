@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function ChartsPage() {
   return (
-    <div className="mx-auto max-w-4xl">
-      <h1 className="mb-6 text-2xl font-bold">我的命盤</h1>
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <h1 className="text-2xl font-bold">我的命盤</h1>
       <MantineRoot>
         <ChartsView />
       </MantineRoot>

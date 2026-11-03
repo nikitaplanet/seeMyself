@@ -16,11 +16,32 @@ import {
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useRouter } from 'next/navigation';
-import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { DEFAULT_SENSITIVITY_MINUTES, MAX_DATE, MIN_DATE } from '@/lib/hd/constants';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import {
+  DEFAULT_SENSITIVITY_MINUTES,
+  MAX_DATE,
+  MIN_DATE,
+} from '@/lib/hd/constants';
 import type { BirthInput, Gender, NodeMode } from '@/lib/hd/types';
-import { attachSidecars, formatOffset, formatUtc, postBoth, saveStoredChart, type StoredChart } from '@/lib/ui/chartClient';
-import { PlaceAutocomplete, placeLabel, type PlaceOption } from './PlaceAutocomplete';
+import {
+  attachSidecars,
+  formatOffset,
+  formatUtc,
+  postBoth,
+  saveStoredChart,
+  type StoredChart,
+} from '@/lib/ui/chartClient';
+import {
+  PlaceAutocomplete,
+  placeLabel,
+  type PlaceOption,
+} from './PlaceAutocomplete';
 
 // Spec §11.1 — the input page form.
 
@@ -29,13 +50,22 @@ const UNKNOWN_TIME = '12:00';
 const UNKNOWN_TIME_OFFSETS = [-720, -360, 360, 720];
 
 /** §11.1 — exact inline message for NONEXISTENT_LOCAL_TIME. */
-const NONEXISTENT_MESSAGE = '這個時間因夏令時間調整而不存在，請確認出生證明上的時間。';
+const NONEXISTENT_MESSAGE =
+  '這個時間因夏令時間調整而不存在，請確認出生證明上的時間。';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTES = Array.from({ length: 60 }, (_, i) =>
+  String(i).padStart(2, '0'),
+);
 // Empty value = unset; the placeholder option doubles as the visible "時" / "分" prompt.
-const HOUR_OPTIONS = [{ value: '', label: '時' }, ...HOURS.map((h) => ({ value: h, label: h }))];
-const MINUTE_OPTIONS = [{ value: '', label: '分' }, ...MINUTES.map((m) => ({ value: m, label: m }))];
+const HOUR_OPTIONS = [
+  { value: '', label: '時' },
+  ...HOURS.map(h => ({ value: h, label: h })),
+];
+const MINUTE_OPTIONS = [
+  { value: '', label: '分' },
+  ...MINUTES.map(m => ({ value: m, label: m })),
+];
 
 /** Accessible names for the calendar's otherwise icon-only navigation buttons. */
 const CALENDAR_ARIA_LABELS = {
@@ -69,7 +99,11 @@ function isValidDate(s: string): boolean {
   if (!m) return false;
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const dt = new Date(Date.UTC(y, mo - 1, d));
-  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === mo - 1 &&
+    dt.getUTCDate() === d
+  );
 }
 
 /**
@@ -112,7 +146,12 @@ export interface BirthFormProps {
   submitLabel?: string;
 }
 
-export function BirthForm({ header, validateExtra, onComputed, submitLabel = '開始排盤' }: BirthFormProps = {}) {
+export function BirthForm({
+  header,
+  validateExtra,
+  onComputed,
+  submitLabel = '開始排盤',
+}: BirthFormProps = {}) {
   const router = useRouter();
   const ids = useId();
   const [date, setDate] = useState('');
@@ -154,20 +193,24 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
 
   function toggleAdvanced() {
     if (!advancedOpen && timezones === null) setTimezones(listTimezones());
-    setAdvancedOpen((o) => !o);
+    setAdvancedOpen(o => !o);
   }
 
   function validate(): FieldErrors {
     const e: FieldErrors = {};
     if (!date) e.date = '請輸入出生日期。';
     else if (!isValidDate(date)) e.date = '請輸入正確的日期。';
-    else if (date < MIN_DATE || date > MAX_DATE) e.date = `出生日期須介於 ${MIN_DATE} 與 ${MAX_DATE} 之間。`;
-    if (!timeUnknown && (hour === '' || minute === '')) e.time = '請選擇出生時間的「時」與「分」，或勾選「出生時間不確定」。';
+    else if (date < MIN_DATE || date > MAX_DATE)
+      e.date = `出生日期須介於 ${MIN_DATE} 與 ${MAX_DATE} 之間。`;
+    if (!timeUnknown && (hour === '' || minute === ''))
+      e.time = '請選擇出生時間的「時」與「分」，或勾選「出生時間不確定」。';
     // SPEC-QUESTION: §11.1 marks the place as required, but §4.2 offers the manual timezone to
     // users who cannot find their birthplace. We accept a manual timezone without a place (the
     // place only determines the timezone anyway, §4) and omit `place` from the request.
-    if (!place && !manualTz) e.place = '請從清單中選擇出生地點，或在「進階」手動選擇時區。';
-    if (gender !== 'male' && gender !== 'female') e.gender = '紫微斗數與八字排盤需要性別，請選擇男或女。';
+    if (!place && !manualTz)
+      e.place = '請從清單中選擇出生地點，或在「進階」手動選擇時區。';
+    if (gender !== 'male' && gender !== 'female')
+      e.gender = '紫微斗數與八字排盤需要性別，請選擇男或女。';
     return e;
   }
 
@@ -177,7 +220,12 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     const { hd, ziwei, bazi } = await postBoth(input, timeUnknown);
     if (hd.ok) {
       const stored = attachSidecars(
-        { input, result: hd.chart, timeUnknown, placeLabel: place ? placeLabel(place) : null },
+        {
+          input,
+          result: hd.chart,
+          timeUnknown,
+          placeLabel: place ? placeLabel(place) : null,
+        },
         ziwei,
         bazi,
       );
@@ -197,13 +245,18 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     const { code, message, details } = hd.error;
     if (code === 'AMBIGUOUS_LOCAL_TIME') {
       const c = details?.candidates;
-      if (Array.isArray(c) && c.length === 2 && typeof c[0] === 'string' && typeof c[1] === 'string') {
+      if (
+        Array.isArray(c) &&
+        c.length === 2 &&
+        typeof c[0] === 'string' &&
+        typeof c[1] === 'string'
+      ) {
         setAmbiguous({ input, candidates: [c[0], c[1]] });
         return;
       }
     }
     if (code === 'NONEXISTENT_LOCAL_TIME') {
-      setErrors((e) => ({ ...e, time: NONEXISTENT_MESSAGE }));
+      setErrors(e => ({ ...e, time: NONEXISTENT_MESSAGE }));
       document.getElementById(hourId)?.focus();
       return;
     }
@@ -219,7 +272,13 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
     setFormError(null);
     if (!extraOk) return;
     if (e.date || e.time || e.place || e.gender) {
-      const first = e.date ? dateId : e.gender ? genderId : e.time ? hourId : placeId;
+      const first = e.date
+        ? dateId
+        : e.gender
+          ? genderId
+          : e.time
+            ? hourId
+            : placeId;
       document.getElementById(first)?.focus();
       return;
     }
@@ -230,11 +289,20 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
       timezone,
       gender: gender === 'female' ? 'female' : 'male',
       ...(place
-        ? { place: { name: place.nameZh ?? place.name, lat: place.lat, lon: place.lon, countryCode: place.countryCode } }
+        ? {
+            place: {
+              name: place.nameZh ?? place.name,
+              lat: place.lat,
+              lon: place.lon,
+              countryCode: place.countryCode,
+            },
+          }
         : {}),
       options: {
         nodeMode,
-        sensitivityMinutes: timeUnknown ? UNKNOWN_TIME_OFFSETS : [...DEFAULT_SENSITIVITY_MINUTES],
+        sensitivityMinutes: timeUnknown
+          ? UNKNOWN_TIME_OFFSETS
+          : [...DEFAULT_SENSITIVITY_MINUTES],
       },
     };
     await send(input);
@@ -251,18 +319,26 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
   }
 
   const effectiveTz = manualTz || place?.timezone || null;
-  const tzOptions = [{ value: AUTO_TZ, label: '依出生地點自動判斷' }, ...(timezones ?? []).map((tz) => ({ value: tz, label: tz }))];
+  const tzOptions = [
+    { value: AUTO_TZ, label: '依出生地點自動判斷' },
+    ...(timezones ?? []).map(tz => ({ value: tz, label: tz })),
+  ];
 
   return (
     <>
-      <form onSubmit={onSubmit} noValidate className="space-y-6" aria-busy={submitting}>
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col gap-6"
+        aria-busy={submitting}
+      >
         {header}
         {/* 出生日期 */}
         <DatePickerInput
           id={dateId}
           size="md"
           label="出生日期（西元）"
-          labelProps={{ className: 'mb-1 font-medium' }}
+          labelProps={{ className: 'font-medium' }}
           placeholder="選擇日期"
           required
           withAsterisk={false}
@@ -272,45 +348,54 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
           defaultDate={date || (today < MAX_DATE ? today : MAX_DATE)}
           valueFormat="YYYY年M月D日"
           value={date || null}
-          onChange={(v) => {
+          onChange={v => {
             setDate(v ?? '');
-            setErrors((x) => ({ ...x, date: undefined }));
+            setErrors(x => ({ ...x, date: undefined }));
           }}
           popoverProps={{ position: 'bottom-start' }}
           ariaLabels={CALENDAR_ARIA_LABELS}
           error={errors.date}
-          errorProps={{ className: 'mt-1' }}
-          styles={{ error: { fontSize: 'var(--mantine-font-size-sm)' } }}
+          styles={{
+            root: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
+            error: { fontSize: 'var(--mantine-font-size-sm)' },
+          }}
           className="sm:w-64"
         />
 
         <Radio.Group
           id={genderId}
           label="性別"
-          labelProps={{ className: 'mb-1 font-medium' }}
+          labelProps={{ className: 'font-medium' }}
           description="人類圖不使用性別；紫微斗數與八字排盤需要。"
           inputWrapperOrder={['label', 'input', 'description', 'error']}
-          descriptionProps={{ className: 'mt-1' }}
-          styles={{ description: { fontSize: 'var(--mantine-font-size-sm)' }, error: { fontSize: 'var(--mantine-font-size-sm)' } }}
+          styles={{
+            root: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
+            description: { fontSize: 'var(--mantine-font-size-sm)' },
+            error: { fontSize: 'var(--mantine-font-size-sm)' },
+          }}
           name="gender"
           size="md"
           value={gender}
-          onChange={(v) => {
+          onChange={v => {
             setGender(v === 'female' ? 'female' : v === 'male' ? 'male' : '');
-            setErrors((x) => ({ ...x, gender: undefined }));
+            setErrors(x => ({ ...x, gender: undefined }));
           }}
           error={errors.gender}
-          errorProps={{ className: 'mt-1' }}
         >
-          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
-            <Radio size="sm" value="male" label="男" />
+          <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
             <Radio size="sm" value="female" label="女" />
+            <Radio size="sm" value="male" label="男" />
           </div>
         </Radio.Group>
 
         {/* 出生時間 */}
-        <fieldset aria-describedby={errors.time ? timeErrId : undefined}>
-          <legend className="mb-1 font-medium">出生時間（24 小時制，當地時間）</legend>
+        <fieldset
+          aria-describedby={errors.time ? timeErrId : undefined}
+          className="flex flex-col gap-3"
+        >
+          <legend className="font-medium">
+            出生時間（24 小時制，當地時間）
+          </legend>
           <div className="flex flex-wrap items-center gap-2">
             <NativeSelect
               ref={hourRef}
@@ -321,9 +406,9 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
               data={HOUR_OPTIONS}
               value={hour}
               disabled={timeUnknown}
-              onChange={(e) => {
+              onChange={e => {
                 setHour(e.currentTarget.value);
-                setErrors((x) => ({ ...x, time: undefined }));
+                setErrors(x => ({ ...x, time: undefined }));
               }}
               error={Boolean(errors.time)}
             />
@@ -337,27 +422,28 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
               data={MINUTE_OPTIONS}
               value={minute}
               disabled={timeUnknown}
-              onChange={(e) => {
+              onChange={e => {
                 setMinute(e.currentTarget.value);
-                setErrors((x) => ({ ...x, time: undefined }));
+                setErrors(x => ({ ...x, time: undefined }));
               }}
               error={Boolean(errors.time)}
             />
           </div>
           <Checkbox
-            className="mt-3"
             size="sm"
             checked={timeUnknown}
-            onChange={(e) => {
+            onChange={e => {
               setTimeUnknown(e.currentTarget.checked);
-              setErrors((x) => ({ ...x, time: undefined }));
+              setErrors(x => ({ ...x, time: undefined }));
             }}
             label={<span className="text-base">出生時間不確定</span>}
             description="以當地中午 12:00 計算，並檢查前後 6 與 12 小時的差異，讓你知道哪些結果可信。"
-            styles={{ description: { fontSize: 'var(--mantine-font-size-sm)' } }}
+            styles={{
+              description: { fontSize: 'var(--mantine-font-size-sm)' },
+            }}
           />
           {errors.time ? (
-            <Text id={timeErrId} role="alert" size="sm" c="var(--app-danger)" mt="xs">
+            <Text id={timeErrId} role="alert" size="sm" c="var(--app-danger)">
               {errors.time}
             </Text>
           ) : null}
@@ -367,9 +453,9 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
         <PlaceAutocomplete
           id={placeId}
           value={place}
-          onChange={(p) => {
+          onChange={p => {
             setPlace(p);
-            if (p) setErrors((x) => ({ ...x, place: undefined }));
+            if (p) setErrors(x => ({ ...x, place: undefined }));
           }}
           optional={manualTz !== ''}
           error={errors.place}
@@ -386,36 +472,53 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
             <span>進階選項</span>
             <span aria-hidden="true">{advancedOpen ? '−' : '+'}</span>
           </UnstyledButton>
-          <Collapse id={advancedId} expanded={advancedOpen} keepMountedMode="display-none">
+          <Collapse
+            id={advancedId}
+            expanded={advancedOpen}
+            keepMountedMode="display-none"
+          >
             <Stack gap="lg" className="border-t border-border px-4 py-4">
               <Select
                 id={tzId}
                 size="md"
                 label="手動選擇時區"
-                labelProps={{ className: 'mb-1 font-medium' }}
+                labelProps={{ className: 'font-medium' }}
                 description="找不到出生地點時使用。選擇後會覆蓋地點帶出的時區；請選擇出生地所屬的 IANA 時區（例如 Asia/Taipei）。"
                 inputWrapperOrder={['label', 'input', 'description']}
-                descriptionProps={{ className: 'mt-1' }}
-                styles={{ description: { fontSize: 'var(--mantine-font-size-sm)' } }}
+                styles={{
+                  root: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                  },
+                  description: { fontSize: 'var(--mantine-font-size-sm)' },
+                }}
                 data={tzOptions}
                 value={manualTz || AUTO_TZ}
                 allowDeselect={false}
                 searchable
                 nothingFoundMessage="找不到符合的時區"
-                onChange={(v) => {
+                onChange={v => {
                   const tz = v && v !== AUTO_TZ ? v : '';
                   setManualTz(tz);
-                  if (tz) setErrors((x) => ({ ...x, place: undefined }));
+                  if (tz) setErrors(x => ({ ...x, place: undefined }));
                 }}
                 className="sm:w-96"
               />
               <Radio.Group
                 label="月亮交點模式"
-                labelProps={{ className: 'mb-1 font-medium' }}
+                labelProps={{ className: 'font-medium' }}
                 name="nodeMode"
                 size="md"
                 value={nodeMode}
-                onChange={(v) => setNodeMode(v === 'mean' ? 'mean' : 'true')}
+                onChange={v => setNodeMode(v === 'mean' ? 'mean' : 'true')}
+                styles={{
+                  root: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                  },
+                }}
               >
                 <div className="flex flex-wrap gap-x-6 gap-y-2">
                   <Radio size="sm" value="true" label="真交點（預設）" />
@@ -429,26 +532,36 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
         <p className="text-sm text-muted" aria-live="polite">
           {effectiveTz ? (
             <>
-              計算時區：<span className="font-medium text-fg">{effectiveTz}</span>
+              計算時區：
+              <span className="font-medium text-fg">{effectiveTz}</span>
               {manualTz ? '（手動選擇）' : ''}
             </>
           ) : null}
         </p>
 
         {formError ? (
-          <Alert variant="outline" color="var(--app-danger)" className="text-base">
+          <Alert
+            variant="outline"
+            color="var(--app-danger)"
+            className="text-base"
+          >
             <span className="text-danger">{formError}</span>
           </Alert>
         ) : null}
 
         <div>
-          <Button type="submit" size="lg" loading={submitting} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            size="lg"
+            loading={submitting}
+            className="w-full sm:w-auto"
+          >
             {submitting ? '計算中…' : submitLabel}
           </Button>
         </div>
 
         {submitting ? (
-          <div aria-hidden="true" className="space-y-3">
+          <div aria-hidden="true" className="flex flex-col gap-3">
             <Skeleton height={16} width="66%" radius="sm" />
             <Skeleton height={16} width="50%" radius="sm" />
             <Skeleton height={160} radius="sm" />
@@ -456,7 +569,11 @@ export function BirthForm({ header, validateExtra, onComputed, submitLabel = '�
         ) : null}
       </form>
 
-      <AmbiguousDialog state={ambiguous} onChoose={chooseCandidate} onCancel={() => setAmbiguous(null)} />
+      <AmbiguousDialog
+        state={ambiguous}
+        onChoose={chooseCandidate}
+        onCancel={() => setAmbiguous(null)}
+      />
     </>
   );
 }
@@ -486,30 +603,40 @@ function AmbiguousDialog({
       closeButtonProps={{ 'aria-label': '關閉' }}
       size="32rem"
       radius="md"
-      styles={{ title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 } }}
+      styles={{
+        title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 },
+      }}
     >
       {current ? (
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            {current.input.date} {current.input.time} 在 {current.input.timezone} 正好遇到夏令時間結束、時鐘撥回，同一個當地時間出現了兩次。請依出生證明或家人記憶選擇：
+            {current.input.date} {current.input.time} 在{' '}
+            {current.input.timezone}{' '}
+            正好遇到夏令時間結束、時鐘撥回，同一個當地時間出現了兩次。請依出生證明或家人記憶選擇：
           </Text>
-          <ul className="space-y-2">
-            {options.map((o) => (
+          <ul className="flex flex-col gap-2">
+            {options.map(o => (
               <li key={o.which}>
                 <UnstyledButton
                   onClick={() => onChoose(o.which)}
-                  className="w-full rounded-md border border-border px-4 py-3 text-left hover:bg-surface-2"
+                  className="flex w-full flex-col gap-0.5 rounded-md border border-border px-4 py-3 text-left hover:bg-surface-2"
                 >
-                  <span className="block font-medium">{o.title}</span>
-                  <span className="block text-sm text-muted">
-                    當地 {current.input.date} {current.input.time}（{o.offsetLabel}）＝ {formatUtc(o.utc)}
+                  <span className="font-medium">{o.title}</span>
+                  <span className="text-sm text-muted">
+                    當地 {current.input.date} {current.input.time}（
+                    {o.offsetLabel}）＝ {formatUtc(o.utc)}
                   </span>
                 </UnstyledButton>
               </li>
             ))}
           </ul>
           <div className="text-right">
-            <Button variant="subtle" size="sm" onClick={onCancel} className="underline">
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={onCancel}
+              className="underline"
+            >
               取消
             </Button>
           </div>
@@ -535,18 +662,23 @@ function describeCandidates(state: AmbiguousState): CandidateOption[] {
   const [y, mo, d] = state.input.date.split('-').map(Number);
   const [hh, mm] = state.input.time.split(':').map(Number);
   const wall = Date.UTC(y, mo - 1, d, hh, mm);
-  const offsets = state.candidates.map((iso) => Math.round((wall - Date.parse(iso)) / 60000));
+  const offsets = state.candidates.map(iso =>
+    Math.round((wall - Date.parse(iso)) / 60000),
+  );
   const [o0, o1] = offsets;
   const labelFor = (i: 0 | 1): string => {
-    if (!Number.isFinite(o0) || !Number.isFinite(o1) || o0 === o1) return i === 0 ? '較早的時刻' : '較晚的時刻';
+    if (!Number.isFinite(o0) || !Number.isFinite(o1) || o0 === o1)
+      return i === 0 ? '較早的時刻' : '較晚的時刻';
     const mine = offsets[i];
     const other = offsets[1 - i];
     return mine > other ? '夏令時間' : '標準時間';
   };
-  return ([0, 1] as const).map((i) => ({
+  return ([0, 1] as const).map(i => ({
     which: i === 0 ? 'earlier' : 'later',
     utc: state.candidates[i],
     title: `${labelFor(i)}（${i === 0 ? '第一次' : '第二次'}出現）`,
-    offsetLabel: Number.isFinite(offsets[i]) ? formatOffset(offsets[i]) : '時差不明',
+    offsetLabel: Number.isFinite(offsets[i])
+      ? formatOffset(offsets[i])
+      : '時差不明',
   }));
 }

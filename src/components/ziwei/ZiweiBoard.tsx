@@ -158,10 +158,10 @@ function PalaceCell({
 
   return (
     <article
-      className={`flex min-h-0 flex-col overflow-hidden border border-border p-1.5 text-[11px] leading-snug sm:p-2 sm:text-xs ${bg} ${selected ? 'ring-2 ring-accent ring-inset' : ''}`}
+      className={`flex min-h-0 flex-col gap-0.5 overflow-hidden border border-border p-1.5 text-[11px] leading-snug sm:p-2 sm:text-xs ${bg} ${selected ? 'ring-2 ring-accent ring-inset' : ''}`}
       style={{ gridArea: PALACE_GRID_AREA[palace.index] }}
     >
-      <header className="mb-0.5 flex items-baseline justify-between gap-1">
+      <header className="flex items-baseline justify-between gap-1">
         <h3 className="font-semibold">
           <span className="font-normal">
             {palace.heavenlyStem}
@@ -183,7 +183,7 @@ function PalaceCell({
         </p>
       ) : null}
       {palace.ages.length > 0 ? (
-        <p className="mb-0.5 text-muted">
+        <p className="text-muted">
           小限:
           {palace.ages.slice(0, 7).map(age => (
             <span

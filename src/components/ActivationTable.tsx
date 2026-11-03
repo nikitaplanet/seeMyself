@@ -47,9 +47,9 @@ function Cell({ a }: { a: Activation | undefined }) {
 function Details({ a, label }: { a: Activation | undefined; label: string }) {
   if (!a) return null;
   return (
-    <div>
+    <div className="flex flex-col gap-1">
       <p className="font-medium">{label}</p>
-      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
         <dt className="text-muted">顏色</dt>
         <dd>{a.color}</dd>
         <dt className="text-muted">調性</dt>
@@ -85,15 +85,20 @@ export function ActivationTable({ activations }: { activations: readonly Activat
   }
 
   return (
-    <section aria-labelledby="activations-title" className="rounded-lg border border-border bg-surface p-5">
-      <h2 id="activations-title" className="text-lg font-semibold">
-        星體啟動
-      </h2>
-      <p className="mt-1 text-sm text-muted">
-        格式為「閘門.爻」。點選星體可展開顏色、調性、基調與黃經。
-        {anyWarn ? ' ⚠ 表示距離爻的邊界不到 30 分鐘，出生時間稍有誤差就可能改變。' : ''}
-      </p>
-      <table className="mt-3 w-full border-collapse text-center">
+    <section
+      aria-labelledby="activations-title"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 id="activations-title" className="text-lg font-semibold">
+          星體啟動
+        </h2>
+        <p className="text-sm text-muted">
+          格式為「閘門.爻」。點選星體可展開顏色、調性、基調與黃經。
+          {anyWarn ? ' ⚠ 表示距離爻的邊界不到 30 分鐘，出生時間稍有誤差就可能改變。' : ''}
+        </p>
+      </div>
+      <table className="w-full border-collapse text-center">
         <caption className="sr-only">設計與個性的 13 個星體啟動</caption>
         <thead>
           <tr className="border-b border-border text-sm">

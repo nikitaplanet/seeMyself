@@ -43,11 +43,14 @@ export function ChartSummary({ stored, busy, onToggleNodeMode }: Props) {
   ];
 
   return (
-    <section aria-labelledby="summary-title" className="rounded-lg border border-border bg-surface p-5">
+    <section
+      aria-labelledby="summary-title"
+      className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+    >
       <h2 id="summary-title" className="text-xl font-semibold">
         {TYPE_NAMES_ZH[chart.type]} · {chart.profile.personality}/{chart.profile.design}
       </h2>
-      <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="text-muted">{k}</dt>
@@ -56,38 +59,42 @@ export function ChartSummary({ stored, busy, onToggleNodeMode }: Props) {
         ))}
       </dl>
 
-      <h3 className="mt-5 border-t border-border pt-4 font-semibold">出生資料</h3>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <dt className="text-muted">當地時間</dt>
-        <dd>
-          {input.date} {stored.timeUnknown ? '時間不確定（以 12:00 計算）' : input.time}
-          <span className="block text-muted">
-            {stored.placeLabel ? `${stored.placeLabel} · ` : ''}
-            {input.timezone}
-          </span>
-        </dd>
-        <dt className="text-muted">個性（出生）</dt>
-        <dd>
-          <time dateTime={chart.utc.personality}>{formatUtc(chart.utc.personality)}</time>
-        </dd>
-        <dt className="text-muted">設計</dt>
-        <dd>
-          <time dateTime={chart.utc.design}>{formatUtc(chart.utc.design)}</time>
-          <span className="block text-muted">太陽黃經回推 88° 的時刻</span>
-        </dd>
-        <dt className="text-muted">交點模式</dt>
-        <dd>
-          <span className="font-medium">{NODE_MODE_NAMES_ZH[nodeMode]}</span>
-          <button
-            type="button"
-            onClick={onToggleNodeMode}
-            disabled={busy}
-            className="ml-3 rounded-md border border-border px-2 py-0.5 text-sm hover:bg-surface-2 disabled:opacity-60"
-          >
-            {busy ? '重新計算中…' : `改用${NODE_MODE_NAMES_ZH[other]}`}
-          </button>
-        </dd>
-      </dl>
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <h3 className="font-semibold">出生資料</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+          <dt className="text-muted">當地時間</dt>
+          <dd className="flex flex-col gap-0.5">
+            <span>
+              {input.date} {stored.timeUnknown ? '時間不確定（以 12:00 計算）' : input.time}
+            </span>
+            <span className="text-muted">
+              {stored.placeLabel ? `${stored.placeLabel} · ` : ''}
+              {input.timezone}
+            </span>
+          </dd>
+          <dt className="text-muted">個性（出生）</dt>
+          <dd>
+            <time dateTime={chart.utc.personality}>{formatUtc(chart.utc.personality)}</time>
+          </dd>
+          <dt className="text-muted">設計</dt>
+          <dd className="flex flex-col gap-0.5">
+            <time dateTime={chart.utc.design}>{formatUtc(chart.utc.design)}</time>
+            <span className="text-muted">太陽黃經回推 88° 的時刻</span>
+          </dd>
+          <dt className="text-muted">交點模式</dt>
+          <dd className="flex flex-wrap items-center gap-3">
+            <span className="font-medium">{NODE_MODE_NAMES_ZH[nodeMode]}</span>
+            <button
+              type="button"
+              onClick={onToggleNodeMode}
+              disabled={busy}
+              className="rounded-md border border-border px-2 py-0.5 text-sm hover:bg-surface-2 disabled:opacity-60"
+            >
+              {busy ? '重新計算中…' : `改用${NODE_MODE_NAMES_ZH[other]}`}
+            </button>
+          </dd>
+        </dl>
+      </div>
     </section>
   );
 }

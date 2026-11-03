@@ -3,7 +3,11 @@
 import { Alert, Button, PasswordInput, Stack, Text } from '@mantine/core';
 import Link from 'next/link';
 import { useState } from 'react';
-import { authErrorMessage, PASSWORD_MIN_LENGTH, validateNewPassword } from '@/lib/auth/errors';
+import {
+  authErrorMessage,
+  PASSWORD_MIN_LENGTH,
+  validateNewPassword,
+} from '@/lib/auth/errors';
 import { useAuth } from '@/lib/auth/useAuth';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AuthCardSkeleton } from './AuthCard';
@@ -13,9 +17,11 @@ import { AuthCardSkeleton } from './AuthCard';
 
 const INPUT_PROPS = {
   size: 'md',
-  labelProps: { className: 'mb-1 font-medium' },
-  errorProps: { className: 'mt-1' },
-  styles: { error: { fontSize: 'var(--mantine-font-size-sm)' } },
+  labelProps: { className: 'font-medium' },
+  styles: {
+    root: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
+    error: { fontSize: 'var(--mantine-font-size-sm)' },
+  },
   visibilityToggleButtonProps: { 'aria-label': '顯示或隱藏密碼' },
 } as const;
 
@@ -23,7 +29,9 @@ export function ResetPasswordView() {
   const auth = useAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
+  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>(
+    {},
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -63,7 +71,9 @@ export function ResetPasswordView() {
     setFormError(null);
     if (e.password || e.confirm) return;
     setBusy(true);
-    const { error } = await getSupabaseBrowserClient().auth.updateUser({ password });
+    const { error } = await getSupabaseBrowserClient().auth.updateUser({
+      password,
+    });
     setBusy(false);
     if (error) setFormError(authErrorMessage(error));
     else setDone(true);
@@ -83,9 +93,9 @@ export function ResetPasswordView() {
           description={`至少 ${PASSWORD_MIN_LENGTH} 個字元`}
           autoComplete="new-password"
           value={password}
-          onChange={(e) => {
+          onChange={e => {
             setPassword(e.currentTarget.value);
-            setErrors((x) => ({ ...x, password: undefined }));
+            setErrors(x => ({ ...x, password: undefined }));
           }}
           error={errors.password}
         />
@@ -94,9 +104,9 @@ export function ResetPasswordView() {
           label="確認新密碼"
           autoComplete="new-password"
           value={confirm}
-          onChange={(e) => {
+          onChange={e => {
             setConfirm(e.currentTarget.value);
-            setErrors((x) => ({ ...x, confirm: undefined }));
+            setErrors(x => ({ ...x, confirm: undefined }));
           }}
           error={errors.confirm}
         />

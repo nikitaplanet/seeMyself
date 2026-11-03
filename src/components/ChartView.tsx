@@ -63,12 +63,12 @@ export function ChartView() {
   }
 
   return (
-    <div aria-busy={busy}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="text-2xl font-bold">
+    <div aria-busy={busy} className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h1 className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold">
           排盤結果
           {stored.saved ? (
-            <span className="ml-2 text-lg font-medium text-muted">
+            <span className="text-lg font-medium text-muted">
               · {stored.saved.name}
             </span>
           ) : null}
@@ -83,7 +83,7 @@ export function ChartView() {
       {error ? (
         <p
           role="alert"
-          className="mb-4 rounded-md border border-danger px-3 py-2 text-danger"
+          className="rounded-md border border-danger px-3 py-2 text-danger"
         >
           {error}
         </p>
@@ -92,7 +92,7 @@ export function ChartView() {
       <div
         role="tablist"
         aria-label="命盤種類"
-        className="mb-6 flex gap-1 border-b border-border"
+        className="flex gap-1 border-b border-border"
       >
         <TabButton selected={tab === 'hd'} onClick={() => setTab('hd')}>
           人類圖
@@ -116,10 +116,10 @@ export function ChartView() {
         <BaziTab stored={stored} />
       ) : (
         <div
-          className={`space-y-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}
+          className={`flex flex-col gap-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}
         >
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6">
               <ChartSummary
                 stored={stored}
                 busy={busy}
@@ -127,7 +127,7 @@ export function ChartView() {
               />
               <section
                 aria-labelledby="graph-title"
-                className="rounded-lg border border-border bg-surface p-4"
+                className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
               >
                 <h2 id="graph-title" className="text-lg font-semibold">
                   人體圖
@@ -136,7 +136,7 @@ export function ChartView() {
                 <BodyGraph chart={chart} />
               </section>
             </div>
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6">
               <ActivationTable activations={chart.activations} />
               <SensitivityPanel
                 chart={chart}
@@ -229,7 +229,7 @@ function TabButton({
 function GraphLegend() {
   return (
     <ul
-      className="mb-2 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted"
+      className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted"
       aria-label="圖例"
     >
       <li className="flex items-center gap-1.5">
@@ -291,15 +291,15 @@ function ChannelList({ chart }: { chart: ChartResult }) {
   return (
     <section
       aria-labelledby="channels-title"
-      className="rounded-lg border border-border bg-surface p-5"
+      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
     >
       <h2 id="channels-title" className="text-lg font-semibold">
         已成立的通道
       </h2>
       {chart.channels.length === 0 ? (
-        <p className="mt-2 text-muted">沒有已成立的通道。</p>
+        <p className="text-muted">沒有已成立的通道。</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border">
+        <ul className="flex flex-col divide-y divide-border">
           {chart.channels.map(c => (
             <li
               key={c.id}
@@ -320,14 +320,16 @@ function ChannelList({ chart }: { chart: ChartResult }) {
 
 function EmptyState() {
   return (
-    <div className="mx-auto max-w-xl rounded-lg border border-border bg-surface p-8 text-center">
-      <h1 className="text-xl font-semibold">目前沒有排盤資料</h1>
-      <p className="mt-3 text-muted">
-        為了保護隱私，排盤結果只暫存在原本的瀏覽器分頁中；關閉分頁或直接開啟這個網址時，就不會有資料。
-      </p>
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-6 rounded-lg border border-border bg-surface p-8 text-center">
+      <div className="flex flex-col items-center gap-3">
+        <h1 className="text-xl font-semibold">目前沒有排盤資料</h1>
+        <p className="text-muted">
+          為了保護隱私，排盤結果只暫存在原本的瀏覽器分頁中；關閉分頁或直接開啟這個網址時，就不會有資料。
+        </p>
+      </div>
       <Link
         href="/"
-        className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 font-semibold text-accent-fg hover:opacity-90"
+        className="inline-block rounded-md bg-accent px-5 py-2.5 font-semibold text-accent-fg hover:opacity-90"
       >
         輸入出生資料
       </Link>
@@ -338,17 +340,17 @@ function EmptyState() {
 function ChartSkeleton() {
   const block = 'hd-skeleton rounded-lg bg-surface-2';
   return (
-    <div aria-busy="true" aria-live="polite">
+    <div aria-busy="true" aria-live="polite" className="flex flex-col gap-6">
       <p className="sr-only">正在載入排盤結果…</p>
-      <div className={`${block} mb-6 h-8 w-40`} />
+      <div className={`${block} h-8 w-40`} />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <div className={`${block} h-64`} />
           <div
             className={`${block} mx-auto aspect-[400/640] w-full max-w-[480px]`}
           />
         </div>
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <div className={`${block} h-96`} />
           <div className={`${block} h-40`} />
         </div>

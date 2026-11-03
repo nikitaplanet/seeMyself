@@ -7,7 +7,11 @@ import { useEffect, useId, useState } from 'react';
 import { BirthForm } from '@/components/BirthForm';
 import { loginUrl } from '@/lib/auth/redirect';
 import { useAuth } from '@/lib/auth/useAuth';
-import { normalizeChartMeta, type ChartMeta, type MetaErrors } from '@/lib/charts/mapping';
+import {
+  normalizeChartMeta,
+  type ChartMeta,
+  type MetaErrors,
+} from '@/lib/charts/mapping';
 import { insertChart } from '@/lib/charts/repo';
 import type { StoredChart } from '@/lib/ui/chartClient';
 import { ChartMetaFields } from './ChartMetaFields';
@@ -31,8 +35,15 @@ export function NewChartView() {
     if (auth.status === 'signedOut') router.replace(loginUrl('/charts/new'));
   }, [auth.status, router]);
 
-  if (auth.status === 'unavailable') return <p className="text-muted">網站尚未設定會員功能。</p>;
-  if (auth.status !== 'signedIn') return <div aria-hidden="true" className="hd-skeleton h-96 rounded-lg bg-surface-2" />;
+  if (auth.status === 'unavailable')
+    return <p className="text-muted">網站尚未設定會員功能。</p>;
+  if (auth.status !== 'signedIn')
+    return (
+      <div
+        aria-hidden="true"
+        className="hd-skeleton h-96 rounded-lg bg-surface-2"
+      />
+    );
 
   function validateExtra(): boolean {
     const res = normalizeChartMeta(meta);
@@ -55,22 +66,29 @@ export function NewChartView() {
   }
 
   return (
-    <Paper withBorder radius="md" className="mt-6 p-5 sm:p-8">
-      <BirthForm
-        submitLabel="計算並儲存"
-        validateExtra={validateExtra}
-        onComputed={onComputed}
-        header={
-          <Stack gap="lg" className="border-b border-border pb-6">
-            <ChartMetaFields idPrefix={ids} value={meta} onChange={setMeta} errors={errors} />
-          </Stack>
-        }
-      />
-      <p className="mt-6 text-sm">
+    <div className="flex flex-col gap-6">
+      <Paper withBorder radius="md" className="p-5 sm:p-8">
+        <BirthForm
+          submitLabel="計算並儲存"
+          validateExtra={validateExtra}
+          onComputed={onComputed}
+          header={
+            <Stack gap="lg" className="border-b border-border pb-6">
+              <ChartMetaFields
+                idPrefix={ids}
+                value={meta}
+                onChange={setMeta}
+                errors={errors}
+              />
+            </Stack>
+          }
+        />
+      </Paper>
+      <p className="text-sm">
         <Link href="/charts" className="underline hover:text-accent">
           返回我的命盤
         </Link>
       </p>
-    </Paper>
+    </div>
   );
 }

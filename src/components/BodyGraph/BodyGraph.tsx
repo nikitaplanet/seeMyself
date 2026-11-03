@@ -15,8 +15,19 @@ import {
 } from '@/lib/hd/constants';
 import type { Activation, ChartResult, Side } from '@/lib/hd/types';
 import { Center } from './Center';
-import { BothSidesPattern, ChannelHalf, ChannelTrack, gateState } from './Channel';
-import { CENTERS, GATE_LABEL_RADIUS, GATE_POINTS, VIEWBOX, gateLabelPoint } from './layout';
+import {
+  BothSidesPattern,
+  ChannelHalf,
+  ChannelTrack,
+  gateState,
+} from './Channel';
+import {
+  CENTERS,
+  GATE_LABEL_RADIUS,
+  GATE_POINTS,
+  VIEWBOX,
+  gateLabelPoint,
+} from './layout';
 
 // Spec §10 — the BodyGraph. Pure geometry from layout.ts, coloured from the ChartResult.
 //
@@ -26,7 +37,12 @@ import { CENTERS, GATE_LABEL_RADIUS, GATE_POINTS, VIEWBOX, gateLabelPoint } from
 
 type GraphChart = Pick<
   ChartResult,
-  'activations' | 'activeGates' | 'definedCenters' | 'type' | 'authority' | 'profile'
+  | 'activations'
+  | 'activeGates'
+  | 'definedCenters'
+  | 'type'
+  | 'authority'
+  | 'profile'
 >;
 
 const SIDE_ORDER: readonly Side[] = ['personality', 'design'];
@@ -35,9 +51,12 @@ export function activationLabel(a: Activation): string {
   return `${SIDE_NAMES_ZH[a.side]} ${PLANET_SYMBOLS[a.planet]} ${PLANET_NAMES_ZH[a.planet]} ${a.gate}.${a.line}`;
 }
 
-function gateActivations(activations: readonly Activation[], gate: number): Activation[] {
+function gateActivations(
+  activations: readonly Activation[],
+  gate: number,
+): Activation[] {
   return activations
-    .filter((a) => a.gate === gate)
+    .filter(a => a.gate === gate)
     .sort(
       (a, b) =>
         SIDE_ORDER.indexOf(a.side) - SIDE_ORDER.indexOf(b.side) ||
@@ -46,8 +65,11 @@ function gateActivations(activations: readonly Activation[], gate: number): Acti
 }
 
 export function bodyGraphSummary(chart: GraphChart): string {
-  const defined = CENTER_ORDER.filter((c) => chart.definedCenters.includes(c)).map((c) => CENTER_NAMES_ZH[c]);
-  const centers = defined.length > 0 ? `已定義中心：${defined.join('、')}` : '沒有已定義中心';
+  const defined = CENTER_ORDER.filter(c =>
+    chart.definedCenters.includes(c),
+  ).map(c => CENTER_NAMES_ZH[c]);
+  const centers =
+    defined.length > 0 ? `已定義中心：${defined.join('、')}` : '沒有已定義中心';
   return `人體圖：${TYPE_NAMES_ZH[chart.type]}，${AUTHORITY_NAMES_ZH[chart.authority]}，人生角色 ${chart.profile.personality}/${chart.profile.design}，${centers}。`;
 }
 
@@ -90,35 +112,55 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
 
         <g data-layer="channel-tracks">
           {CHANNELS.map(([a, b]) => (
-            <ChannelTrack key={`${a}-${b}`} from={GATE_POINTS[a]} to={GATE_POINTS[b]} />
+            <ChannelTrack
+              key={`${a}-${b}`}
+              from={GATE_POINTS[a]}
+              to={GATE_POINTS[b]}
+            />
           ))}
         </g>
         <g data-layer="channel-halves">
           {CHANNELS.map(([a, b]) => (
             <g key={`${a}-${b}`} data-channel={`${a}-${b}`}>
-              <ChannelHalf from={GATE_POINTS[a]} to={GATE_POINTS[b]} state={gateState(chart.activeGates[a])} />
-              <ChannelHalf from={GATE_POINTS[b]} to={GATE_POINTS[a]} state={gateState(chart.activeGates[b])} />
+              <ChannelHalf
+                from={GATE_POINTS[a]}
+                to={GATE_POINTS[b]}
+                state={gateState(chart.activeGates[a])}
+              />
+              <ChannelHalf
+                from={GATE_POINTS[b]}
+                to={GATE_POINTS[a]}
+                state={gateState(chart.activeGates[b])}
+              />
             </g>
           ))}
         </g>
         <g data-layer="centers">
-          {CENTERS.map((c) => (
+          {CENTERS.map(c => (
             <Center key={c.id} layout={c} defined={defined.has(c.id)} />
           ))}
         </g>
         <g data-layer="gate-labels">
-          {allGates.map((gate) => {
+          {allGates.map(gate => {
             const p = gateLabelPoint(gate, GATE_CENTER[gate]);
             const active = chart.activeGates[gate] !== undefined;
             return (
-              <g key={gate} data-gate={gate} data-active={active ? 'true' : 'false'}>
+              <g
+                key={gate}
+                data-gate={gate}
+                data-active={active ? 'true' : 'false'}
+              >
                 <circle
                   cx={p.x}
                   cy={p.y}
                   r={GATE_LABEL_RADIUS}
                   style={
                     active
-                      ? { fill: 'var(--hd-gate-on)', stroke: 'var(--hd-gate-on)', strokeWidth: 1 }
+                      ? {
+                          fill: 'var(--hd-gate-on)',
+                          stroke: 'var(--hd-gate-on)',
+                          strokeWidth: 1,
+                        }
                       : { fill: 'var(--hd-gate-off)', stroke: 'none' }
                   }
                 />
@@ -130,7 +172,9 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
                   style={{
                     fontSize: 7,
                     fontWeight: active ? 700 : 500,
-                    fill: active ? 'var(--hd-gate-on-text)' : 'var(--hd-gate-off-text)',
+                    fill: active
+                      ? 'var(--hd-gate-on-text)'
+                      : 'var(--hd-gate-off-text)',
                   }}
                 >
                   {gate}
@@ -148,7 +192,7 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
         role="group"
         aria-label="已啟動的閘門（按 Tab 逐一檢視）"
       >
-        {activeGateList.map((gate) => {
+        {activeGateList.map(gate => {
           const p = gateLabelPoint(gate, GATE_CENTER[gate]);
           const acts = gateActivations(chart.activations, gate);
           const label = `閘門 ${gate}：${acts.map(activationLabel).join('、')}`;
@@ -162,16 +206,26 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
               aria-describedby={isOpen ? tooltipId : undefined}
               aria-pressed={isOpen && tip?.pinned ? true : undefined}
               className="hd-gate-hit cursor-pointer"
-              onMouseEnter={() => setTip((t) => (t?.pinned ? t : { gate, pinned: false }))}
-              onMouseLeave={() => setTip((t) => (t && !t.pinned ? null : t))}
+              onMouseEnter={() =>
+                setTip(t => (t?.pinned ? t : { gate, pinned: false }))
+              }
+              onMouseLeave={() => setTip(t => (t && !t.pinned ? null : t))}
               onFocus={() => setTip({ gate, pinned: false })}
-              onBlur={() => setTip((t) => (t?.gate === gate ? null : t))}
-              onClick={() => setTip((t) => (t?.gate === gate && t.pinned ? null : { gate, pinned: true }))}
-              onKeyDown={(e) => {
+              onBlur={() => setTip(t => (t?.gate === gate ? null : t))}
+              onClick={() =>
+                setTip(t =>
+                  t?.gate === gate && t.pinned ? null : { gate, pinned: true },
+                )
+              }
+              onKeyDown={e => {
                 if (e.key === 'Escape') setTip(null);
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setTip((t) => (t?.gate === gate && t.pinned ? null : { gate, pinned: true }));
+                  setTip(t =>
+                    t?.gate === gate && t.pinned
+                      ? null
+                      : { gate, pinned: true },
+                  );
                 }
               }}
             >
@@ -192,14 +246,21 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
             transform: 'translate(-50%, calc(-100% - 14px))',
           }}
         >
-          <p className="font-semibold">閘門 {tip.gate}</p>
-          <ul className="mt-1 space-y-0.5">
-            {tipActs.map((a) => (
-              <li key={`${a.side}-${a.planet}`} className={a.side === 'design' ? 'text-design' : 'text-personality'}>
-                {activationLabel(a)}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold">閘門 {tip.gate}</p>
+            <ul className="flex flex-col gap-0.5">
+              {tipActs.map(a => (
+                <li
+                  key={`${a.side}-${a.planet}`}
+                  className={
+                    a.side === 'design' ? 'text-design' : 'text-personality'
+                  }
+                >
+                  {activationLabel(a)}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </figure>

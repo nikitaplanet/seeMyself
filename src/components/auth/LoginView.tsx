@@ -29,9 +29,11 @@ type Mode = 'signin' | 'signup' | 'forgot';
 
 const INPUT_PROPS = {
   size: 'md',
-  labelProps: { className: 'mb-1 font-medium' },
-  errorProps: { className: 'mt-1' },
-  styles: { error: { fontSize: 'var(--mantine-font-size-sm)' } },
+  labelProps: { className: 'font-medium' },
+  styles: {
+    root: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
+    error: { fontSize: 'var(--mantine-font-size-sm)' },
+  },
 } as const;
 
 export function LoginView() {
@@ -288,6 +290,7 @@ export function LoginView() {
       <Tabs
         value={mode}
         onChange={v => switchMode(v === 'signup' ? 'signup' : 'signin')}
+        className="flex flex-col gap-4"
       >
         <Tabs.List grow>
           <Tabs.Tab value="signin" className="text-base">
@@ -297,9 +300,7 @@ export function LoginView() {
             註冊
           </Tabs.Tab>
         </Tabs.List>
-        <Tabs.Panel value={mode} pt="lg">
-          {form}
-        </Tabs.Panel>
+        <Tabs.Panel value={mode}>{form}</Tabs.Panel>
       </Tabs>
       {showGoogle ? (
         <>
@@ -316,9 +317,13 @@ export function LoginView() {
           </Button>
         </>
       ) : null}
-      <Text size="sm" c="dimmed">
-        不登入也能排盤；登入後可以把命盤儲存到帳號。
-        <Link href="/" className="ml-1 underline hover:text-accent">
+      <Text
+        size="sm"
+        c="dimmed"
+        className="inline-flex flex-wrap items-baseline gap-1"
+      >
+        <span>不登入也能排盤；登入後可以把命盤儲存到帳號。</span>
+        <Link href="/" className="underline hover:text-accent">
           回到首頁
         </Link>
       </Text>

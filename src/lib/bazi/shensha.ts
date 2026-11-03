@@ -29,9 +29,16 @@ function piMaOf(yearZhi: string): string {
 }
 
 const TIAN_GUAN: Record<string, string[]> = {
-  甲: ['未'], 乙: ['辰'], 丙: ['巳', '申'], 丁: ['酉', '亥'],
-  戊: ['丑', '未'], 己: ['子', '寅'], 庚: ['亥', '丑'], 辛: ['寅', '午'],
-  壬: ['卯', '巳'], 癸: ['午', '申'],
+  甲: ['未'],
+  乙: ['辰'],
+  丙: ['巳', '申'],
+  丁: ['酉', '亥'],
+  戊: ['丑', '未'],
+  己: ['子', '寅'],
+  庚: ['亥', '丑'],
+  辛: ['寅', '午'],
+  壬: ['卯', '巳'],
+  癸: ['午', '申'],
 };
 
 const JIN_SHEN = new Set(['乙丑', '己巳', '癸酉']);
@@ -57,15 +64,21 @@ export function shenshaOf(opts: {
 }): string[] {
   const out: string[] = [];
   if (opts.deXiu) out.push('德秀貴人');
-  if ((TIAN_GUAN[opts.dayGan] ?? []).includes(opts.pillarZhi)) out.push('天官貴人');
-  if (JIN_SHEN.has(opts.pillarGanZhi)) out.push('金神');
+  if ((TIAN_GUAN[opts.dayGan] ?? []).includes(opts.pillarZhi))
+    out.push('天官貴人');
+  if (opts.pillarKey === 'day' && JIN_SHEN.has(opts.pillarGanZhi))
+    out.push('金神');
   const jiang = sanHePeak(opts.yearZhi);
   if (jiang && opts.pillarZhi === jiang) out.push('將星');
   if (opts.pillarKey === 'time') {
-    if (opts.yearNaYinWx === '金' && '午卯'.includes(opts.pillarZhi)) out.push('童子煞');
-    if (opts.yearNaYinWx === '木' && '午巳'.includes(opts.pillarZhi)) out.push('童子煞');
+    if (opts.yearNaYinWx === '金' && '午卯'.includes(opts.pillarZhi))
+      out.push('童子煞');
+    if (opts.yearNaYinWx === '木' && '午巳'.includes(opts.pillarZhi))
+      out.push('童子煞');
     if (
-      (opts.yearNaYinWx === '水' || opts.yearNaYinWx === '火' || opts.yearNaYinWx === '土') &&
+      (opts.yearNaYinWx === '水' ||
+        opts.yearNaYinWx === '火' ||
+        opts.yearNaYinWx === '土') &&
       '酉戌'.includes(opts.pillarZhi)
     )
       out.push('童子煞');

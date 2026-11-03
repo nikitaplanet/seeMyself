@@ -28,12 +28,20 @@ interface Props {
   id?: string;
 }
 
-export function PlaceAutocomplete({ value, onChange, optional, error, id }: Props) {
+export function PlaceAutocomplete({
+  value,
+  onChange,
+  optional,
+  error,
+  id,
+}: Props) {
   const baseId = useId();
   const inputId = id ?? `${baseId}-input`;
   const [query, setQuery] = useState(value ? placeLabel(value) : '');
   const [results, setResults] = useState<Place[]>([]);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
+    'idle',
+  );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abort = useRef<AbortController | null>(null);
   const combobox = useCombobox();
@@ -52,7 +60,7 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
     abort.current = ctrl;
     setStatus('loading');
     fetch(`/api/places?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
-      .then(async (res) => {
+      .then(async res => {
         if (!res.ok) throw new Error(String(res.status));
         const body = (await res.json()) as { results?: Place[] };
         setResults(Array.isArray(body.results) ? body.results : []);
@@ -84,7 +92,7 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
   }
 
   function choose(placeId: string) {
-    const p = results.find((r) => String(r.id) === placeId);
+    const p = results.find(r => String(r.id) === placeId);
     if (!p) return;
     onChange(p);
     setQuery(placeLabel(p));
@@ -93,7 +101,8 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
   }
 
   // The list only shows once a search has finished (results, "no match" or error).
-  const hasOutcome = results.length > 0 || status === 'done' || status === 'error';
+  const hasOutcome =
+    results.length > 0 || status === 'done' || status === 'error';
   const statusText =
     status === 'loading'
       ? '搜尋中…'
@@ -113,12 +122,16 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
             id={inputId}
             size="md"
             label={
-              <>
+              <span className="inline-flex flex-wrap items-baseline gap-1">
                 出生地點
-                {optional ? <span className="ml-1 text-sm font-normal text-muted">（已手動選擇時區，可不填）</span> : null}
-              </>
+                {optional ? (
+                  <span className="text-sm font-normal text-muted">
+                    （已手動選擇時區，可不填）
+                  </span>
+                ) : null}
+              </span>
             }
-            labelProps={{ className: 'mb-1 font-medium' }}
+            labelProps={{ className: 'font-medium' }}
             type="text"
             autoComplete="off"
             spellCheck={false}
@@ -126,7 +139,8 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
             description={
               value ? (
                 <>
-                  時區：<span className="font-medium text-fg">{value.timezone}</span>
+                  時區：
+                  <span className="font-medium text-fg">{value.timezone}</span>
                   {value.admin1 ? `（${value.admin1}）` : null}
                 </>
               ) : (
@@ -136,16 +150,19 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
             error={error}
             // Hint under the input, then the error (Mantine links both via aria-describedby).
             inputWrapperOrder={['label', 'input', 'description', 'error']}
-            descriptionProps={{ className: 'mt-1' }}
-            errorProps={{ className: 'mt-1' }}
             styles={{
+              root: {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+              },
               description: { fontSize: 'var(--mantine-font-size-sm)' },
               error: { fontSize: 'var(--mantine-font-size-sm)' },
             }}
             aria-required={!optional}
             placeholder="輸入城市名稱，例如：臺北、高雄、Tokyo"
             value={query}
-            onChange={(e) => handleInput(e.currentTarget.value)}
+            onChange={e => handleInput(e.currentTarget.value)}
             onFocus={() => {
               if (results.length > 0 && !value) combobox.openDropdown();
             }}
@@ -154,8 +171,12 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
         </Combobox.Target>
 
         <Combobox.Dropdown hidden={!hasOutcome}>
-          <Combobox.Options aria-label="地點搜尋結果" mah={288} style={{ overflowY: 'auto' }}>
-            {results.map((p) => (
+          <Combobox.Options
+            aria-label="地點搜尋結果"
+            mah={288}
+            style={{ overflowY: 'auto' }}
+          >
+            {results.map(p => (
               <Combobox.Option value={String(p.id)} key={p.id}>
                 <span className="block">{placeLabel(p)}</span>
                 <span className="block text-sm text-muted">
@@ -165,7 +186,11 @@ export function PlaceAutocomplete({ value, onChange, optional, error, id }: Prop
               </Combobox.Option>
             ))}
             {hasOutcome && results.length === 0 ? (
-              <Combobox.Empty>{status === 'error' ? '地名搜尋失敗，請稍後再試。' : '找不到符合的地點。'}</Combobox.Empty>
+              <Combobox.Empty>
+                {status === 'error'
+                  ? '地名搜尋失敗，請稍後再試。'
+                  : '找不到符合的地點。'}
+              </Combobox.Empty>
             ) : null}
           </Combobox.Options>
         </Combobox.Dropdown>

@@ -18,13 +18,13 @@ describe('computeBazi', () => {
   it('matches the 1993-06-21 female reference chart', () => {
     const chart = computeBazi(SAMPLE);
     expect(chart.ganZhiLabel).toBe('癸酉 戊午 癸酉 戊午');
-    expect(chart.pillars.map((p) => `${p.gan}${p.zhi}`)).toEqual([
+    expect(chart.pillars.map(p => `${p.gan}${p.zhi}`)).toEqual([
       '癸酉',
       '戊午',
       '癸酉',
       '戊午',
     ]);
-    expect(chart.pillars.map((p) => p.ganTenGod)).toEqual([
+    expect(chart.pillars.map(p => p.ganTenGod)).toEqual([
       '比肩',
       '正官',
       '元女',
@@ -52,7 +52,7 @@ describe('computeBazi', () => {
       startYear: 1998,
       endYear: 2007,
     });
-    expect(chart.daYun.map((d) => d.ganZhi)).toEqual([
+    expect(chart.daYun.map(d => d.ganZhi)).toEqual([
       '己未',
       '庚申',
       '辛酉',
@@ -63,7 +63,7 @@ describe('computeBazi', () => {
       '丙寅',
       '丁卯',
     ]);
-    expect(chart.daYun.map((d) => d.diShi)).toEqual([
+    expect(chart.daYun.map(d => d.diShi)).toEqual([
       '墓',
       '死',
       '病',
@@ -85,7 +85,7 @@ describe('computeBazi', () => {
     expect(chart.stemNotes).toContain('戊癸合化火');
     expect(chart.branchNotes).toContain('午午自刑');
     expect(chart.branchNotes).toContain('酉酉自刑');
-    const byWx = Object.fromEntries(chart.wuXing.map((s) => [s.wx, s]));
+    const byWx = Object.fromEntries(chart.wuXing.map(s => [s.wx, s]));
     expect(byWx.木.percent).toBe(0);
     expect(byWx.火.percent).toBe(38);
     expect(byWx.土.percent).toBe(37);
@@ -96,8 +96,9 @@ describe('computeBazi', () => {
     expect(byWx.木.stage).toBe('休');
     expect(byWx.水.stage).toBe('囚');
     expect(byWx.金.stage).toBe('死');
-    expect(chart.pillars.every((p) => p.shensha.includes('德秀貴人'))).toBe(true);
+    expect(chart.pillars.every(p => p.shensha.includes('德秀貴人'))).toBe(true);
     expect(chart.pillars[0].shensha).toContain('將星');
+    expect(chart.pillars[0].shensha).not.toContain('金神');
     expect(chart.pillars[2].shensha).toContain('金神');
     expect(chart.pillars[3].shensha).toContain('童子煞');
     expect(chart.pillars[1].shensha).not.toContain('童子煞');

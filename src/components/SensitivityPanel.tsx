@@ -109,11 +109,14 @@ export function SensitivityPanel({ chart, timeUnknown }: { chart: ChartResult; t
   const report = chart.sensitivity;
   if (!report || report.offsets.length === 0) {
     return (
-      <section aria-labelledby="sens-title" className="rounded-lg border border-border bg-surface p-5">
+      <section
+        aria-labelledby="sens-title"
+        className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+      >
         <h2 id="sens-title" className="text-lg font-semibold">
           出生時間敏感度
         </h2>
-        <p className="mt-2 text-muted">這次計算沒有進行敏感度檢查。</p>
+        <p className="text-muted">這次計算沒有進行敏感度檢查。</p>
       </section>
     );
   }
@@ -132,28 +135,31 @@ export function SensitivityPanel({ chart, timeUnknown }: { chart: ChartResult; t
     .filter((g) => g.major.length > 0 || g.shifts.length > 0);
 
   return (
-    <section aria-labelledby="sens-title" className="rounded-lg border border-border bg-surface p-5">
+    <section
+      aria-labelledby="sens-title"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
+    >
       <h2 id="sens-title" className="text-lg font-semibold">
         出生時間敏感度
       </h2>
       {timeUnknown ? (
-        <p className="mt-2 rounded-md bg-surface-2 px-3 py-2 text-sm">
+        <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">
           你勾選了「出生時間不確定」：結果以當地 12:00 計算。以下比較前後 6 與 12 小時，沒有出現在變動清單中的項目才比較可信。
         </p>
       ) : null}
-      <p className={`mt-2 font-medium ${report.stable ? '' : 'text-warning'}`}>
+      <p className={`font-medium ${report.stable ? '' : 'text-warning'}`}>
         {report.stable
           ? `出生時間前後 ${range}內，主要結果（類型、內在權威、人生角色、定義型態）不變。`
           : `出生時間前後 ${range}內，部分主要結果會改變，請確認出生時間是否準確：`}
       </p>
       {groups.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">所有檢查的時間點下，26 個星體的閘門與爻也都相同。</p>
+        <p className="text-sm text-muted">所有檢查的時間點下，26 個星體的閘門與爻也都相同。</p>
       ) : (
-        <ul className="mt-3 space-y-4">
+        <ul className="flex flex-col gap-4">
           {groups.map((g) => (
-            <li key={g.off}>
+            <li key={g.off} className="flex flex-col gap-1">
               <p className="font-medium">{offsetPhrase(g.off)}：</p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
+              <ul className="flex list-disc flex-col gap-0.5 pl-5 text-sm">
                 {g.major.map((c) => (
                   <li key={c.field}>{majorSentence(c)}</li>
                 ))}

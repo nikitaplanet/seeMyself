@@ -14,9 +14,18 @@ import {
   type MetaErrors,
   type SavedChart,
 } from '@/lib/charts/mapping';
-import { deleteChart, listCharts, updateChart, type RepoResult } from '@/lib/charts/repo';
+import {
+  deleteChart,
+  listCharts,
+  updateChart,
+  type RepoResult,
+} from '@/lib/charts/repo';
 import { AUTHORITY_NAMES_ZH, TYPE_NAMES_ZH } from '@/lib/hd/constants';
-import { attachSidecars, postBoth, saveStoredChart } from '@/lib/ui/chartClient';
+import {
+  attachSidecars,
+  postBoth,
+  saveStoredChart,
+} from '@/lib/ui/chartClient';
 import { ChartMetaFields } from './ChartMetaFields';
 
 // /charts — the signed-in user's saved charts, in two tabs (我的 / 好友). Reads and writes go
@@ -48,7 +57,9 @@ interface ListState {
 export function ChartsView() {
   const auth = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<ChartKind>(() => (typeof window === 'undefined' ? 'self' : readChartsTab()));
+  const [tab, setTab] = useState<ChartKind>(() =>
+    typeof window === 'undefined' ? 'self' : readChartsTab(),
+  );
   const [list, setList] = useState<ListState | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [editing, setEditing] = useState<SavedChart | null>(null);
@@ -65,7 +76,7 @@ export function ChartsView() {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    void listCharts().then((result) => {
+    void listCharts().then(result => {
       if (!cancelled) setList({ userId, result });
     });
     return () => {
@@ -80,11 +91,20 @@ export function ChartsView() {
 
   if (!list.result.ok) {
     return (
-      <Alert variant="outline" color="var(--app-danger)" role="alert" title="無法載入命盤">
+      <Alert
+        variant="outline"
+        color="var(--app-danger)"
+        role="alert"
+        title="無法載入命盤"
+      >
         <Stack gap="sm">
           <span className="text-danger">{list.result.message}</span>
           <div>
-            <Button size="xs" variant="default" onClick={() => setReloadKey((k) => k + 1)}>
+            <Button
+              size="xs"
+              variant="default"
+              onClick={() => setReloadKey(k => k + 1)}
+            >
               重新載入
             </Button>
           </div>
@@ -94,13 +114,33 @@ export function ChartsView() {
   }
 
   const charts = list.result.data;
-  const counts = { self: charts.filter((c) => c.kind === 'self').length, friend: charts.filter((c) => c.kind === 'friend').length };
+  const counts = {
+    self: charts.filter(c => c.kind === 'self').length,
+    friend: charts.filter(c => c.kind === 'friend').length,
+  };
 
   function replaceLocal(next: SavedChart) {
-    setList((l) => (l && l.result.ok ? { ...l, result: { ok: true, data: l.result.data.map((c) => (c.id === next.id ? next : c)) } } : l));
+    setList(l =>
+      l && l.result.ok
+        ? {
+            ...l,
+            result: {
+              ok: true,
+              data: l.result.data.map(c => (c.id === next.id ? next : c)),
+            },
+          }
+        : l,
+    );
   }
   function removeLocal(id: string) {
-    setList((l) => (l && l.result.ok ? { ...l, result: { ok: true, data: l.result.data.filter((c) => c.id !== id) } } : l));
+    setList(l =>
+      l && l.result.ok
+        ? {
+            ...l,
+            result: { ok: true, data: l.result.data.filter(c => c.id !== id) },
+          }
+        : l,
+    );
   }
 
   async function open(chart: SavedChart) {
@@ -136,13 +176,20 @@ export function ChartsView() {
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {actionError ? (
-        <Alert variant="outline" color="var(--app-danger)" role="alert" mb="md" withCloseButton onClose={() => setActionError(null)} closeButtonLabel="關閉">
+        <Alert
+          variant="outline"
+          color="var(--app-danger)"
+          role="alert"
+          withCloseButton
+          onClose={() => setActionError(null)}
+          closeButtonLabel="關閉"
+        >
           <span className="text-danger">{actionError}</span>
         </Alert>
       ) : null}
-      <Tabs value={tab} onChange={changeTab}>
+      <Tabs value={tab} onChange={changeTab} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <Tabs.List>
             <Tabs.Tab value="self" className="text-base">
@@ -157,37 +204,46 @@ export function ChartsView() {
             href="/charts/new"
             onClick={() => rememberChartsTab(tab)}
             size="sm"
-            mb={4}
           >
             {tab === 'friend' ? '新增好友命盤' : '新增我的命盤'}
           </Button>
         </div>
-        {(['self', 'friend'] as const).map((k) => (
-          <Tabs.Panel key={k} value={k} pt="lg">
+        {(['self', 'friend'] as const).map(k => (
+          <Tabs.Panel key={k} value={k}>
             {counts[k] === 0 ? (
               <EmptyState kind={k} />
             ) : (
               <ul className="grid gap-4 sm:grid-cols-2">
-                {charts.filter((c) => c.kind === k).map((c) => (
-                  <ChartCard
-                    key={c.id}
-                    chart={c}
-                    opening={opening === c.id}
-                    disabled={opening !== null}
-                    onOpen={() => open(c)}
-                    onEdit={() => setEditing(c)}
-                    onDelete={() => setDeleting(c)}
-                  />
-                ))}
+                {charts
+                  .filter(c => c.kind === k)
+                  .map(c => (
+                    <ChartCard
+                      key={c.id}
+                      chart={c}
+                      opening={opening === c.id}
+                      disabled={opening !== null}
+                      onOpen={() => open(c)}
+                      onEdit={() => setEditing(c)}
+                      onDelete={() => setDeleting(c)}
+                    />
+                  ))}
               </ul>
             )}
           </Tabs.Panel>
         ))}
       </Tabs>
 
-      <EditDialog chart={editing} onClose={() => setEditing(null)} onSaved={replaceLocal} />
-      <DeleteDialog chart={deleting} onClose={() => setDeleting(null)} onDeleted={removeLocal} />
-    </>
+      <EditDialog
+        chart={editing}
+        onClose={() => setEditing(null)}
+        onSaved={replaceLocal}
+      />
+      <DeleteDialog
+        chart={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={removeLocal}
+      />
+    </div>
   );
 }
 
@@ -220,7 +276,10 @@ function ChartCard({
   const summary = summaryText(chart);
   const titleId = `chart-${chart.id}-title`;
   return (
-    <li aria-labelledby={titleId} className="flex flex-col rounded-lg border border-border bg-surface p-4">
+    <li
+      aria-labelledby={titleId}
+      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+    >
       <div className="flex items-start justify-between gap-2">
         <h2 id={titleId} className="break-all text-lg font-semibold">
           {chart.name}
@@ -231,20 +290,43 @@ function ChartCard({
           </Badge>
         ) : null}
       </div>
-      {summary ? <p className="mt-1 font-medium">{summary}</p> : null}
-      <p className="mt-1 text-sm text-muted">
-        {chart.input.date} {chart.timeUnknown ? '' : chart.input.time}
-        <span className="block">{chart.placeLabel ?? chart.input.timezone}</span>
+      {summary ? <p className="font-medium">{summary}</p> : null}
+      <p className="flex flex-col gap-0.5 text-sm text-muted">
+        <span>
+          {chart.input.date} {chart.timeUnknown ? '' : chart.input.time}
+        </span>
+        <span>{chart.placeLabel ?? chart.input.timezone}</span>
       </p>
-      {chart.note ? <p className="mt-2 whitespace-pre-line break-words text-sm">{chart.note}</p> : null}
-      <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <Button size="xs" onClick={onOpen} loading={opening} disabled={disabled && !opening} aria-describedby={titleId}>
+      {chart.note ? (
+        <p className="whitespace-pre-line break-words text-sm">{chart.note}</p>
+      ) : null}
+      <div className="mt-auto flex flex-wrap gap-2 pt-2">
+        <Button
+          size="xs"
+          onClick={onOpen}
+          loading={opening}
+          disabled={disabled && !opening}
+          aria-describedby={titleId}
+        >
           開啟
         </Button>
-        <Button size="xs" variant="default" onClick={onEdit} disabled={disabled} aria-describedby={titleId}>
+        <Button
+          size="xs"
+          variant="default"
+          onClick={onEdit}
+          disabled={disabled}
+          aria-describedby={titleId}
+        >
           編輯
         </Button>
-        <Button size="xs" variant="subtle" color="var(--app-danger)" onClick={onDelete} disabled={disabled} aria-describedby={titleId}>
+        <Button
+          size="xs"
+          variant="subtle"
+          color="var(--app-danger)"
+          onClick={onDelete}
+          disabled={disabled}
+          aria-describedby={titleId}
+        >
           <span className="text-danger">刪除</span>
         </Button>
       </div>
@@ -254,20 +336,32 @@ function ChartCard({
 
 function EmptyState({ kind }: { kind: ChartKind }) {
   return (
-    <div className="rounded-lg border border-dashed border-border p-8 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-border p-8 text-center">
       {kind === 'self' ? (
         <>
-          <p className="font-medium">還沒有儲存自己的命盤</p>
-          <p className="mt-2 text-sm text-muted">在首頁排盤後，按結果頁的「儲存到帳號」即可存到這裡。</p>
-          <Button component={Link} href="/" mt="md">
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">還沒有儲存自己的命盤</p>
+            <p className="text-sm text-muted">
+              在首頁排盤後，按結果頁的「儲存到帳號」即可存到這裡。
+            </p>
+          </div>
+          <Button component={Link} href="/">
             到首頁排盤
           </Button>
         </>
       ) : (
         <>
-          <p className="font-medium">還沒有好友命盤</p>
-          <p className="mt-2 text-sm text-muted">輸入朋友的出生資料，就能把他的命盤存在你的帳號裡（朋友不需要註冊）。</p>
-          <Button component={Link} href="/charts/new" onClick={() => rememberChartsTab('friend')} mt="md">
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">還沒有好友命盤</p>
+            <p className="text-sm text-muted">
+              輸入朋友的出生資料，就能把他的命盤存在你的帳號裡（朋友不需要註冊）。
+            </p>
+          </div>
+          <Button
+            component={Link}
+            href="/charts/new"
+            onClick={() => rememberChartsTab('friend')}
+          >
             新增好友命盤
           </Button>
         </>
@@ -278,9 +372,9 @@ function EmptyState({ kind }: { kind: ChartKind }) {
 
 function ListSkeleton() {
   return (
-    <div aria-busy="true" aria-live="polite">
+    <div aria-busy="true" aria-live="polite" className="flex flex-col gap-6">
       <p className="sr-only">正在載入命盤…</p>
-      <div className="hd-skeleton mb-6 h-10 w-48 rounded-lg bg-surface-2" />
+      <div className="hd-skeleton h-10 w-48 rounded-lg bg-surface-2" />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="hd-skeleton h-40 rounded-lg bg-surface-2" />
         <div className="hd-skeleton h-40 rounded-lg bg-surface-2" />
@@ -302,7 +396,11 @@ function EditDialog({
 }) {
   const ids = useId();
   const [forId, setForId] = useState<string | null>(null);
-  const [meta, setMeta] = useState<ChartMeta>({ kind: 'self', name: '', note: '' });
+  const [meta, setMeta] = useState<ChartMeta>({
+    kind: 'self',
+    name: '',
+    note: '',
+  });
   const [errors, setErrors] = useState<MetaErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -350,11 +448,18 @@ function EditDialog({
       closeButtonProps={{ 'aria-label': '關閉' }}
       size="30rem"
       radius="md"
-      styles={{ title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 } }}
+      styles={{
+        title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 },
+      }}
     >
       <form onSubmit={onSubmit} noValidate aria-busy={saving}>
         <Stack gap="md">
-          <ChartMetaFields idPrefix={ids} value={meta} onChange={setMeta} errors={errors} />
+          <ChartMetaFields
+            idPrefix={ids}
+            value={meta}
+            onChange={setMeta}
+            errors={errors}
+          />
           {error ? (
             <Alert variant="outline" color="var(--app-danger)" role="alert">
               <span className="text-danger">{error}</span>
@@ -416,7 +521,9 @@ function DeleteDialog({
       closeButtonProps={{ 'aria-label': '關閉' }}
       size="28rem"
       radius="md"
-      styles={{ title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 } }}
+      styles={{
+        title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 600 },
+      }}
     >
       <Stack gap="md">
         <Text>確定要刪除「{current?.name}」嗎？刪除後無法復原。</Text>
