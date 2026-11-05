@@ -159,7 +159,7 @@ export const WX_GOD_GROUP: Record<WuXing, Record<WuXing, string>> = {
   水: { 水: '比劫', 木: '食傷', 火: '財星', 土: '官殺', 金: '印梟' },
 };
 
-const STEM_HE: [string, string, string][] = [
+export const STEM_HE: [string, string, string][] = [
   ['甲', '己', '土'], ['乙', '庚', '金'], ['丙', '辛', '水'], ['丁', '壬', '木'], ['戊', '癸', '火'],
 ];
 

@@ -279,7 +279,7 @@ function gateLine(role: string, gate: number): string {
     return theme ? `${role} ${gate}：${theme}` : `${role} ${gate}`;
 }
 
-const STAR_TRAIT: Record<string, string> = {
+export const STAR_TRAIT: Record<string, string> = {
     紫微: '尊貴、要有主見與位置',
     天機: '善變、機巧、想得快',
     太陽: '外顯、照人、也需被看見',

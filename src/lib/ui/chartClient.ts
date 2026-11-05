@@ -1,6 +1,11 @@
 import type { AstroChart } from '@/lib/astro/types';
 import type { BaziChart } from '@/lib/bazi/types';
-import { parseSavedRef, type SavedRef } from '@/lib/charts/mapping';
+import {
+  parseSavedRef,
+  type ChartKind,
+  type SavedChart,
+  type SavedRef,
+} from '@/lib/charts/mapping';
 import type { BirthInput, ChartResult } from '@/lib/hd/types';
 import type { ZiweiChart } from '@/lib/ziwei/types';
 
@@ -371,6 +376,146 @@ export function parseStoredChart(raw: string | null): StoredChart | null {
       astro: isAstroChart(v.astro) ? v.astro : null,
       astroError: typeof v.astroError === 'string' ? v.astroError : null,
     };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 雙人合盤 hand-off: both people's computed charts, through sessionStorage like the single chart
+// ---------------------------------------------------------------------------
+
+export const SYNASTRY_STORAGE_KEY = 'hd-synastry:v1';
+
+export interface SynastryPerson {
+  /** Saved chart id / name / kind (the pair is always picked from the user's saved charts). */
+  id: string;
+  name: string;
+  kind: ChartKind;
+  input: BirthInput;
+  timeUnknown: boolean;
+  placeLabel: string | null;
+  result: ChartResult;
+  ziwei: ZiweiChart | null;
+  ziweiError: string | null;
+  bazi: BaziChart | null;
+  baziError: string | null;
+  astro: AstroChart | null;
+  astroError: string | null;
+}
+
+export interface StoredSynastry {
+  a: SynastryPerson;
+  b: SynastryPerson;
+}
+
+/**
+ * Computes every system for one saved chart, all requests in parallel. Human Design is required
+ * (as when opening a single chart); 紫微／八字／星盤 failures are kept per person as error text.
+ */
+export async function computeSynastryPerson(
+  chart: SavedChart,
+  signal?: AbortSignal,
+): Promise<{ ok: true; person: SynastryPerson } | { ok: false; message: string }> {
+  const [both, astro] = await Promise.all([
+    postBoth(chart.input, chart.timeUnknown, signal),
+    postAstro(chart.input, chart.timeUnknown, signal),
+  ]);
+  if (!both.hd.ok) return { ok: false, message: `「${chart.name}」：${both.hd.error.message}` };
+  const base: StoredChart = {
+    input: chart.input,
+    result: both.hd.chart,
+    timeUnknown: chart.timeUnknown,
+    placeLabel: chart.placeLabel,
+  };
+  const withSidecars = attachSidecars(base, both.ziwei, both.bazi);
+  return {
+    ok: true,
+    person: {
+      id: chart.id,
+      name: chart.name,
+      kind: chart.kind,
+      input: chart.input,
+      timeUnknown: chart.timeUnknown,
+      placeLabel: chart.placeLabel,
+      result: both.hd.chart,
+      ziwei: withSidecars.ziwei ?? null,
+      ziweiError: withSidecars.ziweiError ?? null,
+      bazi: withSidecars.bazi ?? null,
+      baziError: withSidecars.baziError ?? null,
+      astro: astro.ok ? astro.chart : null,
+      astroError: astro.ok ? null : astro.error.message,
+    },
+  };
+}
+
+const synastryListeners = new Set<() => void>();
+let synastryMemoryCopy: string | null = null;
+
+export function saveStoredSynastry(data: StoredSynastry): void {
+  const raw = JSON.stringify(data);
+  synastryMemoryCopy = raw;
+  try {
+    sessionStorage.setItem(SYNASTRY_STORAGE_KEY, raw);
+  } catch {
+    // ignore — synastryMemoryCopy is used instead
+  }
+  synastryListeners.forEach(l => l());
+}
+
+/** Raw snapshot for useSyncExternalStore (a string, so it is referentially stable). */
+export function readStoredSynastryRaw(): string | null {
+  try {
+    return sessionStorage.getItem(SYNASTRY_STORAGE_KEY) ?? synastryMemoryCopy;
+  } catch {
+    return synastryMemoryCopy;
+  }
+}
+
+export function subscribeStoredSynastry(cb: () => void): () => void {
+  synastryListeners.add(cb);
+  return () => {
+    synastryListeners.delete(cb);
+  };
+}
+
+function parseSynastryPerson(v: unknown): SynastryPerson | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const p = v as Partial<SynastryPerson>;
+  if (
+    typeof p.id !== 'string' ||
+    typeof p.name !== 'string' ||
+    !p.input ||
+    !p.result ||
+    !Array.isArray(p.result.activations) ||
+    typeof p.result.activeGates !== 'object'
+  )
+    return null;
+  return {
+    id: p.id,
+    name: p.name,
+    kind: p.kind === 'friend' ? 'friend' : 'self',
+    input: p.input,
+    timeUnknown: p.timeUnknown === true,
+    placeLabel: typeof p.placeLabel === 'string' ? p.placeLabel : null,
+    result: p.result,
+    ziwei: isZiweiChart(p.ziwei) ? p.ziwei : null,
+    ziweiError: typeof p.ziweiError === 'string' ? p.ziweiError : null,
+    bazi: isBaziChart(p.bazi) ? p.bazi : null,
+    baziError: typeof p.baziError === 'string' ? p.baziError : null,
+    astro: isAstroChart(p.astro) ? p.astro : null,
+    astroError: typeof p.astroError === 'string' ? p.astroError : null,
+  };
+}
+
+export function parseStoredSynastry(raw: string | null): StoredSynastry | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<StoredSynastry>;
+    if (!v || typeof v !== 'object') return null;
+    const a = parseSynastryPerson(v.a);
+    const b = parseSynastryPerson(v.b);
+    return a && b ? { a, b } : null;
   } catch {
     return null;
   }

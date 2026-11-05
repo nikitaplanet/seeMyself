@@ -23,6 +23,7 @@ import { BodyGraph } from './BodyGraph/BodyGraph';
 import { ChartSummary } from './ChartSummary';
 import { SaveChartButton } from './charts/SaveChartButton';
 import { SensitivityPanel } from './SensitivityPanel';
+import { TabButton } from './TabButton';
 import { ZiweiView } from './ziwei/ZiweiView';
 
 // Spec §11.2 — the result page. The chart arrives through sessionStorage (never the URL). During
@@ -215,29 +216,6 @@ function AstroTab({ stored }: { stored: NonNullable<ReturnType<typeof parseStore
             timeUnknown={stored.timeUnknown}
             error={stored.astroError}
         />
-    );
-}
-
-function TabButton({
-    selected,
-    onClick,
-    children,
-}: {
-    selected: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={onClick}
-            className={`tab-pill-item cursor-pointer ${selected ? '' : 'hover:text-fg'}`}
-            data-active={selected ? 'true' : undefined}
-        >
-            {children}
-        </button>
     );
 }
 

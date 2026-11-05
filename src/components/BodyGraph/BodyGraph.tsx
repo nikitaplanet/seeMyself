@@ -29,10 +29,16 @@ type GraphChart = Pick<
     'activations' | 'activeGates' | 'definedCenters' | 'type' | 'authority' | 'profile'
 >;
 
+/** What the drawing itself needs; the 雙人合盤 composite passes this with its own `label`. */
+type GraphGates = Pick<ChartResult, 'activations' | 'activeGates' | 'definedCenters'>;
+
 const SIDE_ORDER: readonly Side[] = ['personality', 'design'];
 
-export function activationLabel(a: Activation): string {
-    return `${SIDE_NAMES_ZH[a.side]} ${PLANET_SYMBOLS[a.planet]} ${PLANET_NAMES_ZH[a.planet]} ${a.gate}.${a.line}`;
+export function activationLabel(
+    a: Activation,
+    sideNames: Record<Side, string> = SIDE_NAMES_ZH,
+): string {
+    return `${sideNames[a.side]} ${PLANET_SYMBOLS[a.planet]} ${PLANET_NAMES_ZH[a.planet]} ${a.gate}.${a.line}`;
 }
 
 function gateActivations(activations: readonly Activation[], gate: number): Activation[] {
@@ -58,7 +64,17 @@ interface TooltipState {
     pinned: boolean;
 }
 
-export function BodyGraph({ chart }: { chart: GraphChart }) {
+/**
+ * `sideNames` relabels the two colours (the 雙人合盤 graph uses them for the two people); a chart
+ * without type/authority/profile must pass `label` as the accessible summary.
+ */
+export function BodyGraph({
+    chart,
+    sideNames = SIDE_NAMES_ZH,
+    label,
+}:
+    | { chart: GraphChart; sideNames?: Record<Side, string>; label?: string }
+    | { chart: GraphGates; sideNames?: Record<Side, string>; label: string }) {
     const [tip, setTip] = useState<TooltipState | null>(null);
     const tooltipId = useId();
 
@@ -82,7 +98,7 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
                 viewBox={viewBox}
                 width="100%"
                 role="img"
-                aria-label={bodyGraphSummary(chart)}
+                aria-label={label ?? bodyGraphSummary(chart as GraphChart)}
                 className="block h-auto w-full"
                 style={{ fontFamily: 'var(--font-sans)' }}
             >
@@ -167,14 +183,14 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
                 {activeGateList.map((gate) => {
                     const p = gateLabelPoint(gate, GATE_CENTER[gate]);
                     const acts = gateActivations(chart.activations, gate);
-                    const label = `閘門 ${gate}：${acts.map(activationLabel).join('、')}`;
+                    const gateLabel = `閘門 ${gate}：${acts.map((a) => activationLabel(a, sideNames)).join('、')}`;
                     const isOpen = tip?.gate === gate;
                     return (
                         <g
                             key={gate}
                             role="button"
                             tabIndex={0}
-                            aria-label={label}
+                            aria-label={gateLabel}
                             aria-describedby={isOpen ? tooltipId : undefined}
                             aria-pressed={isOpen && tip?.pinned ? true : undefined}
                             className="hd-gate-hit cursor-pointer"
@@ -228,7 +244,7 @@ export function BodyGraph({ chart }: { chart: GraphChart }) {
                                         a.side === 'design' ? 'text-design' : 'text-personality'
                                     }
                                 >
-                                    {activationLabel(a)}
+                                    {activationLabel(a, sideNames)}
                                 </li>
                             ))}
                         </ul>

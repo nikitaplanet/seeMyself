@@ -50,7 +50,7 @@ export function AstroMeaningCard({ chart }: { chart: AstroChart }) {
     );
 }
 
-function ChartMeaningCard({
+export function ChartMeaningCard({
     heading,
     lead,
     items,

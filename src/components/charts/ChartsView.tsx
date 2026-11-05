@@ -3,7 +3,7 @@
 import { ActionIcon, Alert, Badge, Button, Modal, Stack, Text } from '@mantine/core';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { loginUrl } from '@/lib/auth/redirect';
 import { useAuth } from '@/lib/auth/useAuth';
@@ -18,11 +18,20 @@ import {
 import { deleteChart, listCharts, updateChart, type RepoResult } from '@/lib/charts/repo';
 import { AUTHORITY_NAMES_ZH, TYPE_NAMES_ZH } from '@/lib/hd/constants';
 import { attachSidecars, postBoth, saveStoredChart } from '@/lib/ui/chartClient';
+import {
+    readChartsView,
+    rememberChartsView,
+    subscribeChartsView,
+    type ChartsViewTab,
+} from '@/lib/ui/chartsView';
+import { TabButton } from '../TabButton';
 import { ChartMetaFields } from './ChartMetaFields';
+import { SynastryPicker } from './SynastryPicker';
 
 // /charts — the signed-in user's saved charts. Own charts stay in the first block; friend charts
 // grow in the second and paginate. Reads and writes go straight to Supabase from the browser; RLS
-// restricts them to the user's own rows.
+// restricts them to the user's own rows. A second top-level tab (雙人合盤) picks two of the same
+// charts for /charts/synastry.
 
 const TAB_KEY = 'hd-charts:tab';
 const FRIEND_PAGE_SIZE = 20;
@@ -43,12 +52,46 @@ export function rememberChartsTab(kind: ChartKind) {
     }
 }
 
+const serverViewTab = (): ChartsViewTab => 'personal';
+
+export function ChartsView() {
+    const view = useSyncExternalStore(subscribeChartsView, readChartsView, serverViewTab);
+    const ids = useId();
+    const tabId = (t: ChartsViewTab) => `${ids}-tab-${t}`;
+    const panelId = `${ids}-panel`;
+    return (
+        <div className="flex flex-col gap-6">
+            <div role="tablist" aria-label="命盤列表檢視" className="tab-pill w-fit">
+                <TabButton
+                    id={tabId('personal')}
+                    controls={panelId}
+                    selected={view === 'personal'}
+                    onClick={() => rememberChartsView('personal')}
+                >
+                    個人命盤
+                </TabButton>
+                <TabButton
+                    id={tabId('synastry')}
+                    controls={panelId}
+                    selected={view === 'synastry'}
+                    onClick={() => rememberChartsView('synastry')}
+                >
+                    雙人合盤
+                </TabButton>
+            </div>
+            <div role="tabpanel" id={panelId} aria-labelledby={tabId(view)}>
+                <ChartsContent view={view} />
+            </div>
+        </div>
+    );
+}
+
 interface ListState {
     userId: string;
     result: RepoResult<SavedChart[]>;
 }
 
-export function ChartsView() {
+function ChartsContent({ view }: { view: ChartsViewTab }) {
     const auth = useAuth();
     const router = useRouter();
     const [friendPage, setFriendPage] = useState(1);
@@ -101,6 +144,11 @@ export function ChartsView() {
     }
 
     const charts = list.result.data;
+    if (view === 'synastry') {
+        return (
+            <SynastryPicker charts={charts} onRememberFriendTab={() => rememberChartsTab('friend')} />
+        );
+    }
     const selfCharts = charts.filter((c) => c.kind === 'self');
     const friendCharts = charts.filter((c) => c.kind === 'friend');
     const friendPages = Math.max(1, Math.ceil(friendCharts.length / FRIEND_PAGE_SIZE));

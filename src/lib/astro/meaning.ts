@@ -163,7 +163,7 @@ const HOUSE_THEME = [
 ] as const;
 
 /** Short noun phrases for what each body is about, used to build aspect sentences. */
-const BODY_FUNCTION: Record<AstroBodyKey, string> = {
+export const BODY_FUNCTION: Record<AstroBodyKey, string> = {
     sun: '自我認同',
     moon: '情緒需求',
     mercury: '思考表達',
