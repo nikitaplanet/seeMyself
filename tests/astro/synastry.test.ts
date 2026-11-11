@@ -183,6 +183,20 @@ describe('日常相處 and pair-specific copy', () => {
             expect(d1).toContain(t);
             expect(d2).toContain(t);
         }
+        // Each heading sits alone on its line and is followed by 2+ separate paragraph lines.
+        for (const d of [d1, d2]) {
+            const lines = d.split('\n');
+            for (const t of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']) {
+                const i = lines.indexOf(t);
+                expect(i).toBeGreaterThanOrEqual(0);
+                expect(lines[i + 1]).toBeTruthy();
+                expect(lines[i + 2]).toBeTruthy();
+                expect(lines[i + 1].startsWith('【')).toBe(false);
+                expect(lines[i + 2].startsWith('【')).toBe(false);
+            }
+            const order = ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】'].map((t) => lines.indexOf(t));
+            expect([...order].sort((x, y) => x - y)).toEqual(order);
+        }
         expect(d1).not.toEqual(d2);
         expect(d1).toContain('甲太陽在牡羊');
         expect(d2).toContain('乙太陽在摩羯');
@@ -240,6 +254,7 @@ describe('日常相處 and pair-specific copy', () => {
         expect(g1.meaning).not.toEqual(g2.meaning);
         expect(g1.meaning).toContain('最珍貴的');
         expect(g1.meaning).not.toMatch(/undefined|NaN/);
+        expect(g1.meaning.split('\n').length).toBeGreaterThanOrEqual(2);
         const sentences = g1.meaning.split('。').filter(Boolean).length;
         expect(sentences).toBeGreaterThanOrEqual(2);
         expect(sentences).toBeLessThanOrEqual(3);
@@ -262,7 +277,8 @@ describe('fit signal', () => {
         expect(fit.bond).toBe(false);
         const items = astroSynastryItems({ name: '甲', chart: hardA }, { name: '乙', chart: hardB }, syn);
         const daily = items.find((i) => i.term === '日常相處')!.meaning;
-        expect(daily.split('\n')[0]).toContain('【先說在前面】');
+        expect(daily.split('\n')[0]).toBe('【先說在前面】');
+        expect(daily.split('\n')[1]).toContain('比較不合');
         expect(daily).toContain('比較不合');
         const last = items.at(-1)!;
         expect(last.term).toBe('這段關係的課題與禮物');

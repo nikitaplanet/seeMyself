@@ -120,7 +120,15 @@ describe('日常相處 section', () => {
   it('covers the four themes and reflects the pair', () => {
     const d = daily(a, b);
     expect(d).toBeDefined();
-    for (const theme of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密及愛】']) expect(d!.meaning).toContain(theme);
+    const ls = d!.meaning.split('\n');
+    const heads = ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】'];
+    expect(ls.filter((l) => l.startsWith('【'))).toEqual(heads);
+    heads.forEach((h, k) => {
+      const at = ls.indexOf(h);
+      expect(at).toBeGreaterThanOrEqual(0);
+      const end = k + 1 < heads.length ? ls.indexOf(heads[k + 1]) : ls.length;
+      expect(end - at - 1).toBeGreaterThanOrEqual(2);
+    });
     expect(d!.meaning).toContain('乙是甲的七殺');
     expect(d!.meaning).toContain('丑未相沖');
     expect(d!.meaning).not.toMatch(/undefined|null|NaN|你/);
@@ -133,7 +141,7 @@ describe('日常相處 section', () => {
     // Most lines change, not just one word.
     const l1 = d1.split('\n');
     const l2 = d2.split('\n');
-    expect(l1.filter((l, i) => l === l2[i]).length).toBeLessThanOrEqual(1);
+    expect(l1.filter((l, i) => l === l2[i] && !l.startsWith('【')).length).toBeLessThanOrEqual(1);
   });
 });
 
@@ -185,7 +193,7 @@ describe('no duplicated text', () => {
     const d = baziSynastryItems({ name: '甲', chart: withDay }, { name: '乙', chart: withDay }, analyzeBaziSynastry(withDay, withDay)).find(
       (i) => i.term === '日常相處',
     )!.meaning;
-    expect(d).toContain('【個性】兩人都是乙木');
+    expect(d).toContain('【個性】\n兩人都是乙木');
     expect(d.match(/柔軟有韌性/g)?.length).toBe(1);
   });
 });
@@ -245,7 +253,7 @@ describe('明顯不合 signal', () => {
     expect(syn.fit.difficult).toBe(true);
     const items = baziSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
     const daily = items.find((i) => i.term === '日常相處')!.meaning;
-    expect(daily.split('\n')[0]).toMatch(/^【先說在前面】/);
+    expect(daily.split('\n')[0]).toBe('【先說在前面】');
     const close = items.find((i) => i.term === '這段關係的課題與禮物');
     expect(close?.meaning).toContain('課題：');
     expect(close?.meaning).toContain('禮物：');

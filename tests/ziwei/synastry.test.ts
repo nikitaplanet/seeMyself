@@ -80,9 +80,19 @@ describe('ziweiSynastryItems — 日常相處 and specific copy', () => {
     for (const items of [one, two]) {
       const d = daily(items);
       expect(d).toBeDefined();
-      for (const theme of ['【個性】', '【思考方式】', '【處理矛盾】', '【親密與愛】']) {
-        expect(d!.meaning).toContain(theme);
+      for (const theme of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']) {
+        expect(d!.meaning.split('\n')).toContain(theme);
       }
+      const lines = d!.meaning.split('\n');
+      const heads = lines.filter((l) => l.startsWith('【') && l.endsWith('】'));
+      expect(heads.filter((h) => h !== '【先說在前面】')).toEqual(['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']);
+      lines.forEach((l, i) => {
+        if (!l.startsWith('【')) return;
+        expect(l.endsWith('】')).toBe(true);
+        const paras: string[] = [];
+        for (let j = i + 1; j < lines.length && !lines[j].startsWith('【'); j++) paras.push(lines[j]);
+        expect(paras.length).toBeGreaterThanOrEqual(l === '【先說在前面】' ? 1 : 2);
+      });
       expect(d!.meaning).toContain('意見不合時');
       expect(items.map((i) => i.meaning).join('\n')).not.toMatch(/undefined|null|NaN/);
     }
@@ -91,7 +101,9 @@ describe('ziweiSynastryItems — 日常相處 and specific copy', () => {
   it('日常相處 changes with the pair', () => {
     const l1 = daily(one)!.meaning.split('\n');
     const l2 = daily(two)!.meaning.split('\n');
-    l1.forEach((line, i) => expect(line).not.toBe(l2[i]));
+    l1.forEach((line, i) => {
+      if (!line.startsWith('【')) expect(line).not.toBe(l2[i]);
+    });
   });
 
   it('flight lines differ beyond the names (祿權科忌 all get their own wording)', () => {
@@ -138,7 +150,7 @@ describe('ziweiFit — honest tone only for clearly difficult pairs', () => {
 
   it('difficult pair: says so up front, retitles the closing item, adds practical advice', () => {
     const daily = hard.items.find((i) => i.term === '日常相處')!.meaning;
-    expect(daily.startsWith('【先說在前面】')).toBe(true);
+    expect(daily.startsWith('【先說在前面】\n')).toBe(true);
     const terms = hard.items.map((i) => i.term);
     expect(terms).toContain('這段關係的課題與禮物');
     expect(terms).not.toContain('這段關係的禮物');

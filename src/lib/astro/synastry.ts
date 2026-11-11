@@ -1046,7 +1046,7 @@ export function astroFit(syn: AstroSynastry): AstroFit {
 
 function difficultyLine(fit: AstroFit): string {
     const saturn = fit.saturnHard > 0 ? `，另有 ${fit.saturnHard} 組土星的緊張接觸` : '';
-    return `【先說在前面】坦白說，這兩張盤在核心相位上比較不合：太陽、月亮、金星、火星與上升之間有 ${fit.coreTense} 組張力相位、只有 ${fit.coreSoft} 組和諧相位${saturn}，日月、金火、月金之間也沒有順向的連結。這代表兩人的生活節奏、表達愛與處理情緒的方式差異很大，相處會比多數伴侶更費力，以下的挑戰請認真看待。這不是判決，很多伴侶也是在這樣的盤上走出來的，前提是兩人都願意有意識地投入。`;
+    return `【先說在前面】\n坦白說，這兩張盤在核心相位上比較不合：太陽、月亮、金星、火星與上升之間有 ${fit.coreTense} 組張力相位、只有 ${fit.coreSoft} 組和諧相位${saturn}，日月、金火、月金之間也沒有順向的連結。\n這代表兩人的生活節奏、表達愛與處理情緒的方式差異很大，相處會比多數伴侶更費力，以下的挑戰請認真看待。\n這不是判決，很多伴侶也是在這樣的盤上走出來的，前提是兩人都願意有意識地投入。`;
 }
 
 /** One-line daily tag for an aspect already explained under 重點相位, worded for the theme. */
@@ -1061,14 +1061,14 @@ function dailyAspectLines(
     // Rotate through the variants so two aspects of the same family never get the same tag.
     const used: Record<Family, number> = { conj: 0, soft: 0, hard: 0 };
     return pairs.flatMap(([x, y]) =>
-        findAspect(syn, x, y).map((s) => {
+        findAspect(syn, x, y).flatMap((s) => {
             const fam = familyOf(s.type);
             const text = tag[fam][used[fam]++ % tag[fam].length];
             const head = `・相位加碼：${a.name}的${POINT_NAMES[s.a]}${s.name}${b.name}的${POINT_NAMES[s.b]}——${text}`;
             // Key pairs are explained under 重點相位; others may not be listed, so say it here.
-            if (s.key) return `${head}（說明見「重點相位」）。`;
+            if (s.key) return [`${head}（說明見「重點相位」）。`];
             const n = aspectNote(s, a, b, difficult).text;
-            return `${head}：${n}${n.endsWith('。') ? '' : '。'}`;
+            return [`${head}。`, `${n}${n.endsWith('。') ? '' : '。'}`];
         }),
     );
 }
@@ -1084,7 +1084,9 @@ export function dailyLifeLines(a: AstroPartner, b: AstroPartner, syn: AstroSynas
     // 個性
     if (sunA && sunB) {
         lines.push(
-            `【個性】${a.name}太陽在${sunA.signName}：${SUN_TRAIT[sunA.sign]}；${b.name}太陽在${sunB.signName}：${SUN_TRAIT[sunB.sign]}。`,
+            '【個性】',
+            `${a.name}太陽在${sunA.signName}：${SUN_TRAIT[sunA.sign]}。`,
+            `${b.name}太陽在${sunB.signName}：${SUN_TRAIT[sunB.sign]}。`,
             sceneFor(PERSONA_SCENE, sunA.sign, sunB.sign, a.name, b.name),
         );
     }
@@ -1092,14 +1094,16 @@ export function dailyLifeLines(a: AstroPartner, b: AstroPartner, syn: AstroSynas
         p.chart.angles && !p.chart.timeUnknown
             ? `${p.name}上升${p.chart.angles.asc.signName}，初見面給人${ASC_TRAIT[p.chart.angles.asc.sign]}的感覺`
             : `${p.name}的出生時間不確定，上升無法判斷`;
-    lines.push(`第一印象：${ascLine(a)}；${ascLine(b)}。`);
+    lines.push(`第一印象：${ascLine(a)}。`, `${ascLine(b)}。`);
 
     // 思考方式
     const merA = bodyOf(a, 'mercury');
     const merB = bodyOf(b, 'mercury');
     if (merA && merB) {
         lines.push(
-            `【思考方式】${a.name}水星在${merA.signName}：${MERCURY_TRAIT[merA.sign]}；${b.name}水星在${merB.signName}：${MERCURY_TRAIT[merB.sign]}。`,
+            '【思考方式】',
+            `${a.name}水星在${merA.signName}：${MERCURY_TRAIT[merA.sign]}。`,
+            `${b.name}水星在${merB.signName}：${MERCURY_TRAIT[merB.sign]}。`,
             sceneFor(THINK_SCENE, merA.sign, merB.sign, a.name, b.name),
             ...dailyAspectLines(
                 syn,
@@ -1131,12 +1135,15 @@ export function dailyLifeLines(a: AstroPartner, b: AstroPartner, syn: AstroSynas
     const moonB = moonLabel(b);
     if (marsA && marsB) {
         lines.push(
-            `【處理矛盾】${a.name}火星在${marsA.signName}：${MARS_TRAIT[marsA.sign]}；${b.name}火星在${marsB.signName}：${MARS_TRAIT[marsB.sign]}。`,
+            '【處理矛盾】',
+            `${a.name}火星在${marsA.signName}：${MARS_TRAIT[marsA.sign]}。`,
+            `${b.name}火星在${marsB.signName}：${MARS_TRAIT[marsB.sign]}。`,
             sceneFor(FIGHT_SCENE, marsA.sign, marsB.sign, a.name, b.name),
         );
         if (moonA && moonB)
             lines.push(
-                `和好的鑰匙：${a.name}${moonA.text}，需要${MOON_REPAIR[moonA.sign]}；${b.name}${moonB.text}，需要${MOON_REPAIR[moonB.sign]}。`,
+                `和好的鑰匙：${a.name}${moonA.text}，需要${MOON_REPAIR[moonA.sign]}。`,
+                `${b.name}${moonB.text}，需要${MOON_REPAIR[moonB.sign]}。`,
             );
         lines.push(
             ...dailyAspectLines(
@@ -1168,12 +1175,15 @@ export function dailyLifeLines(a: AstroPartner, b: AstroPartner, syn: AstroSynas
     const venB = bodyOf(b, 'venus');
     if (venA && venB) {
         lines.push(
-            `【感受親密與愛】${a.name}金星在${venA.signName}，${VENUS_TRAIT[venA.sign]}；${b.name}金星在${venB.signName}，${VENUS_TRAIT[venB.sign]}。`,
+            '【感受親密與愛】',
+            `${a.name}金星在${venA.signName}，${VENUS_TRAIT[venA.sign]}。`,
+            `${b.name}金星在${venB.signName}，${VENUS_TRAIT[venB.sign]}。`,
             sceneFor(LOVE_SCENE, venA.sign, venB.sign, a.name, b.name),
         );
         if (moonA && moonB)
             lines.push(
-                `讓人安心的來源：${a.name}${moonA.text}，安心來自${MOON_SAFE[moonA.sign]}；${b.name}${moonB.text}，安心來自${MOON_SAFE[moonB.sign]}。`,
+                `讓人安心的來源：${a.name}${moonA.text}，安心來自${MOON_SAFE[moonA.sign]}。`,
+                `${b.name}${moonB.text}，安心來自${MOON_SAFE[moonB.sign]}。`,
             );
         lines.push(
             ...dailyAspectLines(
@@ -1226,7 +1236,7 @@ const GIFT: Record<string, Phrase> = {
     [noteKey('saturn', 'sun')]: (p, q) => `${p}是${q}可以靠的人，${q}在${p}身邊越來越踏實`,
     [noteKey('saturn', 'moon')]: (p, q) => `${p}給${q}「有人會一直在」的安定，這份陪伴經得起時間`,
     [noteKey('saturn', 'mercury')]: (p, q) => `${p}認真對待${q}的想法，讓${q}的點子落地成真`,
-    [noteKey('saturn', 'venus')]: (p, q) => `${p}的愛說到做到，兩人之間有難得的忠誠與承諾`,
+    [noteKey('saturn', 'venus')]: (p) => `${p}的愛說到做到，兩人之間有難得的忠誠與承諾`,
     [noteKey('saturn', 'mars')]: (p, q) => `${q}的衝勁加上${p}的耐性，能把事情做得又快又穩`,
     [noteKey('saturn', 'asc')]: (p, q) => `${p}讓${q}覺得可靠，是遇到事會想找的人`,
 };
@@ -1314,7 +1324,7 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
         return item(
             '這段關係的課題與禮物',
             '誠實說出這段關係需要的功課，也記下兩人之間真實的好。',
-            sentences.join(''),
+            sentences.join('\n'),
         );
     }
 
@@ -1324,7 +1334,10 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
         const tight = syn.aspects.map((s) => giftOf(s, a, b)).find((g): g is string => g !== null);
         if (tight) sentences.push(`${a.name}和${b.name}之間最珍貴的，是一份要一起磨才拿得到、卻很真實的連結：${tight}。`);
     }
-    if (gifts[1]) sentences.push(`還有，${gifts[1]}。`);
+    if (gifts[1]) {
+        if (sentences.length > 0) sentences[sentences.length - 1] += `還有，${gifts[1]}。`;
+        else sentences.push(`${gifts[1]}。`);
+    }
     const extra = overlayGift(a, b, syn) ?? (gifts[1] ? null : elementGift(a, b));
     if (extra) sentences.push(`${extra}。`);
     if (sentences.length < 2) {
@@ -1332,7 +1345,7 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
         if (el && !sentences.includes(`${el}。`)) sentences.push(`${el}。`);
     }
     if (sentences.length === 0) sentences.push(`${a.name}和${b.name}之間的影響溫和，關係的樣子會由兩人親手寫成，這本身就是一份自由。`);
-    return item('這段關係的禮物', '從兩人最順的相位、元素與宮位，整理這段關係最珍貴的地方。', sentences.slice(0, 3).join(''));
+    return item('這段關係的禮物', '從兩人最順的相位、元素與宮位，整理這段關係最珍貴的地方。', sentences.slice(0, 3).join('\n'));
 }
 
 export function astroSynastryItems(a: AstroPartner, b: AstroPartner, syn: AstroSynastry): MeaningItem[] {

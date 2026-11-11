@@ -144,12 +144,17 @@ describe('composite graph data and report', () => {
     const two = daily(hdSynastryItems({ name: '甲', chart: c }, { name: '乙', chart: d }, syn2));
     for (const text of [one, two]) {
       const lines = text.split('\n');
-      expect(lines.map((l) => l.split('：')[0])).toEqual(['個性', '思考與決定', '處理矛盾', '親密與愛']);
+      expect(lines.filter((l) => l.startsWith('【'))).toEqual(['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']);
       expect(text).not.toMatch(/undefined|null|NaN/);
     }
-    const linesOne = one.split('\n');
-    const linesTwo = two.split('\n');
-    for (let i = 0; i < 4; i++) expect(linesOne[i]).not.toBe(linesTwo[i]);
+    const sections = (t: string) => t.split(/^【.*】$/m).slice(1);
+    const secOne = sections(one);
+    const secTwo = sections(two);
+    expect(secOne).toHaveLength(4);
+    for (let i = 0; i < 4; i++) {
+      expect(secOne[i]).not.toBe(secTwo[i]);
+      expect(secOne[i].split('\n').filter(Boolean).length).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('per-channel lines do not repeat the same sentence', () => {
@@ -228,8 +233,8 @@ describe('composite graph data and report', () => {
     expect(terms).toContain('這段關係的課題與禮物');
     expect(terms).not.toContain('這段關係的禮物');
     const daily = items.find((i) => i.term === '日常相處')!.meaning.split('\n');
-    expect(daily[0]).toMatch(/^坦白說：/);
-    expect(daily.slice(1).map((l) => l.split('：')[0])).toEqual(['個性', '思考與決定', '處理矛盾', '親密與愛']);
+    expect(daily[0]).toBe('【先說在前面】');
+    expect(daily.filter((l) => l.startsWith('【'))).toEqual(['【先說在前面】', '【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']);
     expect(items.find((i) => i.term === '相處建議')!.meaning).toContain('諮商');
     const prompt = buildHdSynastryAiPrompt({ ...fast, timeUnknown: false }, { ...slow, timeUnknown: false }, hard);
     expect(prompt).toContain('不要硬湊正向');

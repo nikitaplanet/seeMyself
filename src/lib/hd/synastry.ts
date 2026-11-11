@@ -646,10 +646,13 @@ function fastSlow(a: HdPartner, b: HdPartner): [HdPartner, HdPartner] {
   return ia <= ib ? [a, b] : [b, a];
 }
 
-function difficultyLine(a: HdPartner, b: HdPartner, syn: HdSynastry): string {
+function difficultyLine(a: HdPartner, b: HdPartner, syn: HdSynastry): string[] {
   const n = syn.channels.filter((c) => c.kind === 'compromise').length;
   const [fast, slow] = fastSlow(a, b);
-  return `坦白說：從結構上看，${a.name}和${b.name}是需要比較多經營的組合。兩人之間沒有電磁通道，少了天生「一碰就接上」的吸引；${n} 條妥協通道代表不少主題得靠一方配合另一方；${fast.name}${PACE_LABEL[AUTHORITY_PACE[fast.chart.authority]]}、${slow.name}${PACE_LABEL[AUTHORITY_PACE[slow.chart.authority]]}，連小事的決定步調都差很多。這不代表不能在一起，而是兩人都要有意識地多溝通、多體諒，日常的摩擦會比一般伴侶多，需要真的花力氣處理，關係才會走得舒服。`;
+  return [
+    `從結構上看，${a.name}和${b.name}是需要比較多經營的組合。兩人之間沒有電磁通道，少了天生「一碰就接上」的吸引；${n} 條妥協通道代表不少主題得靠一方配合另一方；${fast.name}${PACE_LABEL[AUTHORITY_PACE[fast.chart.authority]]}、${slow.name}${PACE_LABEL[AUTHORITY_PACE[slow.chart.authority]]}，連小事的決定步調都差很多。`,
+    '這不代表不能在一起，而是兩人都要有意識地多溝通、多體諒，日常的摩擦會比一般伴侶多，需要真的花力氣處理，關係才會走得舒服。',
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -811,13 +814,13 @@ function intimacyLine(a: HdPartner, b: HdPartner, syn: HdSynastry): string {
     if (!sc) continue;
     const label = channelLabel(sc.channel);
     if (sc.kind === 'electromagnetic')
-      return `${label}在你們之間才接通（${a.name}閘門 ${sc.gateA}、${b.name}閘門 ${sc.gateB}），牽動的是${scene}；這份親密只在兩人一起時出現，是你們很珍貴的吸引力，分開時特別想念也很自然。偶爾鬧彆扭時，先在這裡給對方一點溫柔，常常就能和好。`;
+      return `${label} 在你們之間才接通（${a.name}閘門 ${sc.gateA}、${b.name}閘門 ${sc.gateB}），牽動的是${scene}；這份親密只在兩人一起時出現，是你們很珍貴的吸引力，分開時特別想念也很自然。偶爾鬧彆扭時，先在這裡給對方一點溫柔，常常就能和好。`;
     if (sc.kind === 'companionship')
-      return `兩人都有${label}，在${scene}這件事上，你們表達愛的方式很像，不用多解釋就懂；熟悉久了，偶爾換個方式給對方驚喜，心動感就會回來。`;
+      return `兩人都有 ${label}，在${scene}這件事上，你們表達愛的方式很像，不用多解釋就懂；熟悉久了，偶爾換個方式給對方驚喜，心動感就會回來。`;
     const [holder, other] = names(a, b, sc.holder ?? 'a');
     if (sc.kind === 'dominance')
-      return `${label}只有${holder}有，牽動的是${scene}；多半由${holder}主動帶起，${other}常是在對方身上第一次體會到這種親密，這份帶領很迷人。${other}偶爾也主動靠近一次，${holder}會很感動。`;
-    return `${label}由${holder}擁有完整的線、${other}有其中一端，牽動的是${scene}；兩人在這裡的感受都很細膩，${holder}放慢一點、問一句「這樣你舒服嗎？」，親密就會越來越貼合。`;
+      return `${label} 只有${holder}有，牽動的是${scene}；多半由${holder}主動帶起，${other}常是在對方身上第一次體會到這種親密，這份帶領很迷人。${other}偶爾也主動靠近一次，${holder}會很感動。`;
+    return `${label} 由${holder}擁有完整的線、${other}有其中一端，牽動的是${scene}；兩人在這裡的感受都很細膩，${holder}放慢一點、問一句「這樣你舒服嗎？」，親密就會越來越貼合。`;
   }
   if (syn.newCenters.includes('solarPlexus'))
     return '兩人單獨時情緒中心都開放，在一起才接上情緒：相處時感受特別濃、特別有戀愛感；分開幾天淡一點也很正常，不代表感情變了。';
@@ -881,17 +884,17 @@ function dailyLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult = fal
   const evening =
     ea === eb
       ? `下班回家兩人都${EVENING_TEXT[ea]}，${EVENING_SAME[ea]}`
-      : `下班回家${a.name}${EVENING_TEXT[ea]}，${b.name}則${EVENING_TEXT[eb]}。${EVENING_MIX[[ea, eb].sort().join('|')] ?? ''}；剛進門時先說一句「給我十分鐘」，兩種節奏就能接得很順`;
+      : `下班回家${a.name}${EVENING_TEXT[ea]}，${b.name}則${EVENING_TEXT[eb]}。${EVENING_MIX[[ea, eb].sort().join('|')] ?? ''}。剛進門時先說一句「給我十分鐘」，兩種節奏就能接得很順`;
   const lineMix =
     la === lb
-      ? `兩人都${LINE_GIFT[la] ?? ''}，在這點上特別有共鳴；偶爾兩人都${LINE_RUB[la] ?? ''}時，互相體諒一下就好`
-      : `${a.name}${LINE_GIFT[la] ?? ''}，${b.name}則${LINE_GIFT[lb] ?? ''}，兩種長處放在一起非常好用；當${a.name}${LINE_RUB[la] ?? ''}，或${b.name}${LINE_RUB[lb] ?? ''}時，多一點體諒，就是互相補位的時候`;
-  const habits = sameType
+      ? `兩人都${LINE_GIFT[la] ?? ''}，在這點上特別有共鳴。偶爾兩人都${LINE_RUB[la] ?? ''}時，互相體諒一下就好`
+      : `${a.name}${LINE_GIFT[la] ?? ''}，${b.name}則${LINE_GIFT[lb] ?? ''}，兩種長處放在一起非常好用。當${a.name}${LINE_RUB[la] ?? ''}，或${b.name}${LINE_RUB[lb] ?? ''}時，多一點體諒，就是互相補位的時候`;
+  const habits: string[] = sameType
     ? la === lb
-      ? `兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}；人生角色也同樣${LINE_HABIT[la] ?? ''}，像照鏡子一樣，很容易懂對方`
-      : `兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}；不同的是${a.name}${LINE_HABIT[la] ?? ''}，${b.name}則${LINE_HABIT[lb] ?? ''}`
-    : `${a.name}${TYPE_HABIT[a.chart.type]}，也${LINE_HABIT[la] ?? ''}；${b.name}${TYPE_HABIT[b.chart.type]}，也${LINE_HABIT[lb] ?? ''}`;
-  const personality = `個性：${habits}。${lineMix}。${evening}。`;
+      ? [`兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}。`, `人生角色也同樣${LINE_HABIT[la] ?? ''}，像照鏡子一樣，很容易懂對方。`]
+      : [`兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}。`, `不同的是${a.name}${LINE_HABIT[la] ?? ''}，${b.name}則${LINE_HABIT[lb] ?? ''}。`]
+    : [`${a.name}${TYPE_HABIT[a.chart.type]}，${LINE_HABIT[la] ?? ''}。`, `${b.name}${TYPE_HABIT[b.chart.type]}，${LINE_HABIT[lb] ?? ''}。`];
+  const personality = ['【個性】', ...habits, `${lineMix}。`, `${evening}。`];
 
   const ajA = a.chart.definedCenters.includes('ajna');
   const ajB = b.chart.definedCenters.includes('ajna');
@@ -901,10 +904,13 @@ function dailyLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult = fal
     const [fast, slow] = fastSlow(a, b);
     return `${fast.name}常幫兩人打破「到底要不要」的僵局，${slow.name}則攔得住太衝的決定，兩人一起決定會更穩；連晚餐吃什麼這種小事，也可以讓${fast.name}先提議、${slow.name}慢慢點頭`;
   })();
-  const decide =
+  const decide: string[] =
     a.chart.authority === b.chart.authority
-      ? `兩人都是${AUTHORITY_NAMES_ZH[a.chart.authority]}，${AUTHORITY_SCENE[a.chart.authority]}；做決定的方式一樣，彼此很能體諒，也可以互相提醒照著自己的權威走`
-      : `${a.name}${AUTHORITY_SCENE[a.chart.authority]}；${b.name}則${AUTHORITY_SCENE[b.chart.authority]}。${decideMix}`;
+      ? [
+          `兩人都是${AUTHORITY_NAMES_ZH[a.chart.authority]}，${AUTHORITY_SCENE[a.chart.authority]}。`,
+          '做決定的方式一樣，彼此很能體諒，也可以互相提醒照著自己的權威走。',
+        ]
+      : [`${a.name}${AUTHORITY_SCENE[a.chart.authority]}。`, `${b.name}則${AUTHORITY_SCENE[b.chart.authority]}。`, `${decideMix}。`];
   const mind =
     ajA === ajB
       ? ajA
@@ -914,16 +920,23 @@ function dailyLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult = fal
           const [fixed, flex] = ajA ? [a.name, b.name] : [b.name, a.name];
           return `${fixed}${AJNA_STYLE.defined}，${flex}${AJNA_STYLE.open}；一個給結構、一個給彈性，一起想事情時很互補。討論後給${flex}一點時間消化再定案，兩人都會更安心`;
         })();
-  const thinking = `思考與決定：${decide}。${mind}。`;
+  const thinking = ['【思考方式】', ...decide, `${mind}。`];
 
-  const conflict = `處理矛盾：${conflictLines(a, b, syn, difficult).join('')}`;
+  const conflict = ['【處理矛盾】', ...conflictLines(a, b, syn, difficult)];
 
-  const love = sameType
-    ? `親密與愛：兩人感覺被愛的方式很像，都是${TYPE_LOVE[a.chart.type]}；很容易給到對方想要的，記得輪流主動，愛就會一直流動。${intimacyLine(a, b, syn)}`
-    : `親密與愛：${a.name}感覺被愛的方式是${TYPE_LOVE[a.chart.type]}；${b.name}則是${TYPE_LOVE[b.chart.type]}。兩種愛的語言不同，正好能讓彼此學到另一種表達；試著用對方喜歡的方式去愛，對方會接收得更清楚。${intimacyLine(a, b, syn)}`;
+  const love = [
+    '【感受親密與愛】',
+    ...(sameType
+      ? [`兩人感覺被愛的方式很像，都是${TYPE_LOVE[a.chart.type]}；很容易給到對方想要的，記得輪流主動，愛就會一直流動。`]
+      : [
+          `${a.name}感覺被愛的方式是${TYPE_LOVE[a.chart.type]}；${b.name}則是${TYPE_LOVE[b.chart.type]}。`,
+          '兩種愛的語言不同，正好能讓彼此學到另一種表達；試著用對方喜歡的方式去愛，對方會接收得更清楚。',
+        ]),
+    intimacyLine(a, b, syn),
+  ];
 
-  const out = [personality, thinking, conflict, love];
-  return difficult ? [difficultyLine(a, b, syn), ...out] : out;
+  const out = [...personality, ...thinking, ...conflict, ...love];
+  return difficult ? ['【先說在前面】', ...difficultyLine(a, b, syn), ...out] : out;
 }
 
 /** Closing item: 2–3 sentences on what is most precious about this specific pair. */
@@ -947,32 +960,32 @@ function giftLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult: boole
       `這段關係的課題，是兩人都願意多走一步：${compromise.length} 條妥協通道和不同的決定步調，代表很多事要靠刻意溝通、輪流讓步，並且尊重${slow.name}需要的時間，而不是自然就合拍。`,
     );
     const real = companions[0] ?? dominance[0] ?? compromise[0];
-    if (real) sentences.push(`真實存在的禮物也很清楚：${channelLabel(real.channel)}帶給你們${gift(real)}，${typeSentence.replace('。', '')}。`);
+    if (real) sentences.push(`真實存在的禮物也很清楚：${channelLabel(real.channel)} 帶給你們${gift(real)}，${typeSentence.replace('。', '')}。`);
     else sentences.push(typeSentence);
     sentences.push('如果兩人都珍惜這些、願意投入經營，這段關係會教會你們很多一個人學不到的事；若努力後仍長期覺得很累，誠實面對這份感受也是對彼此的尊重。');
-    return sentences.join('');
+    return sentences.join('\n');
   }
 
   if (em.length >= 2) {
     sentences.push(
-      `你們之間最珍貴的，是只在兩人一起時才接通的${channelLabel(em[0].channel)}與${channelLabel(em[1].channel)}：${gift(em[0])}，還有${gift(em[1])}，都是${a.name}和${b.name}各帶一半、合起來才完整的。`,
+      `你們之間最珍貴的，是只在兩人一起時才接通的 ${channelLabel(em[0].channel)} 與 ${channelLabel(em[1].channel)}：${gift(em[0])}，還有${gift(em[1])}，都是${a.name}和${b.name}各帶一半、合起來才完整的。`,
     );
   } else if (em.length === 1) {
     sentences.push(
-      `${channelLabel(em[0].channel)}是只屬於你們的連結，${a.name}帶來閘門 ${em[0].gateA}、${b.name}帶來閘門 ${em[0].gateB}，合起來成了${gift(em[0])}。`,
+      `${channelLabel(em[0].channel)} 是只屬於你們的連結，${a.name}帶來閘門 ${em[0].gateA}、${b.name}帶來閘門 ${em[0].gateB}，合起來成了${gift(em[0])}。`,
     );
   } else if (companions.length > 0) {
-    sentences.push(`你們共同擁有${channelLabel(companions[0].channel)}，${gift(companions[0])}，是兩人不必經營就有的默契。`);
+    sentences.push(`你們共同擁有 ${channelLabel(companions[0].channel)}，${gift(companions[0])}，是兩人不必經營就有的默契。`);
   } else if (dominance.length > 0) {
     const [holder, other] = names(a, b, dominance[0].holder ?? 'a');
-    sentences.push(`${holder}帶給${other}的${channelLabel(dominance[0].channel)}，讓${other}體會到${gift(dominance[0])}，這是只有在${holder}身邊才有的經驗。`);
+    sentences.push(`${holder}帶給${other}的 ${channelLabel(dominance[0].channel)}，讓${other}體會到${gift(dominance[0])}，這是只有在${holder}身邊才有的經驗。`);
   } else {
     sentences.push(typeSentence);
     usedType = true;
   }
 
   if (em.length > 0 && companions.length > 0) {
-    sentences.push(`再加上兩人都有的${channelLabel(companions[0].channel)}，帶來${gift(companions[0])}，讓你們相處起來像老朋友一樣自在。`);
+    sentences.push(`再加上兩人都有的 ${channelLabel(companions[0].channel)}，帶來${gift(companions[0])}，讓你們相處起來像老朋友一樣自在。`);
   } else if (syn.newCenters.length > 0) {
     sentences.push(`在一起時${centerList(syn.newCenters)}才被點亮，帶來${CENTER_GIFT[syn.newCenters[0]]}，這是你們單獨時都沒有的。`);
   } else if (!usedType) {
@@ -981,7 +994,7 @@ function giftLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult: boole
   }
 
   sentences.push(usedType ? COMPOSITE_GIFT[syn.composite.type] : typeSentence);
-  return sentences.join('');
+  return sentences.join('\n');
 }
 
 export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem[] {

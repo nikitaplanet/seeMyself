@@ -81,13 +81,45 @@ export function ChartMeaningCard({
                             <span className="pt-0.5 text-xs tracking-wide text-muted">
                                 意思說明
                             </span>
-                            <p className="leading-relaxed whitespace-pre-line text-fg">
-                                {entry.meaning}
-                            </p>
+                            <MeaningText text={entry.meaning} />
                         </dd>
                     </div>
                 ))}
             </dl>
         </section>
+    );
+}
+
+// Lines starting with 【標題】 open a titled block; every other line is its own paragraph.
+// Text without any 【】 heading keeps the plain pre-line rendering.
+const HEADING = /^【([^】]+)】(.*)$/;
+
+function MeaningText({ text }: { text: string }) {
+    const lines = text.split('\n');
+    if (!lines.some((l) => HEADING.test(l))) {
+        return <p className="leading-relaxed whitespace-pre-line text-fg">{text}</p>;
+    }
+    const blocks: { title: string | null; paras: string[] }[] = [];
+    for (const line of lines) {
+        const m = HEADING.exec(line);
+        if (m) blocks.push({ title: m[1], paras: m[2].trim() ? [m[2].trim()] : [] });
+        else if (line.trim()) {
+            if (blocks.length === 0) blocks.push({ title: null, paras: [] });
+            blocks[blocks.length - 1].paras.push(line.trim());
+        }
+    }
+    return (
+        <div className="flex flex-col gap-4 text-fg">
+            {blocks.map((b, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                    {b.title && <h3 className="font-medium text-fg">{b.title}</h3>}
+                    {b.paras.map((para, j) => (
+                        <p key={j} className="leading-relaxed">
+                            {para}
+                        </p>
+                    ))}
+                </div>
+            ))}
+        </div>
     );
 }

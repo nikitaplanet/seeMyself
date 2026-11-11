@@ -819,23 +819,30 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
   const pb = profileOf(gb);
   if (!pa || !pb) return ['日主資料不完整，暫時無法描繪日常相處。'];
   const lines: string[] = [];
-  if (syn.fit.difficult) lines.push(difficultLine(a, b, syn));
+  if (syn.fit.difficult) lines.push(...difficultLine(a, b, syn));
 
   // 個性
   const yangA = YANG_STEMS.has(ga);
   const yangB = YANG_STEMS.has(gb);
-  const polarity =
+  const polarity: string[] =
     yangA && yangB
-      ? '兩人都是陽干，個性外放、主動，生活很少冷場，說走就走的事特別多，是很會一起玩的一對；安排行程時輪流當主揪，就更順。'
+      ? ['兩人都是陽干，個性外放、主動，生活很少冷場，說走就走的事特別多，是很會一起玩的一對；安排行程時輪流當主揪，就更順。']
       : !yangA && !yangB
-        ? '兩人都是陰干，內斂細膩，很能察覺對方沒說出口的情緒，待在一起安靜也舒服；兩人都說「隨便」時，試試各自先說一個想法。'
-        : `${yangA ? a.name : b.name}是陽干，比較主動外放；${yangA ? b.name : a.name}是陰干，比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走：${yangA ? a.name : b.name}帶${yangA ? b.name : a.name}見識新地方，${yangA ? b.name : a.name}幫${yangA ? a.name : b.name}把步調放慢、看見沿路的風景；步調不同時，互相說一聲「等等」或「走吧」就好。`;
+        ? ['兩人都是陰干，內斂細膩，很能察覺對方沒說出口的情緒，待在一起安靜也舒服；兩人都說「隨便」時，試試各自先說一個想法。']
+        : [
+            `${yangA ? a.name : b.name}是陽干，比較主動外放；${yangA ? b.name : a.name}是陰干，比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走：${yangA ? a.name : b.name}帶${yangA ? b.name : a.name}見識新地方，${yangA ? b.name : a.name}幫${yangA ? a.name : b.name}把步調放慢、看見沿路的風景。`,
+            '步調不同時，互相說一聲「等等」或「走吧」就好。',
+          ];
   const twin = ga === gb;
-  lines.push(
-    twin
-      ? `【個性】兩人都是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}。同一種底色放在一起，很快就懂對方，像遇見另一個自己；卡在同一個地方時，也最能互相打氣。${polarity}`
-      : `【個性】${a.name}是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}；${b.name}是${gb}${STEM_WX[gb]}（${pb.image}），${pb.personality}。${polarity}`,
-  );
+  lines.push('【個性】');
+  if (twin) {
+    lines.push(`兩人都是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}。`);
+    lines.push('同一種底色放在一起，很快就懂對方，像遇見另一個自己；卡在同一個地方時，也最能互相打氣。');
+  } else {
+    lines.push(`${a.name}是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}。`);
+    lines.push(`${b.name}是${gb}${STEM_WX[gb]}（${pb.image}），${pb.personality}。`);
+  }
+  lines.push(...polarity);
 
   // 思考方式
   const mutual = syn.tenGodBForA && syn.tenGodBForA === syn.tenGodAForB ? MUTUAL_SCENE[syn.tenGodBForA] : undefined;
@@ -845,9 +852,12 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
         syn.tenGodBForA ? TEN_GOD_SCENE[syn.tenGodBForA]?.decide(a.name, b.name) : '',
         syn.tenGodAForB ? TEN_GOD_SCENE[syn.tenGodAForB]?.decide(b.name, a.name) : '',
       ].filter(Boolean);
-  lines.push(`【思考方式】${twin ? `兩人都${pa.thinking}` : `${a.name}${pa.thinking}；${b.name}${pb.thinking}`}。${decide.join('。')}${decide.length ? '。' : ''}`);
+  lines.push('【思考方式】');
+  lines.push(`${twin ? `兩人都${pa.thinking}` : `${a.name}${pa.thinking}；${b.name}${pb.thinking}`}。`);
+  for (const d of decide) lines.push(`${d}。`);
 
   // 處理矛盾
+  lines.push('【處理矛盾】');
   const conflict: string[] = [twin ? `兩人吵架時的反應很像：都${pa.conflict}。` : `${a.name}${pa.conflict}；${b.name}${pb.conflict}。`];
   conflict.push(dayConflictScene(a, b, syn));
   const sa = a.chart.strength;
@@ -860,9 +870,10 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
     conflict.push('兩人都身弱，溫和體貼，很少正面起衝突；誰先說一句「我們談談」，就能把體貼化成親近。');
   else if (sa === '身旺' && sb === '身弱') conflict.push(strongWeak(a.name, b.name));
   else if (sa === '身弱' && sb === '身旺') conflict.push(strongWeak(b.name, a.name));
-  lines.push(`【處理矛盾】${conflict.join('')}`);
+  lines.push(...conflict.filter(Boolean));
 
-  // 感受親密及愛
+  // 感受親密與愛
+  lines.push('【感受親密與愛】');
   const love: string[] = [twin ? `兩人表達與感受愛的方式一樣：都${pa.love}。` : `${a.name}${pa.love}；${b.name}${pb.love}。`];
   const sceneA = mutual ? mutual.love : syn.tenGodBForA ? TEN_GOD_SCENE[syn.tenGodBForA]?.love(a.name, b.name) : '';
   const sceneB = mutual ? '' : syn.tenGodAForB ? TEN_GOD_SCENE[syn.tenGodAForB]?.love(b.name, a.name) : '';
@@ -873,14 +884,18 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
     syn.aHelpsB.length ? `${b.name}在${a.name}身邊時常覺得${syn.aHelpsB.map((wx) => WX_FEEL[wx]).join('、')}` : '',
   ].filter(Boolean);
   if (feel.length) love.push(`${feel.join('；')}。`);
-  lines.push(`【感受親密及愛】${love.join('')}`);
+  lines.push(...love.filter(Boolean));
   return lines;
 }
 
 /** 明顯不合時，放在日常相處最前面的坦白說明。 */
-function difficultLine(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string {
+function difficultLine(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[] {
   const why = syn.fit.reasons.slice(0, 3).join('；');
-  return `【先說在前面】依合婚常用的看法，${a.name}和${b.name}這組命盤的困難因素明顯多於緩和因素（${why}）。這不代表一定走不下去，而是相處的摩擦會比多數伴侶來得頻繁、來得直接：生活步調、說話方式、在意的事常常對不上，光靠喜歡和忍耐容易累。想走得長，需要兩人都願意把規則講清楚、把情緒說出口，並且在衝突時有固定的處理方式；下面每一段也會把需要特別用力的地方寫得更直白。`;
+  return [
+    '【先說在前面】',
+    `依合婚常用的看法，${a.name}和${b.name}這組命盤的困難因素明顯多於緩和因素（${why}）。這不代表一定走不下去，而是相處的摩擦會比多數伴侶來得頻繁、來得直接：生活步調、說話方式、在意的事常常對不上，光靠喜歡和忍耐容易累。`,
+    '想走得長，需要兩人都願意把規則講清楚、把情緒說出口，並且在衝突時有固定的處理方式；下面每一段也會把需要特別用力的地方寫得更直白。',
+  ];
 }
 
 function dayConflictScene(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string {
@@ -964,9 +979,9 @@ function giftItem(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): MeaningIte
   if (syn.bHelpsA.length > 0 && syn.aHelpsB.length > 0)
     extras.push(`更難得的是兩人互為喜用：${a.name}帶給${b.name}${give(syn.aHelpsB)}，${b.name}帶給${a.name}${give(syn.bHelpsA)}，彼此都是對方需要的那一塊。`);
   else if (syn.bHelpsA.length > 0)
-    extras.push(`${b.name}身上旺盛的${syn.bHelpsA.join('、')}正是${a.name}的喜用，在${b.name}身邊，${a.name}常覺得${syn.bHelpsA.map((wx) => WX_FEEL[wx]).join('、')}。`);
+    extras.push(`${b.name}身上旺盛的${syn.bHelpsA.join('、')}正是${a.name}的喜用，${b.name}的存在本身就是${a.name}最好的補給。`);
   else if (syn.aHelpsB.length > 0)
-    extras.push(`${a.name}身上旺盛的${syn.aHelpsB.join('、')}正是${b.name}的喜用，在${a.name}身邊，${b.name}常覺得${syn.aHelpsB.map((wx) => WX_FEEL[wx]).join('、')}。`);
+    extras.push(`${a.name}身上旺盛的${syn.aHelpsB.join('、')}正是${b.name}的喜用，有${a.name}在，${b.name}做什麼都更有底氣。`);
   if (syn.sanHe.length > 0)
     extras.push(`兩人的地支合起來湊成三合${syn.sanHe.map((wx) => `${wx}局`).join('、')}，有一股力量只有兩人在一起時才完整。`);
   const mutual = syn.tenGodBForA && syn.tenGodBForA === syn.tenGodAForB ? MUTUAL_SCENE[syn.tenGodBForA] : undefined;
@@ -991,14 +1006,15 @@ function giftItem(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): MeaningIte
       '這段關係的課題與禮物',
       '這組命盤困難較多：坦白說明需要付出什麼，也記下兩人之間真實可貴的部分。',
       [
-        `課題：${lesson}${hurt}這組命盤要走得長，靠的不是緣分，而是兩人都願意長期練習：吵架時有固定的暫停與回來談的方式、生活規則寫清楚、不把一時的話當成定論。只有一方努力，會很快累垮。`,
+        `課題：${lesson}${hurt}`,
+        `這組命盤要走得長，靠的不是緣分，而是兩人都願意長期練習：吵架時有固定的暫停與回來談的方式、生活規則寫清楚、不把一時的話當成定論。只有一方努力，會很快累垮。`,
         `禮物：${stem}${real}`,
         `願意一起面對這些課題的兩個人，換來的是比多數伴侶更深的了解與更真實的承諾。`,
       ].join('\n'),
     );
   }
-  const picked = [stem, ...extras.slice(0, chongLine ? 1 : 2), chongLine].filter(Boolean);
-  return item('這段關係的禮物', '從兩人的日主、十神、夫妻宮與五行裡，整理出這對組合最珍貴的地方。', picked.join(''));
+  const paras = [stem, extras.slice(0, chongLine ? 1 : 2).join(''), chongLine].filter(Boolean);
+  return item('這段關係的禮物', '從兩人的日主、十神、夫妻宮與五行裡，整理出這對組合最珍貴的地方。', paras.join('\n'));
 }
 
 function adviceLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[] {

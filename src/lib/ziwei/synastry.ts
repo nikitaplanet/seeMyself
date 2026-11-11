@@ -490,7 +490,7 @@ const THINK_PAIR: Record<string, (x: string, y: string) => string> = {
     `${x}踩油門、${y}顧煞車，兩人一起做的決定，通常比各自做的少走很多冤枉路。像大筆花費、搬家、換工作這類事，先給${y}一兩天消化，${x}的衝勁就能用在最對的時機。`,
   'fast-feel': (x, y) =>
     `${x}能把${y}猶豫很久的事輕快地推動起來，${y}則提醒${x}這個決定讓人舒不舒服，兩人合起來既有效率又有溫度。${x}做決定前多問一句「你覺得呢」，${y}會更安心地跟上。`,
-  'analyze-analyze': () => '兩人都想得深，討論很有質量，常能把事情看得比別人透澈。可以試試替每件事訂個「決定期限」，深思熟慮就能更快落地。',
+  'analyze-analyze': () => '兩人都想得深，討論很有深度，常能把事情看得比別人透澈。可以試試替每件事訂個「決定期限」，深思熟慮就能更快落地。',
   'analyze-steady': (x, y) =>
     `${x}負責找問題、${y}負責守底線，做大決定特別穩，很少出錯。偶爾一起挑戰一件新事情，穩健之外也會多點驚喜。`,
   'analyze-feel': (x, y) =>
@@ -613,7 +613,8 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
     const bondJi = flights.filter((f) => f.mutagen === '忌' && BOND_PALACES.includes(f.palace));
     const lines = bondJi.map((f) => `${name(f.from)}的化忌在${other(f.from)}的${displayPalaceName(f.palace)}`).join('、');
     upfront.push(
-      `【先說在前面】坦白說，從紫微合盤來看，這是一組需要比一般組合多花力氣的關係：${lines}，牽掛集中在最核心的位置；化祿沒有落在對方的命、夫妻、交友、福德這幾宮，少了自然的甜頭來緩衝；五行局又是相剋，兩人的基本節奏容易互相壓制。這不代表不能在一起，而是代表很多事不會「自然就好」，需要兩人都有意識地經營。下面先寫兩人相處的好，再寫最需要留意的地方。`,
+      '【先說在前面】',
+      `坦白說，從紫微合盤來看，這是一組需要比一般組合多花力氣的關係：${lines}，牽掛集中在最核心的位置；化祿沒有落在對方的命、夫妻、交友、福德這幾宮，少了自然的甜頭來緩衝；五行局又是相剋，兩人的基本節奏容易互相壓制。這不代表不能在一起，而是代表很多事不會「自然就好」，需要兩人都有意識地經營。下面先寫兩人相處的好，再寫最需要留意的地方。`,
     );
   }
 
@@ -626,7 +627,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   };
   const sameLead = !!soul.a.names[0] && soul.a.names[0] === soul.b.names[0];
   /** 兩人同一顆主星時，描述一樣就合成一句，不重複兩次。 */
-  const both = (x: string, y: string, same: string) => (x === y ? `${same}${x}。` : `${A}${x}；${B}${y}。`);
+  const both = (x: string, y: string, same: string): string[] => (x === y ? [`${same}${x}。`] : [`${A}${x}。`, `${B}${y}。`]);
   const extraOf = (ps: PalaceStars) => {
     const second = ps.names[1];
     return second && STAR_TRAIT[second] ? `${second}${STAR_TRAIT[second]}的一面` : '';
@@ -641,11 +642,13 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
         : ea || eb
           ? `不同的是，${ea ? A : B}還帶著${ea || eb}。`
           : '';
+    personality.push(`${A}（命宮${starsLabel(soul.a)}）和${B}（命宮${starsLabel(soul.b)}）都${main}。${diff}`);
     personality.push(
-      `${A}（命宮${starsLabel(soul.a)}）和${B}（命宮${starsLabel(soul.b)}）都${main}。${diff}兩人命宮主星都是${soul.a.names[0]}，很容易在對方身上看到自己，欣賞對方的地方，往往也是自己的長處，這份「像」是很難得的默契；看到對方的小毛病時溫柔一點，那常常也是自己的影子。`,
+      `兩人命宮主星都是${soul.a.names[0]}，很容易在對方身上看到自己，欣賞對方的地方，往往也是自己的長處，這份「像」是很難得的默契；看到對方的小毛病時溫柔一點，那常常也是自己的影子。`,
     );
   } else {
-    personality.push(`${A}（命宮${starsLabel(soul.a)}）${persona(soul.a)}；${B}（命宮${starsLabel(soul.b)}）${persona(soul.b)}。`);
+    personality.push(`${A}（命宮${starsLabel(soul.a)}）${persona(soul.a)}。`);
+    personality.push(`${B}（命宮${starsLabel(soul.b)}）${persona(soul.b)}。`);
   }
   const relaxA = lead(fude.a, STAR_RELAX);
   const relaxB = lead(fude.b, STAR_RELAX);
@@ -660,7 +663,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   // 思考方式
   const tA = lead(soul.a, STAR_THINK) ?? FALLBACK_THINK;
   const tB = lead(soul.b, STAR_THINK) ?? FALLBACK_THINK;
-  const thinking = [both(tA.text, tB.text, `${A}和${B}在這點上一模一樣：`), pairNote(THINK_PAIR, THINK_ORDER, tA.style, tB.style, A, B)];
+  const thinking = [...both(tA.text, tB.text, `${A}和${B}在這點上一模一樣：`), pairNote(THINK_PAIR, THINK_ORDER, tA.style, tB.style, A, B)];
   for (const f of flights) {
     if (f.mutagen === '權' && (f.palace === '命宮' || f.palace === '官祿')) {
       thinking.push(`${name(f.from)}的${f.star}化權落在${other(f.from)}的${displayPalaceName(f.palace)}，${other(f.from)}拿不定主意時，有${name(f.from)}幫忙拍板會安心很多；重要的決定由${other(f.from)}說最後一句，這份支持會更有力量。`);
@@ -673,7 +676,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   // 處理矛盾
   const cA = lead(soul.a, STAR_CONFLICT) ?? FALLBACK_CONFLICT;
   const cB = lead(soul.b, STAR_CONFLICT) ?? FALLBACK_CONFLICT;
-  const conflict = [both(cA.text, cB.text, '這點兩人也很像，'), pairNote(CONFLICT_PAIR, CONFLICT_ORDER, cA.style, cB.style, A, B)];
+  const conflict = [...both(cA.text, cB.text, '這點兩人也很像，'), pairNote(CONFLICT_PAIR, CONFLICT_ORDER, cA.style, cB.style, A, B)];
   if (fit.difficult) conflict.push(HARD_CONFLICT_NOTE[cA.style]);
   const jiKey = flights.filter((f) => f.mutagen === '忌' && f.key);
   if (jiKey.length === 2 && jiKey[0].palace === jiKey[1].palace && jiKey[0].from !== jiKey[1].from) {
@@ -712,10 +715,10 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   const feelA = lead(soul.a, STAR_LOVE_FEEL) ?? FALLBACK_LOVE_FEEL;
   const feelB = lead(soul.b, STAR_LOVE_FEEL) ?? FALLBACK_LOVE_FEEL;
   const love = [
-    both(lA.text, lB.text, '兩人愛人的方式也相同，') +
-      (feelA === feelB
-        ? `兩人最容易感到被愛的時候也一樣，都是${feelA}；要的東西相同，很容易給到對方心坎裡，誰先主動一點，甜就來得更快。`
-        : `${A}最容易感到被愛的時候，是${feelA}；${B}則是${feelB}。`),
+    ...both(lA.text, lB.text, '兩人愛人的方式也相同，'),
+    feelA === feelB
+      ? `兩人最容易感到被愛的時候也一樣，都是${feelA}；要的東西相同，很容易給到對方心坎裡，誰先主動一點，甜就來得更快。`
+      : `${A}最容易感到被愛的時候，是${feelA}；${B}則是${feelB}。`,
     lA.outward === lB.outward
       ? lA.outward
         ? '兩人都外放，愛意說得出口、做得出來，相處很甜、很有熱度；忙的時候也記得留一句問候，熱度就不會斷。'
@@ -774,10 +777,14 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
 
   return [
     ...upfront,
-    `【個性】${personality.join('')}`,
-    `【思考方式】${thinking.filter(Boolean).join('')}`,
-    `【處理矛盾】${conflict.filter(Boolean).join('')}`,
-    `【親密與愛】${love.join('')}`,
+    '【個性】',
+    ...personality.filter(Boolean),
+    '【思考方式】',
+    ...thinking.filter(Boolean),
+    '【處理矛盾】',
+    ...conflict.filter(Boolean),
+    '【感受親密與愛】',
+    ...love.filter(Boolean),
   ];
 }
 
@@ -875,13 +882,14 @@ function giftLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: Zi
       .filter((v, i, arr): v is string => !!v && arr.indexOf(v) === i)
       .map((v) => `「${v}」`)
       .join('、');
-    const head = sentences.length > 0 ? `真實而珍貴的部分是：${sentences.join('')}` : '';
+    const [first, ...rest] = sentences;
     return [
-      head,
+      first ? `真實而珍貴的部分是：${first}` : '',
+      ...rest,
       `要讓這段關係走得下去，需要的是：兩人都願意把${cares || '心裡最在意的事'}說清楚，而不是等對方猜；有一方慌的時候，另一方先穩住；五行相剋的節奏差異，靠事先約好的規則來承接，而不是靠感覺硬撐。做得到，兩人的在乎會變成很深的牽繫；做不到也不必勉強，看清楚這一點本身就是一種成熟。`,
     ].filter(Boolean);
   }
-  return [sentences.join('')];
+  return sentences;
 }
 
 function item(term: string, field: string, meaning: string): MeaningItem {
