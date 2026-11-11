@@ -140,9 +140,59 @@ describe('report from real charts', () => {
         expect(all).not.toMatch(/undefined|null|NaN/);
         expect(all).toContain('甲的');
         expect(all).toContain('乙的');
-        expect(items.map((i) => i.term)).toEqual(['重點相位', '其他相位', '和諧與張力', '宮位疊加', '相處建議']);
+        expect(items.map((i) => i.term)).toEqual(['重點相位', '其他相位', '和諧與張力', '宮位疊加', '日常相處', '相處建議']);
         const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
         expect(prompt).toContain('## 比對相位');
         expect(prompt).not.toMatch(/undefined|NaN/);
+    });
+
+    it('prompt asks for the four daily-life themes', () => {
+        const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+        for (const t of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式']) expect(prompt).toContain(t);
+    });
+});
+
+describe('日常相處 and pair-specific copy', () => {
+    // Pair 1: fire Sun / earth Venus vs water Sun / air Venus. Pair 2: everything earth vs earth.
+    const p1a = chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 100 }, { asc: 0 });
+    const p1b = chart({ sun: 95, mercury: 100, venus: 70, mars: 110, moon: 190 }, { asc: 90 });
+    const p2a = chart({ sun: 35, mercury: 40, venus: 45, mars: 50, moon: 160 }, { asc: 30 });
+    const p2b = chart({ sun: 275, mercury: 280, venus: 285, mars: 290, moon: 150 }, { asc: 270 });
+    const daily = (x: AstroChart, y: AstroChart) =>
+        astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y)).find(
+            (i) => i.term === '日常相處',
+        )!.meaning;
+
+    it('exists, covers the four themes and differs between pairs', () => {
+        const d1 = daily(p1a, p1b);
+        const d2 = daily(p2a, p2b);
+        for (const t of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']) {
+            expect(d1).toContain(t);
+            expect(d2).toContain(t);
+        }
+        expect(d1).not.toEqual(d2);
+        expect(d1).toContain('甲太陽在牡羊');
+        expect(d2).toContain('乙太陽在摩羯');
+        expect(d2).toContain('兩人的金星都是土象');
+        expect(d1).not.toMatch(/undefined|NaN/);
+    });
+
+    it('hedges the Moon and ASC when a birth time is unknown', () => {
+        const d = daily(chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 92 }, { timeUnknown: true }), p1b);
+        expect(d).toContain('甲的出生時間不確定，上升無法判斷');
+        expect(d).toContain('月亮可能在雙子或巨蟹');
+    });
+
+    it('aspect notes depend on the pair and the aspect family', () => {
+        const items = (x: AstroChart, y: AstroChart) =>
+            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y))[0].meaning;
+        const venusMarsSoft = items(chart({ venus: 0 }), chart({ mars: 120 }));
+        const venusMarsHard = items(chart({ venus: 0 }), chart({ mars: 90 }));
+        const sunMoonSoft = items(chart({ sun: 0 }), chart({ moon: 120 }));
+        const body = (s: string) => s.split('：').slice(1).join('：');
+        expect(body(venusMarsSoft)).not.toEqual(body(venusMarsHard));
+        expect(body(venusMarsSoft)).not.toEqual(body(sunMoonSoft));
+        // Roles follow whose planet it is: 乙 holds Mars, so 乙 is the one who pursues.
+        expect(venusMarsSoft).toContain('乙的主動');
     });
 });

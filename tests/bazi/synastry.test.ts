@@ -103,3 +103,52 @@ describe('analyzeBaziSynastry — real charts', () => {
     expect(prompt).not.toMatch(/undefined|NaN/);
   });
 });
+
+describe('日常相處 section', () => {
+  const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+  const chart = (date: string, time: string, gender: 'male' | 'female') =>
+    computeBazi({ date, time, timezone: 'Asia/Taipei', place: PLACE, gender });
+  const daily = (x: ReturnType<typeof chart>, y: ReturnType<typeof chart>) =>
+    baziSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeBaziSynastry(x, y)).find(
+      (i) => i.term === '日常相處',
+    );
+
+  const a = chart('1990-05-12', '14:30', 'male'); // 丁日主
+  const b = chart('1992-11-03', '08:15', 'female'); // 癸日主
+  const c = chart('1985-03-20', '06:00', 'female');
+
+  it('covers the four themes and reflects the pair', () => {
+    const d = daily(a, b);
+    expect(d).toBeDefined();
+    for (const theme of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密及愛】']) expect(d!.meaning).toContain(theme);
+    expect(d!.meaning).toContain('乙是甲的七殺');
+    expect(d!.meaning).toContain('丑未相沖');
+    expect(d!.meaning).not.toMatch(/undefined|null|NaN|你/);
+  });
+
+  it('differs between two different pairs', () => {
+    const d1 = daily(a, b)!.meaning;
+    const d2 = daily(a, c)!.meaning;
+    expect(d1).not.toEqual(d2);
+    // Most lines change, not just one word.
+    const l1 = d1.split('\n');
+    const l2 = d2.split('\n');
+    expect(l1.filter((l, i) => l === l2[i]).length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('天干五合 notes are specific to the pair', () => {
+  it('甲己 and 戊癸 read differently', () => {
+    const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+    const base = computeBazi({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE, gender: 'male' });
+    const withDay = (gan: string) => ({ ...base, pillars: base.pillars.map((p) => (p.key === 'day' ? { ...p, gan } : p)) });
+    const text = (x: string, y: string) => {
+      const ca = withDay(x);
+      const cb = withDay(y);
+      return baziSynastryItems({ name: 'A', chart: ca }, { name: 'B', chart: cb }, analyzeBaziSynastry(ca, cb))[0].meaning;
+    };
+    expect(text('甲', '己')).toContain('中正之合');
+    expect(text('戊', '癸')).toContain('無情之合');
+    expect(text('乙', '庚')).toContain('仁義之合');
+  });
+});

@@ -61,3 +61,43 @@ describe('analyzeZiweiSynastry — real charts', () => {
     expect(prompt).not.toMatch(/undefined|NaN/);
   });
 });
+
+describe('ziweiSynastryItems — 日常相處 and specific copy', () => {
+  const mk = (date: string, time: string, gender: 'male' | 'female') =>
+    computeZiwei({ date, time, timezone: 'Asia/Taipei', place: PLACE, gender });
+  const pair = (a: ReturnType<typeof mk>, b: ReturnType<typeof mk>) =>
+    ziweiSynastryItems(
+      { name: '甲', chart: a, timeUnknown: false },
+      { name: '乙', chart: b, timeUnknown: false },
+      analyzeZiweiSynastry(a, b),
+    );
+  const one = pair(mk('1990-05-12', '14:30', 'male'), mk('1992-11-03', '08:15', 'female'));
+  const two = pair(mk('1985-01-20', '23:40', 'female'), mk('1998-07-07', '03:10', 'male'));
+  const daily = (items: ReturnType<typeof pair>) => items.find((i) => i.term === '日常相處');
+
+  it('adds a 日常相處 section covering the four themes', () => {
+    for (const items of [one, two]) {
+      const d = daily(items);
+      expect(d).toBeDefined();
+      for (const theme of ['【個性】', '【思考方式】', '【處理矛盾】', '【親密與愛】']) {
+        expect(d!.meaning).toContain(theme);
+      }
+      expect(d!.meaning).toContain('吵架時');
+      expect(items.map((i) => i.meaning).join('\n')).not.toMatch(/undefined|null|NaN/);
+    }
+  });
+
+  it('日常相處 changes with the pair', () => {
+    const l1 = daily(one)!.meaning.split('\n');
+    const l2 = daily(two)!.meaning.split('\n');
+    l1.forEach((line, i) => expect(line).not.toBe(l2[i]));
+  });
+
+  it('flight lines differ beyond the names (祿權科忌 all get their own wording)', () => {
+    for (const items of [one, two]) {
+      const lines = items.find((i) => i.term === '四化互飛')!.meaning.split('\n').filter((l) => l.includes('→'));
+      const bodies = lines.map((l) => l.split('：')[1].replace(/[甲乙]/g, ''));
+      expect(new Set(bodies).size).toBe(bodies.length);
+    }
+  });
+});

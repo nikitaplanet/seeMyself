@@ -244,6 +244,55 @@ export function channelShortMeaning(id: string): string {
   return theme ? `${theme}。` : '';
 }
 
+/**
+ * Where each channel shows up in a couple's everyday life (a noun phrase, framed per connection
+ * kind by channelLine). Kept concrete so two channels never read alike.
+ */
+const CHANNEL_SCENE: Record<string, string> = {
+  '1-8': '佈置家裡、挑穿搭、一起做作品時，誰的品味被採用、被別人看見',
+  '2-14': '決定錢花在哪、要不要搬家或換城市這類「往哪走」的大方向',
+  '3-60': '一段卡住很久的日子後突然大轉彎，像臨時決定換工作或搬家',
+  '4-63': '一個丟出「為什麼會這樣？」、一個忍不住去找答案，能聊到半夜',
+  '5-15': '幾點睡、幾點吃飯、週末固定去哪，這些生活節奏誰配合誰',
+  '6-59': '牽手、擁抱、性與親密，以及什麼時候可以靠近、什麼時候要給空間',
+  '7-31': '出遊誰排行程、聚會誰出主意，大家最後聽誰的',
+  '9-52': '一起拼一件需要耐心的事，像規劃旅行細節、整理家裡的雜物',
+  '10-20': '一句話、一個動作就是當下的自己，不必事先想好怎麼表現',
+  '10-34': '各自忙著自己相信的事，沒空也不想被對方的計畫拉走',
+  '10-57': '家裡怎麼擺、去哪裡住才舒服，憑直覺就知道「這樣才對」',
+  '11-56': '旅行、看電影後聊心得，把經歷說成一個有意思的故事',
+  '12-22': '心情好時說甜話、營造氣氛，心情不對時連一句話都不想講',
+  '13-33': '一個人講過去的事、另一個人聽，把共同回憶整理成故事',
+  '16-48': '一起練一項技能，或一方手把手教另一方怎麼做比較好',
+  '17-62': '討論事情時誰的看法比較有條理、細節要不要講清楚',
+  '18-58': '一眼看出家裡或對方哪裡可以更好，提醒聽起來像挑剔',
+  '19-49': '誰照顧誰、需求有沒有被注意到，以及受不了時會不會直接「不要了」',
+  '20-34': '一忙起來就停不下來，兩人一起動、一起趕行程',
+  '20-57': '當下的直覺脫口而出，像走進餐廳就說「這裡不太對」',
+  '21-45': '家裡的錢誰管、大筆開銷誰說了算',
+  '23-43': '一方突然冒出新點子，另一方一時跟不上、聽不懂',
+  '24-61': '睡前聊人生、宇宙這種沒有標準答案的問題，想了又想',
+  '25-51': '一起做刺激的事、面對突發狀況，誰先衝、誰被嚇到',
+  '26-44': '說服對方買東西、去一個地方，也很記得過去哪些做法吃過虧',
+  '27-50': '照顧家人、煮飯給對方吃，以及什麼是「這個家該守住的」',
+  '28-38': '一起撐過一段難熬的日子，為了覺得有意義的事咬牙堅持',
+  '29-46': '說好就全心投入，像一起報名馬拉松、說走就走的旅行',
+  '30-41': '對下一次旅行、下一個階段的想像與期待，期待落空時的失落',
+  '32-54': '一起規劃未來、存錢買房、往上爬的野心',
+  '34-57': '遇到危險或突發狀況時反應很快，下意識就保護對方',
+  '35-36': '想嘗試新經驗、新餐廳新城市，興奮過後的情緒起伏',
+  '37-40': '家務分工、付出與回報，以及「我做了這些、你也要記得」的默契',
+  '39-55': '一方的情緒很容易挑起另一方的情緒，心情一起高一起低',
+  '42-53': '開始一件事就想把它走完，像裝修、一起養寵物的每個階段',
+  '47-64': '腦中一堆畫面理不清時，兩人一起回想、慢慢想通',
+};
+
+/** The one gate the non-holder brings in a compromise channel. */
+function compromiseGate(sc: SynastryChannel, syn: HdSynastry): number | null {
+  const own = sc.holder === 'a' ? syn.gatesB : syn.gatesA;
+  return sc.channel.gates.find((g) => own.includes(g)) ?? null;
+}
+
 export const SYNASTRY_CHANNEL_KIND_FIELD: Record<SynastryChannelKind, string> = {
   electromagnetic: '一人有通道的一端閘門、另一人有另一端，只有兩人在一起時才接通的通道。',
   companionship: '兩人都各自擁有的完整通道，是共同的語言與相處的基本盤。',
@@ -331,7 +380,7 @@ const TYPE_PARTNER_TIP: Record<HDType, string> = {
   manifestingGenerator: '讓他先回應再行動，接受他的速度，請他在換方向時告訴你一聲。',
   manifestor: '給他自己發起的空間，不要處處要求報備；你可以請他「行動前先跟我說一下」。',
   projector: '看見他、主動問他的看法；別把他當成無限的勞力，他需要比你更多的休息。',
-  reflector: '給他時間與好的環境，重大的事不要逼他當下決定。',
+  reflector: '帶他去讓他舒服的地方，留意他在什麼環境、和哪些人在一起時最明亮。',
 };
 
 type DecisionPace = 'wave' | 'instant' | 'voice' | 'cycle';
@@ -388,6 +437,32 @@ function paceNote(a: HdPartner, b: HdPartner): string {
   return `${fast.name}${PACE_LABEL[AUTHORITY_PACE[fast.chart.authority]]}，${slow.name}${PACE_LABEL[AUTHORITY_PACE[slow.chart.authority]]}：步調不同時，快的一方容易催、慢的一方容易覺得被逼。約定好重要的事「${slow.name}可以晚點回覆」，${fast.name}也不必等到對方確定才說出自己的直覺。`;
 }
 
+/** What a center feels like when it is defined only by the two of you together. */
+const CENTER_NEW: Record<CenterId, string> = {
+  head: '一起時常冒出一連串想搞懂的問題，對什麼都好奇。',
+  ajna: '一起討論時想法比較篤定，容易得出共同的結論。',
+  throat: '在一起話變多，也比較敢把想做的事說出口、推出去。',
+  g: '一起時「我們要往哪走、我們是怎樣的兩個人」特別清楚。',
+  heart: '一起時比較有底氣做承諾，也敢談錢與彼此的價值。',
+  spleen: '在一起時身體放鬆、有安全感，生病或疲累時特別想待在對方身邊。',
+  solarPlexus: '兩人一起才有的情緒波，心情會一起起伏，感受也比單獨時濃。',
+  sacral: '在一起時精力變多，做家事、出門、熬夜都比較有勁。',
+  root: '一起時推進的壓力變大，常一起趕進度、想把事情做完。',
+};
+
+/** What it looks like in daily life when both people are open in a center. */
+const CENTER_OPEN_BOTH: Record<CenterId, string> = {
+  head: '兩人都容易被別人丟來的問題推著想，睡前一起煩惱「到底要不要」。',
+  ajna: '兩人都能接受很多觀點，也容易一起拿不定主意，被長輩一說就動搖。',
+  throat: '兩人都可能搶話，或冷場時急著找話題；聚會裡都想被聽見。',
+  g: '住在哪、跟誰來往深深影響這段關係的感覺，換對環境就像換了一段關係。',
+  heart: '兩人都容易想證明自己，吵架時變成比誰付出比較多；別輕易許下做不到的承諾。',
+  spleen: '兩人都可能為了安全感死守不好的東西，例如舊習慣、不適合的工作，互相提醒放手。',
+  solarPlexus: '兩人都容易吸收外面的情緒，聚會回來常一起心累；為了避免衝突也可能都不說。',
+  sacral: '兩人都容易不知道何時該停，週末排滿、做到半夜才發現累壞了；行程表上直接留一天空白。',
+  root: '兩人都容易被截止日期催著跑，越急越想一次把事情做完，記得一起慢下來。',
+};
+
 function item(term: string, field: string, meaning: string): MeaningItem {
   return { term, field, meaning };
 }
@@ -396,17 +471,243 @@ function centerList(cs: readonly CenterId[]): string {
   return cs.map((c) => CENTER_NAMES_ZH[c]).join('、');
 }
 
-function channelLine(sc: SynastryChannel, a: HdPartner, b: HdPartner): string {
+/** One closing line per holder for dominance / compromise, instead of repeating it per channel. */
+function holderSummary(kind: SynastryChannelKind, list: SynastryChannel[], a: HdPartner, b: HdPartner): string[] {
+  if (kind !== 'dominance' && kind !== 'compromise') return [];
+  const out: string[] = [];
+  if (kind === 'dominance') {
+    const parts = (['a', 'b'] as const)
+      .map((key) => ({ key, held: list.filter((c) => c.holder === key).map((c) => c.channel.id) }))
+      .filter((x) => x.held.length > 0);
+    if (parts.length === 2) {
+      const [pa, pb] = parts.map((x) => `${names(a, b, x.key)[0]}帶起 ${x.held.join('、')}`);
+      out.push(`${pa}，${pb}：兩人各自在對方身邊體驗到自己沒有的能量，享受就好，不必勉強自己也做得一樣。`);
+      return out;
+    }
+  }
+  for (const key of ['a', 'b'] as const) {
+    const held = list.filter((c) => c.holder === key).map((c) => c.channel.id);
+    if (held.length === 0) continue;
+    const [holder, other] = names(a, b, key);
+    out.push(
+      kind === 'dominance'
+        ? `${held.join('、')}：由${holder}帶起，${other}在${holder}身邊才體驗到，不必勉強自己也做得一樣。`
+        : `${held.join('、')}：${other}只握著一半，常覺得得照${holder}的方式來、說不上話；${holder}放慢一點，問問${other}的想法。`,
+    );
+  }
+  return out;
+}
+
+function channelLine(sc: SynastryChannel, a: HdPartner, b: HdPartner, syn: HdSynastry): string {
   const label = channelLabel(sc.channel);
   const meaning = channelShortMeaning(sc.channel.id);
-  let who = '';
+  const scene = CHANNEL_SCENE[sc.channel.id];
   if (sc.kind === 'electromagnetic') {
-    who = `（${a.name} 閘門 ${sc.gateA} × ${b.name} 閘門 ${sc.gateB}）`;
-  } else if (sc.holder) {
-    const [holder] = names(a, b, sc.holder);
-    who = `（${holder}擁有）`;
+    const head = `${label}（${a.name} 閘門 ${sc.gateA} × ${b.name} 閘門 ${sc.gateB}）：${meaning}`;
+    return scene ? `${head}放進生活裡，就是${scene}。` : head;
   }
-  return `${label}${who}：${meaning}`;
+  if (sc.kind === 'companionship') {
+    const head = `${label}（兩人都有）：${meaning}`;
+    return scene ? `${head}像${scene}這類事，兩人做法相近、不太需要解釋。` : head;
+  }
+  const [holder, other] = names(a, b, sc.holder ?? 'a');
+  if (sc.kind === 'dominance') {
+    const head = `${label}（${holder}擁有）：${meaning}`;
+    return scene ? `${head}例如${scene}。` : head;
+  }
+  const g = compromiseGate(sc, syn);
+  const head = `${label}（${holder}完整、${other}只有閘門 ${g ?? '一端'}）：${meaning}`;
+  return scene ? `${head}例如${scene}。` : head;
+}
+
+// ---------------------------------------------------------------------------
+// 日常相處 — four everyday themes built from each person's own chart
+// ---------------------------------------------------------------------------
+
+/** Conscious (personality) line of the profile, as an everyday habit. */
+const LINE_HABIT: Record<number, string> = {
+  1: '做決定前要先查清楚，去新餐廳也會先看評價',
+  2: '需要一個人放空的時間，被一直叫出門會累',
+  3: '寧可先試試看，搞砸了也當成學到一課',
+  4: '很重視熟朋友圈，新事物多半透過朋友認識',
+  5: '常是朋友有麻煩時第一個被找的人，背著的期待比表面上多',
+  6: '習慣先站遠一點觀察，看清楚了才投入',
+};
+
+const TYPE_HABIT: Record<HDType, string> = {
+  generator: '有感覺的事會一頭栽進去，沒感覺的事拖著不想動',
+  manifestingGenerator: '常同時開好幾件事，做到一半就跳到下一件',
+  manifestor: '想到就自己去做，不太習慣先問人',
+  projector: '很會看人，常一眼看出對方卡在哪裡',
+  reflector: '每天的狀態都不太一樣，很受當天的環境與身邊的人影響',
+};
+
+/** After-work energy: sacral defined → still has fuel; throat-only → talk first; else quiet. */
+function eveningMode(p: HdPartner): 'active' | 'talk' | 'quiet' {
+  const d = p.chart.definedCenters;
+  if (d.includes('sacral')) return 'active';
+  if (d.includes('throat')) return 'talk';
+  return 'quiet';
+}
+
+const EVENING_TEXT: Record<'active' | 'talk' | 'quiet', string> = {
+  active: '還有力氣，想出門走走或動手做點事',
+  talk: '想先把今天發生的事講出來才放鬆',
+  quiet: '電量見底，想先安靜躺一下再說話',
+};
+
+/** How each authority plays out on a small everyday question. */
+const AUTHORITY_SCENE: Record<Authority, string> = {
+  emotional: '被問「週末要不要去花蓮？」會先說「我想一下」，心情走過一輪、隔天的答案才準',
+  sacral: '被問「晚餐吃拉麵好嗎？」喉嚨會先冒出「嗯！」或「嗯……」，要他講理由反而講不出來',
+  splenic: '走進一間要租的房子，第一秒就知道「不太對」，那一下比事後分析可靠',
+  egoManifested: '說出「我要」的事就會做到，被勉強答應的事撐不久',
+  egoProjected: '要把「我到底想不想要」說給信任的人聽，才聽得出自己的意願',
+  selfProjected: '邊講邊想，講著講著自己就聽出方向，旁人不必急著給答案',
+  mental: '換個地方、跟幾個人聊過，答案才會浮出來，悶在家裡想只會打轉',
+  lunar: '大事要花大約一個月，在不同日子感覺同一件事，今天說好不代表定案',
+};
+
+const AJNA_STYLE = {
+  defined: '腦中有一套固定的思路，討論時會照自己的邏輯走',
+  open: '能理解各種看法，但被要求「現在就確定」時會不安',
+};
+
+/** Not-self signal of each type, and how it tends to leak out in an argument. */
+const TYPE_NOT_SELF: Record<HDType, string> = {
+  generator: '挫折感：嘴上說好、做起來卻越來越悶',
+  manifestingGenerator: '挫折或不耐：打斷對方，想直接跳到結論',
+  manifestor: '憤怒：突然不講話或自己做決定，覺得被管',
+  projector: '苦澀：覺得講了也沒人聽，話開始帶刺',
+  reflector: '失望：整個人沒了光彩，對關係提不起勁',
+};
+
+/** What makes each type feel loved, as a concrete gesture. */
+const TYPE_LOVE: Record<HDType, string> = {
+  generator: '一起做事就是愛，一起煮飯、運動、整理房間，提議被熱情回應時最有感',
+  manifestingGenerator: '被允許有自己的速度，臨時起意的點子有人跟、不被嫌三分鐘熱度',
+  manifestor: '被信任、有空間，說「我要去做……」時對方回一句「好，加油」就很暖',
+  projector: '被看見與被請教，對方記得他說過的話、主動問「你覺得呢？」比禮物更有感',
+  reflector: '待在對的環境裡被陪伴，一起去他喜歡的地方、不催他回答',
+};
+
+/** Channels that most directly carry closeness, in priority order, with their intimacy scene. */
+const INTIMACY_SCENE: [string, string][] = [
+  ['6-59', '身體上的靠近，像牽手、擁抱、性，以及什麼時候想親近、什麼時候想要自己的空間'],
+  ['39-55', '情緒上的撩動，一句話就能讓對方心頭一熱或一沉，感受強烈也起伏大'],
+  ['12-22', '浪漫的氣氛，心情對了會說很動人的話，氣氛不對時寧可安靜'],
+  ['19-49', '需求被照顧的感覺，像有人記得你愛吃什麼、天冷時遞來外套'],
+  ['37-40', '付出與回報的約定，像我煮飯你洗碗，約定被遵守就安心'],
+  ['30-41', '共同的期待，一起想像下一趟旅行、下一個階段，光是規劃就心動'],
+  ['27-50', '照顧與守護，像生病時煮一碗粥、把對方的家人也當自己人'],
+  ['35-36', '新鮮的體驗，一起去沒去過的地方，情緒跟著體驗起伏'],
+  ['29-46', '全心的投入，答應了就陪到底，一起流汗、一起經歷'],
+  ['5-15', '共同的節奏，一起吃早餐、固定的散步時間，習慣本身就是陪伴'],
+  ['13-33', '傾聽與記得，一個說、一個記住，對方記得你講過的事就覺得被愛'],
+  ['10-20', '做自己被接受的安心，不用演，在對方面前怎樣都可以'],
+];
+
+function intimacyLine(a: HdPartner, b: HdPartner, syn: HdSynastry): string {
+  for (const [id, scene] of INTIMACY_SCENE) {
+    const sc = syn.channels.find((c) => c.channel.id === id);
+    if (!sc) continue;
+    const label = channelLabel(sc.channel);
+    if (sc.kind === 'electromagnetic')
+      return `${label}在你們之間才接通（${a.name}閘門 ${sc.gateA}、${b.name}閘門 ${sc.gateB}），牽動的是${scene}；這份親密只在兩人一起時出現，是很重要的吸引。`;
+    if (sc.kind === 'companionship')
+      return `兩人都有${label}，在${scene}這件事上，你們表達愛的方式很像，不用多解釋。`;
+    const [holder, other] = names(a, b, sc.holder ?? 'a');
+    if (sc.kind === 'dominance')
+      return `${label}只有${holder}有，牽動的是${scene}；多半由${holder}主動帶起，${other}常是在對方身上第一次體會到這種親密。`;
+    return `${label}由${holder}擁有完整的線、${other}只有一端，牽動的是${scene}；${other}有時會覺得親密的節奏由對方決定，${holder}記得問一句「這樣你舒服嗎？」。`;
+  }
+  if (syn.newCenters.includes('solarPlexus'))
+    return '兩人單獨時情緒中心都開放，在一起才接上情緒：相處時感受特別濃，分開幾天就淡一點，這不代表感情變了。';
+  return '兩人之間沒有直接牽動親密的通道，靠近感多半來自日常的陪伴與小習慣，刻意安排兩人時間會很有幫助。';
+}
+
+function conflictLines(a: HdPartner, b: HdPartner, syn: HdSynastry): string[] {
+  const lines: string[] = [];
+  const spA = a.chart.definedCenters.includes('solarPlexus');
+  const spB = b.chart.definedCenters.includes('solarPlexus');
+  if (spA && spB) {
+    lines.push('兩人都有自己的情緒波，最容易在兩人剛好都在低點時吵起來；約好「心情低的人先說一聲」，大事等兩人都平靜再談。');
+  } else if (spA || spB) {
+    const [wave, open] = spA ? [a.name, b.name] : [b.name, a.name];
+    lines.push(
+      `${wave}有情緒波、${open}的情緒中心開放：${wave}心情低時，${open}會先感覺到，甚至比${wave}更不舒服，常急著把氣氛弄好或先認錯。${open}可以先離開現場一下，分清楚那是${wave}的情緒、不是自己做錯了什麼；${wave}則不必在低點時逼自己講清楚。`,
+    );
+  } else if (syn.composite.definedCenters.includes('solarPlexus')) {
+    lines.push('兩人各自的情緒中心都開放，在一起才接上情緒波：吵架常像突然起火，分開冷靜一下就淡了，別在吵架當下做重大決定。');
+  } else {
+    lines.push('兩人的情緒中心都開放，都不太喜歡衝突，容易一起把不滿吞下去；約好固定時間把小事講開，比等到爆發好。');
+  }
+
+  const hA = a.chart.definedCenters.includes('heart');
+  const hB = b.chart.definedCenters.includes('heart');
+  if (hA !== hB) {
+    const [firm, proving] = hA ? [a.name, b.name] : [b.name, a.name];
+    lines.push(`${firm}的意志力中心有定義、${proving}開放：吵起來時${proving}容易急著列出自己做了多少，${firm}不太懂為什麼要比；${firm}一句「我知道你很努力」就能降溫。`);
+  }
+
+  lines.push(
+    a.chart.type === b.chart.type
+      ? `快要吵起來的訊號兩人一樣，都是${TYPE_NOT_SELF[a.chart.type]}；兩人很容易同時進入這個狀態，誰先察覺誰就先喊暫停。`
+      : `快要吵起來的訊號：${a.name}會出現${TYPE_NOT_SELF[a.chart.type]}；${b.name}會出現${TYPE_NOT_SELF[b.chart.type]}。看到訊號先停一下，比爭對錯有用。`,
+  );
+
+  const intimacyIds = new Set(INTIMACY_SCENE.map(([id]) => id));
+  const compromises = syn.channels.filter((c) => c.kind === 'compromise');
+  const comp = compromises.find((c) => !intimacyIds.has(c.channel.id)) ?? compromises[0];
+  if (comp) {
+    const [holder, other] = names(a, b, comp.holder ?? 'a');
+    const scene = CHANNEL_SCENE[comp.channel.id];
+    lines.push(
+      `最容易反覆卡住的題目在 ${channelLabel(comp.channel)}${scene ? `，也就是${scene}` : ''}：這件事上由${holder}拍板太多次，${other}就會累積不滿，輪流決定比較公平。`,
+    );
+  }
+  return lines;
+}
+
+function dailyLines(a: HdPartner, b: HdPartner, syn: HdSynastry): string[] {
+  const sameType = a.chart.type === b.chart.type;
+  const la = a.chart.profile.personality;
+  const lb = b.chart.profile.personality;
+  const ea = eveningMode(a);
+  const eb = eveningMode(b);
+  const evening =
+    ea === eb
+      ? `下班回家兩人都${EVENING_TEXT[ea]}，步調很合`
+      : `下班回家${a.name}${EVENING_TEXT[ea]}，${b.name}卻${EVENING_TEXT[eb]}；先說好「給我十分鐘」，就不會誤會對方冷淡或太黏`;
+  const habits = sameType
+    ? la === lb
+      ? `兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}；人生角色也同樣${LINE_HABIT[la] ?? ''}，像照鏡子一樣，優點與盲點都會加倍`
+      : `兩人都是${TYPE_NAMES_ZH[a.chart.type]}，都${TYPE_HABIT[a.chart.type]}；不同的是${a.name}${LINE_HABIT[la] ?? ''}，${b.name}則${LINE_HABIT[lb] ?? ''}`
+    : `${a.name}${TYPE_HABIT[a.chart.type]}，也${LINE_HABIT[la] ?? ''}；${b.name}${TYPE_HABIT[b.chart.type]}，也${LINE_HABIT[lb] ?? ''}`;
+  const personality = `個性：${habits}。${evening}。`;
+
+  const ajA = a.chart.definedCenters.includes('ajna');
+  const ajB = b.chart.definedCenters.includes('ajna');
+  const decide =
+    a.chart.authority === b.chart.authority
+      ? `兩人都是${AUTHORITY_NAMES_ZH[a.chart.authority]}，${AUTHORITY_SCENE[a.chart.authority]}；做決定的方式一樣，彼此很能體諒，但也可能一起卡在同一個地方`
+      : `${a.name}${AUTHORITY_SCENE[a.chart.authority]}；${b.name}則${AUTHORITY_SCENE[b.chart.authority]}`;
+  const mind =
+    ajA === ajB
+      ? `兩人平時都${ajA ? AJNA_STYLE.defined : AJNA_STYLE.open}${ajA ? '，意見不同時容易各自堅持，先聽完對方的推理再回應' : '，討論常沒結論，約好「這次誰拍板」比較有效率'}`
+      : (() => {
+          const [fixed, flex] = ajA ? [a.name, b.name] : [b.name, a.name];
+          return `${fixed}${AJNA_STYLE.defined}，${flex}${AJNA_STYLE.open}；討論時${flex}常被${fixed}說服，回頭又改念頭，${fixed}給${flex}一點時間消化再定案`;
+        })();
+  const thinking = `思考與決定：${decide}。${mind}。`;
+
+  const conflict = `處理矛盾：${conflictLines(a, b, syn).join('')}`;
+
+  const love = sameType
+    ? `親密與愛：兩人感覺被愛的方式很像，都是${TYPE_LOVE[a.chart.type]}；記得主動為對方做，而不是都在等對方先做。${intimacyLine(a, b, syn)}`
+    : `親密與愛：${a.name}感覺被愛的方式是${TYPE_LOVE[a.chart.type]}；${b.name}則是${TYPE_LOVE[b.chart.type]}。${intimacyLine(a, b, syn)}`;
+
+  return [personality, thinking, conflict, love];
 }
 
 export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem[] {
@@ -431,7 +732,7 @@ export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): Me
     const list = byKind(kind);
     const lines =
       list.length > 0
-        ? [KIND_MEANING[kind], ...list.map((c) => channelLine(c, a, b))]
+        ? [KIND_MEANING[kind], ...list.map((c) => channelLine(c, a, b, syn)), ...holderSummary(kind, list, a, b)]
         : [EMPTY_KIND[kind](a, b)];
     items.push(item(SYNASTRY_CHANNEL_KIND_NAMES_ZH[kind], SYNASTRY_CHANNEL_KIND_FIELD[kind], lines.join('\n')));
   }
@@ -440,13 +741,15 @@ export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): Me
   if (syn.newCenters.length > 0) {
     centerLines.push(
       `只有兩人在一起時才被定義：${centerList(syn.newCenters)}。這些是單獨時都沒有、在一起才出現的穩定感，常是「跟你在一起時特別……」的來源；分開後這份感覺會淡掉。`,
+      ...syn.newCenters.map((c) => `・${CENTER_NAMES_ZH[c]}：${CENTER_NEW[c]}`),
     );
   } else {
     centerLines.push('沒有「只有在一起才被定義」的中心，兩人合盤的定義中心都來自各自原本就有的部分。');
   }
   if (syn.openCenters.length > 0) {
     centerLines.push(
-      `兩人都開放的中心：${centerList(syn.openCenters)}。這些主題兩個人都容易受環境與他人影響，在一起時也可能一起被放大；遇到相關的壓力時，提醒彼此先分辨那是不是自己的。`,
+      `兩人都開放的中心：${centerList(syn.openCenters)}。這些主題兩個人都容易受環境與他人影響，在一起時也可能一起被放大：`,
+      ...syn.openCenters.map((c) => `・${CENTER_NAMES_ZH[c]}：${CENTER_OPEN_BOTH[c]}`),
     );
   } else {
     centerLines.push('九個中心在合盤裡都被定義，關係本身很完整，但也比較不容易受外界調整，記得保留與朋友、環境的流動。');
@@ -465,8 +768,12 @@ export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): Me
       '兩人的類型與策略放在一起時，合作與相處的節奏。',
       [
         TYPE_PAIR_NOTE[pairKey(a.chart.type, b.chart.type)] ?? '',
-        `和${a.name}相處：${TYPE_PARTNER_TIP[a.chart.type]}（策略：${a.chart.strategy}）`,
-        `和${b.name}相處：${TYPE_PARTNER_TIP[b.chart.type]}（策略：${b.chart.strategy}）`,
+        ...(a.chart.type === b.chart.type
+          ? [`兩人都是${TYPE_NAMES_ZH[a.chart.type]}，互相對待時：${TYPE_PARTNER_TIP[a.chart.type]}（策略：${a.chart.strategy}）`]
+          : [
+              `和${a.name}相處：${TYPE_PARTNER_TIP[a.chart.type]}（策略：${a.chart.strategy}）`,
+              `和${b.name}相處：${TYPE_PARTNER_TIP[b.chart.type]}（策略：${b.chart.strategy}）`,
+            ]),
       ]
         .filter(Boolean)
         .join('\n'),
@@ -479,9 +786,21 @@ export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): Me
       '兩人的內在權威不同時，決定的速度與方式也會不同。',
       [
         paceNote(a, b),
-        `支持${a.name}做決定：${AUTHORITY_PARTNER_TIP[a.chart.authority]}`,
-        `支持${b.name}做決定：${AUTHORITY_PARTNER_TIP[b.chart.authority]}`,
+        ...(a.chart.authority === b.chart.authority
+          ? [`兩人都是${AUTHORITY_NAMES_ZH[a.chart.authority]}，互相支持時：${AUTHORITY_PARTNER_TIP[a.chart.authority]}`]
+          : [
+              `支持${a.name}做決定：${AUTHORITY_PARTNER_TIP[a.chart.authority]}`,
+              `支持${b.name}做決定：${AUTHORITY_PARTNER_TIP[b.chart.authority]}`,
+            ]),
       ].join('\n'),
+    ),
+  );
+
+  items.push(
+    item(
+      '日常相處',
+      '從兩人各自的類型、權威、人生角色與中心，看個性、思考、吵架與親密在生活裡的樣子。',
+      dailyLines(a, b, syn).join('\n'),
     ),
   );
 
@@ -505,19 +824,19 @@ function adviceLines(a: HdPartner, b: HdPartner, syn: HdSynastry): string[] {
   const dominance = syn.channels.filter((c) => c.kind === 'dominance');
   if (em.length > 0) {
     lines.push(
-      `珍惜 ${em.map((c) => c.channel.id).join('、')} 帶來的火花，一起做需要這些能力的事；吵架卡住時，也先想想是不是這幾條線在拉扯。`,
+      `珍惜 ${em.map((c) => channelLabel(c.channel)).join('、')} 帶來的火花，這是你們最有化學反應的地方；吵架卡住時，也先想想是不是這幾條線在拉扯。`,
     );
   }
   if (compromise.length > 0) {
     const first = compromise[0];
     const [holder, other] = names(a, b, first.holder ?? 'a');
     lines.push(
-      `在 ${compromise.map((c) => c.channel.id).join('、')} 相關的主題上，有完整通道的一方（例如 ${first.channel.id} 的${holder}）放慢一點，讓${other}也有決定權。`,
+      `${compromise.map((c) => c.channel.id).join('、')} 這幾件事試著約定輪流做主：例如 ${first.channel.id} 這次照${holder}的方式，下次換${other}決定，事後再一起看哪種比較好。`,
     );
   }
   if (dominance.length > 0) {
     lines.push(
-      `${dominance.map((c) => c.channel.id).join('、')} 是單方帶領的主題：帶的人當成分享，學的人當成體驗，不必互相比較。`,
+      `${dominance.map((c) => c.channel.id).join('、')} 是單方帶領的主題：分開一段時間後，沒有這條線的一方會覺得那股能量不見了，這很正常，不代表關係變淡。`,
     );
   }
   if (syn.openCenters.includes('solarPlexus')) {
@@ -530,7 +849,11 @@ function adviceLines(a: HdPartner, b: HdPartner, syn: HdSynastry): string[] {
       `${centerList(syn.newCenters)}只在兩人一起時才穩定；分開一段時間後感覺不同是正常的，不必解讀成關係變了。`,
     );
   }
-  lines.push('各自依自己的策略與權威做決定，再把結果告訴對方；合盤是互相補位，不是要變成同一個人。');
+  lines.push(
+    a.chart.type === b.chart.type
+      ? `兩人的策略都是「${a.chart.strategy}」，各自照著做、再把結果告訴對方；同類型也有不同的權威與人生角色，不必變成同一個人。`
+      : `${a.name}照自己的策略（${a.chart.strategy}）、${b.name}照自己的策略（${b.chart.strategy}）各自做決定，再把結果告訴對方；合盤是互相補位，不是要變成同一個人。`,
+  );
   return lines;
 }
 
@@ -553,6 +876,13 @@ function partnerBlock(p: HdPromptPartner): string {
 - 已定義中心：${centerList(CENTER_ORDER.filter((x) => c.definedCenters.includes(x))) || '無'}
 - 通道：${c.channels.map((ch) => ch.id).join('、') || '無'}
 - 啟動閘門：${chartGates(c).join('、')}`;
+}
+
+function dailyHints(a: HdPartner, b: HdPartner): string {
+  const flag = (p: HdPartner, c: CenterId) => (p.chart.definedCenters.includes(c) ? '有定義' : '開放');
+  const one = (p: HdPartner) =>
+    `- ${p.name}：非自己主題是${TYPE_NOT_SELF[p.chart.type].split('：')[0]}；情緒中心${flag(p, 'solarPlexus')}、意志力中心${flag(p, 'heart')}、薦骨${flag(p, 'sacral')}、喉嚨${flag(p, 'throat')}、邏輯中心${flag(p, 'ajna')}、頭腦${flag(p, 'head')}`;
+  return `${one(a)}\n${one(b)}`;
 }
 
 export function buildHdSynastryAiPrompt(
@@ -583,6 +913,7 @@ export function buildHdSynastryAiPrompt(
 - 以兩人的類型、策略、內在權威為主軸，說明兩人如何合作、如何相處、如何一起做決定。
 - 合盤通道分四類：電磁（各有一端，在一起才接通，吸引與火花）、友伴（兩人都有，共同基礎）、主導（只有一方有完整通道、另一方兩端都沒有）、妥協（一方完整、另一方只有一端，常見摩擦點）。
 - 這是能量結構說明，不是關係好壞的判決；請給可實踐的觀察與建議，避免恐嚇或保證。
+- 每個段落都要扣回這兩人的具體資料（類型、權威、人生角色、有定義／開放的中心、合盤通道），避免任何一對伴侶都適用的空泛句子。
 
 ## 兩人資料
 ${partnerBlock(a)}
@@ -596,5 +927,14 @@ ${partnerBlock(b)}
 - 兩人都開放的中心：${centerList(syn.openCenters) || '無'}
 ${kindLines}
 
-請先給一段關係總覽，再依「吸引與火花（電磁通道）」「默契與共同基礎」「摩擦點與如何協調」「合作分工與一起做決定」分段說明，最後給兩人各 3 條相處提醒。`;
+## 兩人的日常線索
+${dailyHints(a, b)}
+
+請先給一段關係總覽，再依「吸引與火花（電磁通道）」「默契與共同基礎」「摩擦點與如何協調」「合作分工與一起做決定」分段說明。
+接著用「日常相處」一段，分四個主題各舉 2 個具體的生活場景（例如「下班回家${a.name}想先安靜、${b.name}想馬上聊今天的事」這種程度的細節），並說明兩人各自的感受與可以怎麼做：
+1. 個性：兩人在生活習慣、精力分配上的差異（參考類型、人生角色、薦骨與喉嚨中心）。
+2. 兩人思考方式：各自怎麼想事情、怎麼做決定，步調不同時怎麼配合（參考內在權威、頭腦與邏輯中心）。
+3. 處理矛盾的方法：吵架前的訊號、誰容易先退讓或爆發、怎麼和好（參考情緒中心、意志力中心、非自己主題與妥協通道）。
+4. 感受親密及愛的方式：各自怎樣會覺得被愛、親密的節奏（參考與親密有關的通道，如 6-59、19-49、37-40、39-55、12-22）。
+最後給兩人各 3 條相處提醒。`;
 }

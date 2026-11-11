@@ -123,7 +123,7 @@ describe('composite graph data and report', () => {
     const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
     const terms = items.map((i) => i.term);
     expect(terms).toEqual(
-      expect.arrayContaining(['合盤總覽', '電磁通道', '友伴通道', '主導通道', '妥協通道', '類型互動', '一起做決定']),
+      expect.arrayContaining(['合盤總覽', '電磁通道', '友伴通道', '主導通道', '妥協通道', '類型互動', '一起做決定', '日常相處']),
     );
     const all = items.map((i) => `${i.term}${i.field}${i.meaning}`).join('\n');
     expect(all).not.toMatch(/undefined|null|NaN/);
@@ -132,6 +132,33 @@ describe('composite graph data and report', () => {
     for (const c of syn.channels.filter((x) => x.kind === 'electromagnetic')) {
       expect(all).toContain(c.channel.id);
     }
+  });
+
+  it('日常相處 covers the four themes and changes with the pair', () => {
+    const c = computeChart({ date: '1985-01-20', time: '23:10', timezone: 'Asia/Taipei' }, swephProvider);
+    const d = computeChart({ date: '1979-08-02', time: '05:40', timezone: 'Asia/Taipei' }, swephProvider);
+    const syn2 = analyzeHdSynastry(chartGates(c), chartGates(d));
+    const daily = (items: ReturnType<typeof hdSynastryItems>) => items.find((i) => i.term === '日常相處')?.meaning ?? '';
+    const one = daily(hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn));
+    const two = daily(hdSynastryItems({ name: '甲', chart: c }, { name: '乙', chart: d }, syn2));
+    for (const text of [one, two]) {
+      const lines = text.split('\n');
+      expect(lines.map((l) => l.split('：')[0])).toEqual(['個性', '思考與決定', '處理矛盾', '親密與愛']);
+      expect(text).not.toMatch(/undefined|null|NaN/);
+    }
+    const linesOne = one.split('\n');
+    const linesTwo = two.split('\n');
+    for (let i = 0; i < 4; i++) expect(linesOne[i]).not.toBe(linesTwo[i]);
+  });
+
+  it('per-channel lines do not repeat the same sentence', () => {
+    const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    const sentences = items
+      .flatMap((i) => i.meaning.split('\n'))
+      .flatMap((l) => l.split('。'))
+      .map((x) => x.trim())
+      .filter((x) => x.length > 12);
+    expect(new Set(sentences).size).toBe(sentences.length);
   });
 
   it('AI prompt includes both people and the four categories', () => {
@@ -145,5 +172,6 @@ describe('composite graph data and report', () => {
     expect(text).toContain('時間不確定');
     for (const k of ['電磁通道', '友伴通道', '主導通道', '妥協通道']) expect(text).toContain(k);
     expect(text).not.toMatch(/undefined|NaN/);
+    for (const k of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式', '下班回家']) expect(text).toContain(k);
   });
 });
