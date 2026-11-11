@@ -149,6 +149,8 @@ describe('report from real charts', () => {
     it('prompt asks for the four daily-life themes', () => {
         const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
         for (const t of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式']) expect(prompt).toContain(t);
+        expect(prompt).toContain('優點與挑戰要平衡');
+        expect(prompt).toContain('相處順利的優點與容易摩擦的挑戰');
     });
 });
 
@@ -194,5 +196,24 @@ describe('日常相處 and pair-specific copy', () => {
         expect(body(venusMarsSoft)).not.toEqual(body(sunMoonSoft));
         // Roles follow whose planet it is: 乙 holds Mars, so 乙 is the one who pursues.
         expect(venusMarsSoft).toContain('乙的主動');
+    });
+
+    it('easy aspects name a cost, tense ones a gift, and daily tags do not repeat', () => {
+        const first = (x: AstroChart, y: AstroChart) =>
+            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y))[0].meaning;
+        expect(first(chart({ moon: 0 }), chart({ moon: 120 }))).toContain('難開口的事');
+        expect(first(chart({ saturn: 0 }), chart({ venus: 90 }))).toContain('經得起考驗');
+        // 甲's Saturn squares 乙's Mars and Moon, 甲's Mars squares 乙's Saturn: three hard tags in 處理矛盾.
+        const d = astroSynastryItems(
+            { name: '甲', chart: chart({ saturn: 0, mars: 200, sun: 40, mercury: 40, venus: 40 }) },
+            { name: '乙', chart: chart({ mars: 90, moon: 270, saturn: 290, sun: 40, mercury: 40, venus: 40 }) },
+            analyzeAstroSynastry(
+                chart({ saturn: 0, mars: 200, sun: 40, mercury: 40, venus: 40 }),
+                chart({ mars: 90, moon: 270, saturn: 290, sun: 40, mercury: 40, venus: 40 }),
+            ),
+        ).find((i) => i.term === '日常相處')!.meaning;
+        const tags = d.split('\n').filter((l) => l.startsWith('・相位加碼')).map((l) => l.split('——')[1]);
+        expect(tags.length).toBeGreaterThan(1);
+        expect(new Set(tags).size).toBe(tags.length);
     });
 });

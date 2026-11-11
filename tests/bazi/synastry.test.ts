@@ -152,3 +152,40 @@ describe('天干五合 notes are specific to the pair', () => {
     expect(text('乙', '庚')).toContain('仁義之合');
   });
 });
+
+describe('每種關係都寫出兩面', () => {
+  const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+  const base = computeBazi({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE, gender: 'male' });
+  const withDay = (gan: string) => ({ ...base, pillars: base.pillars.map((p) => (p.key === 'day' ? { ...p, gan } : p)) });
+  const first = (x: string, y: string) => {
+    const ca = withDay(x);
+    const cb = withDay(y);
+    return baziSynastryItems({ name: 'A', chart: ca }, { name: 'B', chart: cb }, analyzeBaziSynastry(ca, cb))[0].meaning;
+  };
+  it('合 also names its cost, 剋 also names its gift', () => {
+    expect(first('丁', '壬')).toContain('黏得太緊');
+    expect(first('丁', '壬')).toContain('合而化木');
+    expect(first('庚', '甲')).toContain('更成熟可行');
+  });
+});
+
+describe('no duplicated text', () => {
+  const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+  const a = computeBazi({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE, gender: 'male' });
+  const b = computeBazi({ date: '1992-11-03', time: '08:15', timezone: 'Asia/Taipei', place: PLACE, gender: 'female' });
+  it('a 刑 type is explained in full once per report', () => {
+    const all = baziSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, analyzeBaziSynastry(a, b))
+      .map((i) => i.meaning)
+      .join('\n');
+    expect(all.match(/誰也不服誰/g)?.length).toBe(1);
+    expect(all).toContain('又是「恃勢之刑」');
+  });
+  it('same day stem merges the trait sentence', () => {
+    const withDay = { ...a, pillars: a.pillars.map((p) => (p.key === 'day' ? { ...p, gan: '乙' } : p)) };
+    const d = baziSynastryItems({ name: '甲', chart: withDay }, { name: '乙', chart: withDay }, analyzeBaziSynastry(withDay, withDay)).find(
+      (i) => i.term === '日常相處',
+    )!.meaning;
+    expect(d).toContain('【個性】兩人都是乙木');
+    expect(d.match(/柔軟有韌性/g)?.length).toBe(1);
+  });
+});

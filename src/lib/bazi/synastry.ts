@@ -303,29 +303,38 @@ const STEM_PROFILE: Record<string, StemProfile> = {
 
 /** 天干五合，各有古稱（見《三命通會．論天干相合》）。 */
 const STEM_HE_NOTE: Record<string, string> = {
-  甲己: '甲己合古稱「中正之合」，形容寬厚、重信用。甲木像大樹往上長，己土像田地托住樹根，一個有方向、一個給支撐，相處重實在、講道理，容易一起把生活經營穩。',
-  乙庚: '乙庚合古稱「仁義之合」，形容重情義、守承諾。庚金剛直、乙木柔韌，一剛一柔，彼此欣賞對方身上自己沒有的特質；要留意庚的直接別傷到乙的細膩。',
-  丙辛: '丙辛合古稱「威制之合」。丙火像太陽、辛金像珠玉，陽光照在珠寶上格外耀眼，兩人在一起有光彩、互相吸引；也帶著一點「誰說了算」的拉扯，互相尊重最重要。',
-  丁壬: '丁壬合古書稱「淫慝之合」，也有人稱「仁壽之合」，意思是情感濃、吸引力強。丁火像燭光、壬水像江河，一個細膩一個開闊，很容易被對方的氣質打動、感情來得快；要細水長流，需要兩人一起建立信任與界線。',
-  戊癸: '戊癸合古稱「無情之合」，這裡的「無情」不是沒感情，而是重現實多過浪漫。戊土像高山、癸水像雨露，一個穩重、一個敏感，常被形容像心態有差距的組合，一方照顧、一方依靠，相處需要多一點表達與溫度。',
+  甲己: '甲己合古稱「中正之合」，形容寬厚、重信用。甲木像大樹往上長，己土像田地托住樹根，一個有方向、一個給支撐，相處重實在、講道理，容易一起把生活經營穩。只是樹長在田裡久了，己常把甲的需要排在自己前面，甲也習慣被托著；己要留一塊只屬於自己的地，甲要記得問己想要什麼。',
+  乙庚: '乙庚合古稱「仁義之合」，形容重情義、守承諾。庚金剛直、乙木柔韌，一剛一柔，彼此欣賞對方身上自己沒有的特質。合得緊時，乙容易為了配合庚而收起自己的意見，庚則不自覺地替乙做主；庚的直接要收一點力道，乙也要敢把不同意說出口。',
+  丙辛: '丙辛合古稱「威制之合」。丙火像太陽、辛金像珠玉，陽光照在珠寶上格外耀眼，兩人在一起有光彩、在外人眼中很登對；「威制」兩字也點出誰說了算的拉扯：丙的光太強時辛會覺得被蓋過，辛挑剔太多時丙的熱情會退，各自保有舞台最重要。',
+  丁壬: '丁壬合古書稱「淫慝之合」，也有人稱「仁壽之合」，意思是情感濃、吸引力強。丁火像燭光、壬水像江河，一個細膩一個開闊，很容易被對方的氣質打動、感情來得快。濃的另一面是容易黏得太緊、把彼此當成全世界，也容易憑一時情緒做決定；要細水長流，需要兩人一起建立信任與界線，各自保有朋友和生活。',
+  戊癸: '戊癸合古稱「無情之合」，這裡的「無情」不是沒感情，而是重現實多過浪漫。戊土像高山、癸水像雨露，一個穩重、一個敏感，常被形容為心態有差距的組合：戊給得出安穩，癸讓戊的生活多了柔軟，一方照顧、一方依靠時很踏實；但角色固定太久，戊會覺得只剩責任，癸會覺得心事沒人接，相處需要多一點表達與溫度。',
+};
+
+/** 合而化：在一起久了，兩人都會往合化五行的特質靠，原本的個性也會被改變一些。 */
+const HUA_NOTE: Record<WuXing, string> = {
+  土: '合而化土，相處久了兩人都會變得更務實、更顧家，原本的衝勁或浪漫也可能被日常磨平',
+  金: '合而化金，兩人在一起會更講原則、更果斷，但也可能一起變嚴肅，少了原本的柔軟',
+  水: '合而化水，兩人在一起思路更靈活、話題更多，也更容易一起情緒起伏、想太多',
+  木: '合而化木，兩人在一起很有往前長的動力，也容易把彼此的目標排得太滿、忘了停下來',
+  火: '合而化火，兩人在一起熱情被點燃、行動力變強，也容易一起急、一起上火',
 };
 
 /** 相生：key 是「生方五行＋受生方五行」，G＝生方、R＝受生方。 */
 const GEN_NOTE: Record<string, string> = {
-  木火: '木生火，像柴添火：G的穩定與計畫，讓R更有熱情與舞台；但柴燒得快，R要記得回頭照顧G',
-  火土: '火生土，像陽光曬暖大地：G的熱情與鼓勵，讓R更有安全感、更踏實；R的回應太慢時，G會覺得熱臉貼冷屁股',
-  土金: '土生金，像山裡藏著礦：G的包容與耐心，讓R的能力被磨亮；R發光時，記得讓G知道這裡有G的功勞',
-  金水: '金生水，像岩縫湧出泉水：G的原則與條理，讓R的想法更清楚、更有方向；R太隨性時，G容易覺得白講了',
-  水木: '水生木，像雨水灌溉樹苗：G的體貼與智慧，讓R安心成長；G給得太多又不說，自己會覺得被掏空',
+  木火: '木生火，像柴添火：G的穩定與計畫，讓R更有熱情與舞台；但柴燒得快，G一直供應會被燒乾，R也可能習慣有人添柴，少了自己生火的能力',
+  火土: '火生土，像陽光曬暖大地：G的熱情與鼓勵，讓R更有安全感、更踏實；只是R的回應常慢半拍，G容易覺得熱臉貼冷屁股，而總被G推著走的R，也少了自己發熱的機會',
+  土金: '土生金，像山裡藏著礦：G的包容與耐心，讓R的能力被磨亮；但土包得太厚會把金埋住，G什麼都擔下來，R反而少了獨當一面的歷練，G也會默默覺得功勞沒被看見',
+  金水: '金生水，像岩縫湧出泉水：G的原則與條理，讓R的想法更清楚、更有方向；但G的建議給太多，R會覺得在被上課，R一隨性，G又覺得白講了',
+  水木: '水生木，像雨水灌溉樹苗：G的體貼與智慧，讓R安心成長；只是水澆太多樹根反而會爛，G給得太多又不說，自己會被掏空，R也可能被寵到少了扛事的力氣',
 };
 
 /** 相剋：key 是「剋方五行＋被剋方五行」，C＝剋方、D＝被剋方。 */
 const CTRL_NOTE: Record<string, string> = {
-  木土: '木剋土，像樹根抓住土地：C有主見、想帶方向，D可能覺得自己的節奏被打亂',
-  土水: '土剋水，像堤防擋住水流：C想給規範和框架，D可能覺得情緒和自由被限制',
-  水火: '水剋火，像水澆在火上：C冷靜理性，一句話就能讓D的熱情降溫',
-  火金: '火剋金，像爐火煉金：C的熱情與要求能逼出D的潛力，也可能讓D覺得被逼太緊',
-  金木: '金剋木，像斧頭修剪樹枝：C講效率與標準，常想幫D「修正」，D可能覺得被挑剔',
+  木土: '木剋土，像樹根抓住土地：C有主見、想帶方向，D可能覺得自己的節奏被打亂；但土沒有根會流失，C的推動也常讓慢熱的D真的動起來，把想了很久的事做成',
+  土水: '土剋水，像堤防擋住水流：C想給規範和框架，D可能覺得情緒和自由被限制；有堤防的水卻不會氾濫，D漂浮不定時，C是讓D落地的那個人',
+  水火: '水剋火，像水澆在火上：C冷靜理性，一句話就能讓D的熱情降溫，D常覺得掃興；可是D衝過頭、一時上火時，也只有C攔得住，不少衝動的決定因此免了',
+  火金: '火剋金，像爐火煉金：C的熱情與要求能逼出D的潛力，D在C身邊成長得特別快；火候太猛時，D會覺得被逼太緊、怎麼做都不夠',
+  金木: '金剋木，像斧頭修剪樹枝：C講效率與標準，常想幫D「修正」，D可能覺得被挑剔；可是修剪過的樹長得更直，D的很多想法經C一問，反而更成熟可行',
 };
 
 const SAME_NOTE: Record<WuXing, string> = {
@@ -339,44 +348,44 @@ const SAME_NOTE: Record<WuXing, string> = {
 const TEN_GOD_ROLE: Record<string, string> = {
   比肩: '像平起平坐的夥伴，價值觀相近，討論很快有共識，但遇到誰主導時都不太想讓',
   劫財: '像會競爭、也會分享的同伴，帶著一點較勁，資源和決定權要先講好',
-  食神: '是讓人放鬆、想照顧與分享的對象，在一起氣氛輕鬆',
+  食神: '是讓人放鬆、想照顧與分享的對象，在一起氣氛輕鬆；太舒服時也容易一起懶散，該談的正事常被擱著',
   傷官: '會激發創意，也讓人想挑戰規矩，聊天越聊越有火花，也越聊越想爭辯',
-  正財: '是讓人踏實、想好好經營的對象，會想一起規劃生活和未來',
-  偏財: '帶來新鮮感與機會感，在一起比較敢冒險、臨時起意',
-  正官: '讓人變得自律、有責任感，也會在意對方的評價',
-  七殺: '帶來壓力與張力，也激發魄力，心動感強',
-  正印: '像靠山一樣支持、包容，在一起有被接住的安全感',
-  偏印: '能給獨特的啟發，想法角度不同，不一定一下子就懂',
+  正財: '是讓人踏實、想好好經營的對象，會想一起規劃生活和未來；也因為太想經營好，容易把對方當成要管理的項目，少了點隨性',
+  偏財: '帶來新鮮感與機會感，在一起比較敢冒險、臨時起意；新鮮感退去後，得靠刻意經營才不會淡',
+  正官: '讓人變得自律、有責任感，被對方的穩定帶著走；也會太在意對方的評價，在對方面前不太敢放鬆',
+  七殺: '帶來壓力與張力，也激發魄力，心動感強；被推得太緊時，會想反抗',
+  正印: '像靠山一樣支持、包容，在一起有被接住的安全感；被照顧久了，可能變得依賴，或覺得對方管得有點多',
+  偏印: '能給獨特的啟發，想法角度不同，不一定一下子就懂；有時也會覺得對方冷，猜不透在想什麼',
 };
 
 /** 十神在日常的具體畫面：s＝主體，o＝對方（o 是 s 的這個十神）。 */
 const TEN_GOD_SCENE: Record<string, { decide: (s: string, o: string) => string; love: (s: string, o: string) => string }> = {
   比肩: {
     decide: (s, o) => `${o}是${s}的比肩：兩人想法接近，討論很快有共識，但遇到「這次聽誰的」時，${s}也不太想讓`,
-    love: (s, o) => `${s}跟${o}在一起像好朋友一樣自在，愛是並肩一起做事，而不是被捧著`,
+    love: (s, o) => `${s}跟${o}在一起像好朋友一樣自在，愛是並肩一起做事，而不是被捧著；只是太像朋友時，${s}偶爾也想被寵一下，卻不好意思開口`,
   },
   劫財: {
     decide: (s, o) => `${o}是${s}的劫財：${o}常提出跟${s}不同的做法，帶點競爭意味，錢和決定權最好事先講清楚`,
-    love: (s, o) => `${s}會被${o}的活力帶動，愛裡帶點較勁，一起運動、玩遊戲、比賽反而最親近`,
+    love: (s, o) => `${s}會被${o}的活力帶動，愛裡帶點較勁，一起運動、玩遊戲、比賽反而最親近；只是${o}表現得太亮眼時，${s}心裡也會悄悄比較`,
   },
   食神: {
-    decide: (s, o) => `${o}是${s}的食神：在${o}面前${s}容易放鬆，想法自然說出口，一起討論事情氣氛輕鬆`,
-    love: (s, o) => `${s}的愛是想餵飽、照顧、逗${o}開心，一起吃頓好的、散個步就很滿足`,
+    decide: (s, o) => `${o}是${s}的食神：在${o}面前${s}容易放鬆，想法自然說出口，一起討論事情氣氛輕鬆；但${s}也容易因為想讓${o}開心，該堅持的事順口就答應了`,
+    love: (s, o) => `${s}的愛是想餵飽、照顧、逗${o}開心，一起吃頓好的、散個步就很滿足；照顧得太滿時，${s}會不自覺把${o}當小孩，${o}未必領情`,
   },
   傷官: {
     decide: (s, o) => `${o}是${s}的傷官：${o}會激發${s}的新點子，也讓${s}想挑戰既有的做法，討論常越聊越有創意，也越聊越想辯贏`,
     love: (s, o) => `${s}在${o}面前特別想表現、想被看見，愛裡有很多話想說，偶爾會說得太直、讓${o}接不住`,
   },
   正財: {
-    decide: (s, o) => `${o}是${s}的正財：${s}覺得${o}很實在，做決定時會把${o}和兩人的生活一起算進去`,
-    love: (s, o) => `${s}的愛是穩定經營：準時回訊息、固定約會、為兩人的未來存錢，${o}給${s}踏實感`,
+    decide: (s, o) => `${o}是${s}的正財：${s}覺得${o}很實在，做決定時會把${o}和兩人的生活一起算進去；反過來，${s}也會想掌握${o}的開銷和行程，${o}可能覺得被盯著`,
+    love: (s, o) => `${s}的愛是穩定經營：準時回訊息、固定約會、為兩人的未來存錢，${o}給${s}踏實感；穩定久了容易變成例行公事，偶爾一次不按牌理的驚喜反而最難得`,
   },
   偏財: {
-    decide: (s, o) => `${o}是${s}的偏財：${o}帶來新的機會和玩法，${s}跟${o}在一起比較敢冒險、臨時說走就走`,
+    decide: (s, o) => `${o}是${s}的偏財：${o}帶來新的機會和玩法，${s}跟${o}在一起比較敢冒險、臨時說走就走；也比較容易一時興起就花錢、答應，事後才發現沒算清楚`,
     love: (s, o) => `${s}被${o}的新鮮感吸引，愛的時候很大方，但需要不斷有新的共同體驗來保溫`,
   },
   正官: {
-    decide: (s, o) => `${o}是${s}的正官：${s}在${o}面前會變得自律、守規矩，重大決定常想先聽${o}的意見`,
+    decide: (s, o) => `${o}是${s}的正官：${s}在${o}面前會變得自律、守規矩，重大決定常想先聽${o}的意見；只是聽久了，${s}自己拿主意的底氣會變弱`,
     love: (s, o) => `${s}覺得${o}可靠、值得託付，愛裡帶著尊重；但被${o}糾正時，${s}也容易覺得自己不夠好`,
   },
   七殺: {
@@ -384,7 +393,7 @@ const TEN_GOD_SCENE: Record<string, { decide: (s: string, o: string) => string; 
     love: (s, o) => `${s}對${o}有強烈的心動與張力，愛得很投入，也很需要${o}放軟語氣、留給${s}自己決定的空間`,
   },
   正印: {
-    decide: (s, o) => `${o}是${s}的正印：${o}像${s}的靠山，${s}卡住時找${o}聊一聊就比較安心`,
+    decide: (s, o) => `${o}是${s}的正印：${o}像${s}的靠山，${s}卡住時找${o}聊一聊就比較安心；但${o}的意見太好用，${s}可能還沒自己想清楚就先問了`,
     love: (s, o) => `${s}從${o}那裡感受到包容與照顧，愛是一種被接住的安全感；要留意別把${o}當成唯一的依靠`,
   },
   偏印: {
@@ -397,7 +406,7 @@ const TEN_GOD_SCENE: Record<string, { decide: (s: string, o: string) => string; 
 const MUTUAL_SCENE: Record<string, { decide: string; love: string }> = {
   比肩: {
     decide: '兩人互為比肩：想法和做事標準很接近，討論很快有共識；但遇到「這次聽誰的」，兩個都不太想讓，輪流當決定的人最省力',
-    love: '兩人互為比肩，相處像最好的朋友，愛是一起做喜歡的事、並肩面對問題，而不是誰照顧誰',
+    love: '兩人互為比肩，相處像最好的朋友，愛是一起做喜歡的事、並肩面對問題，而不是誰照顧誰；但兩人都不習慣示弱，累的時候反而不知道怎麼開口討抱抱',
   },
   劫財: {
     decide: '兩人互為劫財：一陰一陽，做法常常不同又互不服輸，小到點餐、大到花錢都可能想爭主導權，事先講好誰負責哪一塊最重要',
@@ -424,29 +433,29 @@ const WX_FEEL: Record<WuXing, string> = {
 };
 
 const LIU_HE_NOTE: Record<string, string> = {
-  子丑: '子丑合土，務實、顧家，相處像一起把日子過好',
-  寅亥: '寅亥合木，互相扶持、一起成長',
-  卯戌: '卯戌合火，熱情、浪漫，容易互相欣賞',
-  辰酉: '辰酉合金，講信用、重承諾',
+  子丑: '子丑合土，務實、顧家，相處像一起把日子過好，只是久了也容易只剩柴米油鹽',
+  寅亥: '寅亥合木，互相扶持、一起成長；不過亥水生寅木，常是一方默默多出力',
+  卯戌: '卯戌合火，熱情、浪漫，容易互相欣賞；熱度來得快，冷下來時落差也明顯',
+  辰酉: '辰酉合金，講信用、重承諾，兩人認真起來時相處卻少了點輕鬆',
   巳申: '巳申合水，聰明投契，但合中帶刑，親近之餘也會較勁',
-  午未: '午未合（日月之合），溫暖親近，最有「家」的感覺',
+  午未: '午未合（日月之合），溫暖親近，最有「家」的感覺；親到不分彼此時，也容易忘了各自需要空間',
 };
 
 const CHONG_NOTE: Record<string, string> = {
-  子午: '子水午火相沖，一冷一熱，情緒節奏不同',
-  丑未: '丑未兩土相沖，都固執，容易沖在生活習慣與家務分配',
-  寅申: '寅木申金相沖，衝勁對上原則，容易在行動方向上拉扯',
-  卯酉: '卯木酉金相沖，一個重感受、一個重對錯',
-  辰戌: '辰戌兩土相沖，都想守住自己的地盤，容易在決定權上拉鋸',
-  巳亥: '巳火亥水相沖，一個想快、一個想再想想，計畫常被打亂',
+  子午: '子水午火相沖，一冷一熱，情緒節奏不同；也正因為不同，一個能幫另一個降溫、一個能幫另一個加熱',
+  丑未: '丑未兩土相沖，都固執，容易沖在生活習慣與家務分配；可是兩人都認真負責，吵開之後定下的規矩往往守得住',
+  寅申: '寅木申金相沖，衝勁對上原則，容易在行動方向上拉扯；拉扯過的計畫通常更周全，吵完反而走得更快',
+  卯酉: '卯木酉金相沖，一個重感受、一個重對錯；彼此逼著對方看見盲點，久了一個更講理、一個更體貼',
+  辰戌: '辰戌兩土相沖，都想守住自己的地盤，容易在決定權上拉鋸；但沖開了也代表悶不住，問題不會被藏起來',
+  巳亥: '巳火亥水相沖，一個想快、一個想再想想，計畫常被打亂；一快一慢也讓生活不無聊，新點子常在爭論裡冒出來',
 };
 
 /** 刑的三種古稱。 */
 function xingNote(x: string, y: string): string {
   const s = `${x}${y}`;
-  if (/^(子卯|卯子)$/.test(s)) return '子卯「無禮之刑」，太熟了說話少了分寸';
-  if (/[寅巳申]{2}/.test(s)) return '寅巳申「無恩之刑」，付出了卻覺得對方不領情';
-  return '丑戌未「恃勢之刑」，都想照自己的方式，誰也不服誰';
+  if (/^(子卯|卯子)$/.test(s)) return '子卯「無禮之刑」，太熟了說話少了分寸；反過來說，兩人在彼此面前完全不用裝';
+  if (/[寅巳申]{2}/.test(s)) return '寅巳申「無恩之刑」，付出了卻覺得對方不領情；其實兩人都很願意為對方做事，只是做的不一定是對方要的';
+  return '丑戌未「恃勢之刑」，都想照自己的方式，誰也不服誰；兩個都有主見，聯手對外時卻很有份量';
 }
 
 function orderedKey(table: Record<string, string>, x: string, y: string): string | undefined {
@@ -454,12 +463,12 @@ function orderedKey(table: Record<string, string>, x: string, y: string): string
 }
 
 const HAI_NOTE: Record<string, string> = {
-  子未: '子未相害，一方要情緒上的回應、一方給實際的照顧，心意常錯開',
-  丑午: '丑午相害，一方慢熱、一方急躁，熱情常落空',
-  寅巳: '寅巳相害，兩人都有主見，好意容易變成干涉',
-  卯辰: '卯辰相害，一方敏感、一方大而化之，小事容易被放大',
-  申亥: '申亥相害，兩人都聰明，容易話中有話、互相猜',
-  酉戌: '酉戌相害，一方挑剔、一方固執，提醒容易被聽成不被尊重',
+  子未: '子未相害，一方要情緒上的回應、一方給實際的照顧，心意常錯開；但兩種在乎都是真的，學會翻譯對方的表達方式就是加分',
+  丑午: '丑午相害，一方慢熱、一方急躁，熱情常落空；慢的那個給了穩，急的那個給了動力，步調對上時正好互補',
+  寅巳: '寅巳相害，兩人都有主見，好意容易變成干涉；這股想為對方好的心，改用問的而不是直接做，就會被接住',
+  卯辰: '卯辰相害，一方敏感、一方大而化之，小事容易被放大；大而化之的那個，也常能幫敏感的那個鬆一口氣',
+  申亥: '申亥相害，兩人都聰明，容易話中有話、互相猜；聊得開時，卻是最懂彼此言外之意的一對',
+  酉戌: '酉戌相害，一方挑剔、一方固執，提醒容易被聽成不被尊重；一個抓細節、一個守底線，合作時正好補上對方的漏洞',
 };
 
 /** 各柱 × 各種地支關係在生活裡的具體畫面。 */
@@ -467,7 +476,7 @@ const PILLAR_SCENE: Record<BaziPillar['key'], Record<BranchRelationKind, string>
   year: {
     liuHe: '和對方的家人、朋友容易處得來，聚會時不用擔心冷場',
     liuChong: '兩邊家庭的習慣或價值觀差很多，過年回哪邊、怎麼跟長輩相處，容易成為話題',
-    banHe: '容易融入彼此的朋友圈，一起經營共同的社交生活',
+    banHe: '容易融入彼此的朋友圈，一起經營共同的社交生活；朋友圈重疊得多，鬧彆扭時也少了各自喘口氣的地方',
     xing: '和對方家人或朋友相處時，容易覺得被比較、被要求',
     hai: '對對方的家人或朋友有說不出口的不舒服，需要找機會坦白',
     ziXing: '兩人在家庭議題上有同樣的心結，容易一起鑽牛角尖',
@@ -475,7 +484,7 @@ const PILLAR_SCENE: Record<BaziPillar['key'], Record<BranchRelationKind, string>
   month: {
     liuHe: '一起做事很有默契，分工自然，適合一起規劃旅行或布置住處',
     liuChong: '做事節奏不同，一個想先做再說、一個想先計畫好，一起辦事時容易急',
-    banHe: '在工作和目標上能互相拉抬，適合一起存錢、進修或經營副業',
+    banHe: '在工作和目標上能互相拉抬，適合一起存錢、進修或經營副業；目標一致時也容易一起衝過頭，忘了休息',
     xing: '一起做事時容易互相挑毛病，「誰的方法比較好」常成為爭點',
     hai: '對對方的工作方式或忙碌有累積的不滿，嘴上不說，臉上看得出來',
     ziXing: '兩人做事的盲點一樣，同一種錯可能一起犯',
@@ -483,7 +492,7 @@ const PILLAR_SCENE: Record<BaziPillar['key'], Record<BranchRelationKind, string>
   day: {
     liuHe: '關起門來很自在，生活小事容易有默契',
     liuChong: '在家的作息、整潔、花錢習慣容易相反，同住時磨合期比較長',
-    banHe: '私下相處像隊友，容易一起朝同一個生活目標努力',
+    banHe: '私下相處像隊友，容易一起朝同一個生活目標努力；太像隊友時，浪漫和撒嬌反而被擠掉',
     xing: '私下相處容易在小事上較勁，語氣比內容更容易傷人',
     hai: '親密之中藏著沒說出口的委屈，要養成定期聊心事的習慣',
     ziXing: '兩人在親密關係裡有同樣的敏感點，容易互相放大',
@@ -491,7 +500,7 @@ const PILLAR_SCENE: Record<BaziPillar['key'], Record<BranchRelationKind, string>
   time: {
     liuHe: '對未來的想像和教養觀接近，談到要不要生小孩、以後想住哪裡容易有共識',
     liuChong: '對未來的步調不同，例如何時買房、要不要生小孩、怎麼教小孩，容易意見分歧',
-    banHe: '對長遠目標有共同方向，越往後越像一個團隊',
+    banHe: '對長遠目標有共同方向，越往後越像一個團隊；方向太一致時，萬一其中一人想轉彎，另一個會很難接受',
     xing: '談到未來規劃或教養時，容易各自堅持自己的做法',
     hai: '對未來各有擔心卻沒說出口，需要把長期計畫攤開來談',
     ziXing: '對未來有同樣的焦慮，容易一起擔心',
@@ -506,14 +515,28 @@ function scenePillar(p: PillarPairRelation): BaziPillar['key'] {
   return p.pillarA;
 }
 
-function branchNote(r: BranchRelation, p: PillarPairRelation): string {
+/** 同一份報告裡，同一種刑（或同一組支的合沖害）只完整說明一次，之後簡短帶過。 */
+function repeatedNote(r: BranchRelation, x: string, y: string, seen: Set<string>): string | null {
+  const key = r.kind === 'xing' ? (xingNote(x, y).match(/「(.+?)」/)?.[1] ?? 'xing') : `${r.kind}:${[x, y].sort().join('')}`;
+  if (!seen.has(key)) {
+    seen.add(key);
+    return null;
+  }
+  if (r.kind === 'xing') return `又是「${key}」，特質同前面所述`;
+  if (r.kind === 'ziXing') return `${x}${x}同支自刑，特質同前面所述`;
+  return `${[x, y].join('')}${BRANCH_RELATION_NAMES[r.kind]}的特質同前面所述`;
+}
+
+function branchNote(r: BranchRelation, p: PillarPairRelation, seen: Set<string>): string {
   const { zhiA: x, zhiB: y } = p;
   const scene = PILLAR_SCENE[scenePillar(p)][r.kind];
+  const again = r.kind === 'banHe' ? null : repeatedNote(r, x, y, seen);
+  if (again) return `${again}，這裡落在：${scene}`;
   switch (r.kind) {
     case 'liuHe':
       return `${orderedKey(LIU_HE_NOTE, x, y) ?? '六合和合'}：${scene}`;
     case 'liuChong':
-      return `${orderedKey(CHONG_NOTE, x, y) ?? '六沖'}：${scene}；沖也代表互相激盪，常吵卻也離不開`;
+      return `${orderedKey(CHONG_NOTE, x, y) ?? '六沖'}：${scene}`;
     case 'banHe':
       return `同屬${r.wx}局，有共同的${r.wx ? WX_GIVE[r.wx] : '方向'}：${scene}`;
     case 'xing':
@@ -521,7 +544,7 @@ function branchNote(r: BranchRelation, p: PillarPairRelation): string {
     case 'hai':
       return `${orderedKey(HAI_NOTE, x, y) ?? '相害代表暗中的不舒服'}：${scene}`;
     case 'ziXing':
-      return `${x}${x}同支自刑：${scene}`;
+      return `${x}${x}同支自刑，兩人卡在同樣的地方，也最能體會對方的難處：${scene}`;
   }
 }
 
@@ -532,13 +555,13 @@ function relationText(r: BranchRelation, zhiA: string, zhiB: string): string {
   return `${zhiA}${zhiB}${name}`;
 }
 
-function pairLine(p: PillarPairRelation, a: BaziPartner, b: BaziPartner): string {
+function pairLine(p: PillarPairRelation, a: BaziPartner, b: BaziPartner, seen: Set<string>): string {
   const rels = p.relations.map((r) => relationText(r, p.zhiA, p.zhiB)).join('、');
   const where =
     p.pillarA === p.pillarB
       ? `落在兩人的${PILLAR_AREA[p.pillarA]}`
       : `牽動${a.name}的${PILLAR_AREA[p.pillarA]}、${b.name}的${PILLAR_AREA[p.pillarB]}`;
-  const notes = p.relations.map((r) => branchNote(r, p)).join('；');
+  const notes = p.relations.map((r) => branchNote(r, p, seen)).join('；');
   return `${a.name}${PILLAR_NAMES[p.pillarA]}${p.zhiA} × ${b.name}${PILLAR_NAMES[p.pillarB]}${p.zhiB}：${rels}，${where}。${notes}。`;
 }
 function fill(template: string, keys: Record<string, string>): string {
@@ -552,7 +575,8 @@ function stemText(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string {
   switch (syn.stem.kind) {
     case 'he': {
       const note = orderedKey(STEM_HE_NOTE, ga, gb) ?? '日主相合，彼此有天然的吸引與默契。';
-      return `${a.name}的${ga}與${b.name}的${gb}天干五合（合化${syn.stem.hua}）：${note}`;
+      const hua = syn.stem.hua ? `${HUA_NOTE[syn.stem.hua]}。` : '';
+      return `${a.name}的${ga}與${b.name}的${gb}天干五合（合化${syn.stem.hua}）：${note}${hua}`;
     }
     case 'same': {
       const pol = YANG_STEMS.has(ga) === YANG_STEMS.has(gb);
@@ -568,7 +592,7 @@ function stemText(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string {
     case 'bControlsA': {
       const [c, d, cg, dg] = syn.stem.kind === 'aControlsB' ? [a.name, b.name, ga, gb] : [b.name, a.name, gb, ga];
       const note = fill(CTRL_NOTE[`${STEM_WX[cg]}${STEM_WX[dg]}`] ?? '', { C: c, D: d });
-      return `${c}的${cg}${STEM_WX[cg]}剋${d}的${dg}${STEM_WX[dg]}，${note}。剋在八字裡也代表吸引（男命以所剋為財、為妻，女命以剋我者為官、為夫），不一定是壞事，但${c}說話要留點餘地。`;
+      return `${c}的${cg}${STEM_WX[cg]}剋${d}的${dg}${STEM_WX[dg]}，${note}。剋在八字裡也代表吸引（男命以所剋為財、為妻，女命以剋我者為官、為夫），這股張力常是心動的來源；拿捏在於${c}的要求有沒有留餘地。`;
     }
   }
 }
@@ -603,10 +627,11 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
   items.push(item('日常相處', '依兩人的日主個性、彼此的十神、夫妻宮與五行，描繪生活裡的具體畫面。', dailyLines(a, b, syn).join('\n')));
 
   const keyLines: string[] = [];
+  const seen = new Set<string>();
   const dayZhiA = a.chart.pillars.find((p) => p.key === 'day')?.zhi;
   const dayZhiB = b.chart.pillars.find((p) => p.key === 'day')?.zhi;
   if (syn.dayPair) {
-    keyLines.push(`日支是夫妻宮（配偶宮），最能反映兩人關起門來相處的感覺。${pairLine(syn.dayPair, a, b)}`);
+    keyLines.push(`日支是夫妻宮（配偶宮），最能反映兩人關起門來相處的感覺。${pairLine(syn.dayPair, a, b, seen)}`);
   } else if (dayZhiA && dayZhiB) {
     keyLines.push(
       `日支（夫妻宮）${dayZhiA} × ${dayZhiB}：沒有明顯的合沖刑害，親密相處的感覺比較平穩，好壞多靠日常經營。`,
@@ -616,7 +641,7 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
   const yearZhiB = b.chart.pillars.find((p) => p.key === 'year')?.zhi;
   if (syn.yearPair) {
     keyLines.push(
-      `年支是生肖（${a.chart.shengXiao} × ${b.chart.shengXiao}），反映原生家庭與兩家人的互動。${pairLine(syn.yearPair, a, b)}`,
+      `年支是生肖（${a.chart.shengXiao} × ${b.chart.shengXiao}），反映原生家庭與兩家人的互動。${pairLine(syn.yearPair, a, b, seen)}`,
     );
   } else if (yearZhiA && yearZhiB) {
     keyLines.push(
@@ -626,10 +651,10 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
   items.push(item('夫妻宮與生肖', '日支（夫妻宮）與年支（生肖）的合沖刑害，合婚時最先看的兩組地支。', keyLines.join('\n')));
 
   const others = syn.branchPairs.filter((p) => p !== syn.dayPair && p !== syn.yearPair);
-  const otherLines = others.map((p) => pairLine(p, a, b));
+  const otherLines = others.map((p) => pairLine(p, a, b, seen));
   if (syn.sanHe.length > 0) {
     otherLines.push(
-      `兩盤地支合起來湊成三合${syn.sanHe.map((wx) => `${wx}局`).join('、')}：這股${syn.sanHe.map((wx) => WX_GIVE[wx]).join('、')}的力量只有兩人在一起時才完整，是共同目標與合作的來源。`,
+      `兩盤地支合起來湊成三合${syn.sanHe.map((wx) => `${wx}局`).join('、')}：這股${syn.sanHe.map((wx) => WX_GIVE[wx]).join('、')}的力量只有兩人在一起時才完整，是共同目標與合作的來源；反過來，這股力量要兩人都在場才發揮，一方缺席或冷戰時，另一方會特別覺得少了一塊。`,
     );
   }
   const unknown = [a, b].filter((p) => p.chart.timeUnknown).map((p) => p.name);
@@ -651,9 +676,9 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
     `${b.name}：${b.chart.wuXing.map((s) => `${s.wx}${s.percent}%`).join('、')}（${b.chart.strength}）`,
   ];
   const helpLine = (need: string, give: string, list: WuXing[]) =>
-    `${need}的喜用五行${list.join('、')}在${give}盤中很旺：${give}自然帶著${list.map((wx) => WX_GIVE[wx]).join('、')}，和${give}相處時，${need}常覺得${list.map((wx) => WX_FEEL[wx]).join('，也')}。`;
+    `${need}的喜用五行${list.join('、')}在${give}盤中很旺：${give}自然帶著${list.map((wx) => WX_GIVE[wx]).join('、')}，和${give}相處時，${need}常覺得${list.map((wx) => WX_FEEL[wx]).join('，也')}；不過這份感覺若全靠${give}供應，${give}狀態不好時，${need}也會跟著失衡。`;
   const fillLine = (lack: string, give: string, list: WuXing[]) =>
-    `${lack}盤中極少的${list.join('、')}，${give}剛好很多：${list.map((wx) => WX_GIVE[wx]).join('、')}是${lack}比較陌生的面向，可以從${give}身上學到。`;
+    `${lack}盤中極少的${list.join('、')}，${give}剛好很多：${list.map((wx) => WX_GIVE[wx]).join('、')}是${lack}比較陌生的面向，可以從${give}身上學到；陌生也意味著看不慣，${give}在這方面的習慣，${lack}起初可能覺得太過頭。`;
   if (syn.bHelpsA.length > 0) wxLines.push(helpLine(a.name, b.name, syn.bHelpsA));
   if (syn.aHelpsB.length > 0) wxLines.push(helpLine(b.name, a.name, syn.aHelpsB));
   if (syn.bFillsA.length > 0) wxLines.push(fillLine(a.name, b.name, syn.bFillsA));
@@ -695,12 +720,15 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
   const yangB = YANG_STEMS.has(gb);
   const polarity =
     yangA && yangB
-      ? '兩人都是陽干，個性外放、主動，常常誰都想先出手，安排行程時容易兩個都想當主揪。'
+      ? '兩人都是陽干，個性外放、主動，生活很少冷場，說走就走的事特別多；只是常常誰都想先出手，安排行程時兩個都想當主揪。'
       : !yangA && !yangB
-        ? '兩人都是陰干，內斂細膩，常常都在等對方先表態，像兩個人都說「隨便」卻都有想法。'
-        : `${yangA ? a.name : b.name}是陽干，比較主動外放；${yangA ? b.name : a.name}是陰干，比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走。`;
+        ? '兩人都是陰干，內斂細膩，很能察覺對方沒說出口的情緒，待在一起安靜也舒服；但也常都在等對方先表態，像兩個人都說「隨便」卻都有想法。'
+        : `${yangA ? a.name : b.name}是陽干，比較主動外放；${yangA ? b.name : a.name}是陰干，比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走：${yangA ? a.name : b.name}帶${yangA ? b.name : a.name}見識新地方，${yangA ? b.name : a.name}幫${yangA ? a.name : b.name}把步調放慢；但一個急的時候嫌對方慢，一個累的時候嫌對方吵。`;
+  const twin = ga === gb;
   lines.push(
-    `【個性】${a.name}是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}；${b.name}是${gb}${STEM_WX[gb]}（${pb.image}），${pb.personality}。${polarity}`,
+    twin
+      ? `【個性】兩人都是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}。同一種底色放在一起，很快就懂對方，也會在同樣的地方一起卡住。${polarity}`
+      : `【個性】${a.name}是${ga}${STEM_WX[ga]}（${pa.image}），${pa.personality}；${b.name}是${gb}${STEM_WX[gb]}（${pb.image}），${pb.personality}。${polarity}`,
   );
 
   // 思考方式
@@ -711,23 +739,25 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
         syn.tenGodBForA ? TEN_GOD_SCENE[syn.tenGodBForA]?.decide(a.name, b.name) : '',
         syn.tenGodAForB ? TEN_GOD_SCENE[syn.tenGodAForB]?.decide(b.name, a.name) : '',
       ].filter(Boolean);
-  lines.push(`【思考方式】${a.name}${pa.thinking}；${b.name}${pb.thinking}。${decide.join('。')}${decide.length ? '。' : ''}`);
+  lines.push(`【思考方式】${twin ? `兩人都${pa.thinking}` : `${a.name}${pa.thinking}；${b.name}${pb.thinking}`}。${decide.join('。')}${decide.length ? '。' : ''}`);
 
   // 處理矛盾
-  const conflict: string[] = [`${a.name}${pa.conflict}；${b.name}${pb.conflict}。`];
+  const conflict: string[] = [twin ? `兩人吵架時的反應很像：都${pa.conflict}。` : `${a.name}${pa.conflict}；${b.name}${pb.conflict}。`];
   conflict.push(dayConflictScene(a, b, syn));
   const sa = a.chart.strength;
   const sb = b.chart.strength;
-  if (sa === '身旺' && sb === '身旺') conflict.push('兩人都身旺，吵架時都想贏，可以先約好一個「暫停」的暗號。');
-  else if (sa === '身弱' && sb === '身弱') conflict.push('兩人都身弱，容易都在等對方先開口，誰先說一句「我們談談」就贏了一半。');
-  else if (sa === '身旺' && sb === '身弱')
-    conflict.push(`${a.name}身旺、${b.name}身弱：${a.name}容易主導話題，${b.name}可能先讓步、事後才覺得委屈，${a.name}要多留一點讓${b.name}說完的時間。`);
-  else if (sa === '身弱' && sb === '身旺')
-    conflict.push(`${b.name}身旺、${a.name}身弱：${b.name}容易主導話題，${a.name}可能先讓步、事後才覺得委屈，${b.name}要多留一點讓${a.name}說完的時間。`);
+  const strongWeak = (w: string, k: string) =>
+    `${w}身旺、${k}身弱：亂的時候${w}拿得定主意、讓事情往前走，${k}也願意配合；但${w}容易主導話題，${k}可能先讓步、事後才覺得委屈，${w}要多留一點讓${k}說完的時間。`;
+  if (sa === '身旺' && sb === '身旺')
+    conflict.push('兩人都身旺，有話直說，問題不太會被冷戰埋起來；只是吵架時都想贏，可以先約好一個「暫停」的暗號。');
+  else if (sa === '身弱' && sb === '身弱')
+    conflict.push('兩人都身弱，很少正面起衝突，吵也吵不兇；只是容易都在等對方先開口，誰先說一句「我們談談」就贏了一半。');
+  else if (sa === '身旺' && sb === '身弱') conflict.push(strongWeak(a.name, b.name));
+  else if (sa === '身弱' && sb === '身旺') conflict.push(strongWeak(b.name, a.name));
   lines.push(`【處理矛盾】${conflict.join('')}`);
 
   // 感受親密及愛
-  const love: string[] = [`${a.name}${pa.love}；${b.name}${pb.love}。`];
+  const love: string[] = [twin ? `兩人表達與感受愛的方式一樣：都${pa.love}。` : `${a.name}${pa.love}；${b.name}${pb.love}。`];
   const sceneA = mutual ? mutual.love : syn.tenGodBForA ? TEN_GOD_SCENE[syn.tenGodBForA]?.love(a.name, b.name) : '';
   const sceneB = mutual ? '' : syn.tenGodAForB ? TEN_GOD_SCENE[syn.tenGodAForB]?.love(b.name, a.name) : '';
   if (sceneA) love.push(`${sceneA}。`);
@@ -748,16 +778,16 @@ function dayConflictScene(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): st
   if (kinds.includes('liuChong'))
     return `夫妻宮${zA}${zB}相沖：在家裡的步調剛好相反（作息、整潔、花錢節奏），一件小事就可能當場吵開；沖得快也和得快，先各自冷靜十分鐘再談最有效。`;
   if (kinds.includes('xing'))
-    return `夫妻宮${zA}${zB}相刑：摩擦多半出在語氣和「怎麼又這樣」的小事上，對事不對人、別翻舊帳最重要。`;
+    return `夫妻宮${zA}${zB}相刑：摩擦多半出在語氣和「怎麼又這樣」的小事上；換個角度看，敢在對方面前挑毛病，也代表兩人彼此不設防。對事不對人、別翻舊帳最重要。`;
   if (kinds.includes('hai'))
-    return `夫妻宮${zA}${zB}相害：不滿容易悶著不說，或從別的事情側面冒出來，對方常不知道哪裡惹到了；定期問一句「最近有沒有哪裡不舒服」很有用。`;
+    return `夫妻宮${zA}${zB}相害：不滿容易悶著不說，或從別的事情側面冒出來，對方常不知道哪裡惹到了；好在悶著多半是不想傷對方，定期問一句「最近有沒有哪裡不舒服」，就能把顧慮變成體貼。`;
   if (kinds.includes('ziXing'))
-    return `夫妻宮同為${zA}自刑：兩人會在同一件事上一樣固執、一樣敏感，吵起來像照鏡子，誰先察覺誰就先緩下來。`;
+    return `夫妻宮同為${zA}自刑：兩人會在同一件事上一樣固執、一樣敏感，吵起來像照鏡子；也因為一樣，冷靜下來後最能體諒對方為什麼卡住，誰先察覺誰就先緩下來。`;
   if (kinds.includes('liuHe'))
     return `夫妻宮${zA}${zB}六合：吵完容易和好，常常一個擁抱就過去；也要留意別為了和氣，把真正的問題略過。`;
   if (kinds.includes('banHe'))
-    return `夫妻宮${zA}${zB}半合：意見不同時容易回到共同目標，吵著吵著就變成一起想辦法。`;
-  return `夫妻宮${zA}${zB}沒有合沖刑害：衝突不太會被生活環境放大，主要看兩人說話的習慣。`;
+    return `夫妻宮${zA}${zB}半合：意見不同時容易回到共同目標，吵著吵著就變成一起想辦法；只是太快跳到「怎麼解決」，心裡的情緒可能還沒被聽見。`;
+  return `夫妻宮${zA}${zB}沒有合沖刑害：衝突不太會被生活環境放大，但也少了吵完一抱就好的天然黏性，好壞主要看兩人說話的習慣。`;
 }
 
 function adviceLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[] {
@@ -776,7 +806,7 @@ function adviceLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[
       day: '同住後的作息、家務、花錢先列成清單講好，吵起來先停十分鐘再談',
       time: '買房、生養、退休這些長期計畫，每年找一天坐下來對一次',
     };
-    lines.push(`最需要磨合的六沖在${where(p)}${more(chong)}：${tip[scenePillar(p)]}。`);
+    lines.push(`最需要磨合的六沖在${where(p)}${more(chong)}：${tip[scenePillar(p)]}。這裡也是兩人最有火花的地方，磨合順了，就是互相推著前進的動力。`);
   }
   const xingHai = [...withKind('xing'), ...withKind('hai')];
   if (xingHai.length > 0) {
@@ -794,7 +824,7 @@ function adviceLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[
       day: '保留固定的兩人時間，例如每週一次不看手機的晚餐',
       time: '一起寫下三年、十年後想過的生活',
     };
-    lines.push(`默契最好的是${where(p)}${more(he)}：${act[scenePillar(p)]}，讓這份默契變成習慣。`);
+    lines.push(`默契最好的是${where(p)}${more(he)}：${act[scenePillar(p)]}，讓這份默契變成習慣；也別因為這裡合得來，就用這裡的甜把別處的問題蓋過去。`);
   }
 
   switch (syn.stem.kind) {
@@ -807,13 +837,13 @@ function adviceLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[
     case 'aGeneratesB':
     case 'bGeneratesA': {
       const [g, r] = syn.stem.kind === 'aGeneratesB' ? [a.name, b.name] : [b.name, a.name];
-      lines.push(`${g}常是付出的一方，${r}記得表達感謝與回饋，關係才平衡。`);
+      lines.push(`${g}常是付出的一方，${r}記得表達感謝與回饋；${g}也要讓${r}自己扛一些事，給得太多反而讓${r}少了成長的機會。`);
       break;
     }
     case 'aControlsB':
     case 'bControlsA': {
       const [c, d] = syn.stem.kind === 'aControlsB' ? [a.name, b.name] : [b.name, a.name];
-      lines.push(`${c}想幫忙時先問「需要建議還是只要聽」，${d}覺得被管時直接說出感受，比冷戰有效。`);
+      lines.push(`${c}想幫忙時先問「需要建議還是只要聽」，${d}覺得被管時直接說出感受，比冷戰有效；${c}的要求若讓${d}真的進步了，也別吝於說出口。`);
       break;
     }
   }
@@ -862,6 +892,7 @@ export function buildBaziSynastryAiPrompt(a: BaziPartner, b: BaziPartner, syn: B
 - 以兩人日主的生剋合化、彼此的十神、日支（夫妻宮）與年支（生肖）的合沖刑害為主軸，再看五行與喜用神是否互補。
 - 年柱看原生家庭與社交圈、月柱看工作節奏與做事方式、日柱看私下相處、時柱看未來規劃與子女觀，請說明合沖落在哪個生活面向。
 - 天干五合請說出這一組的特色（甲己中正、乙庚仁義、丙辛威制、丁壬情濃、戊癸重現實），不要只說「相合有默契」。
+- 每種關係都有兩面：合有默契，也可能黏太緊、失去自我，合化後個性被對方改變；沖刑害有摩擦，也帶來火花、互相激發與成長；相生是支持，也可能變成耗損或溺愛；相剋是壓力，也可能是讓人成熟的約束；十神與喜用互補同理。請每一段都寫出優點與挑戰，份量大致相當，不報喜不報憂，也不要只講問題；措辭請自然變化，不要每段都套「優點是…缺點是…」的句型。
 - 這是命盤結構說明，不是合不合的判決；請給可實踐的相處建議，避免恐嚇或保證。
 - 每個論點都要扣回這兩人的實際干支，避免放在任何一對都通用的句子。
 
@@ -879,11 +910,11 @@ ${pairs}
 
 ## 請依序回答
 1. 總覽：兩人日主組合的特色（用天干意象說明，例如大樹與燭火）。
-2. 日常相處，分四個主題，每個主題至少給 2 個具體的生活場景（例如週末怎麼安排、一起決定要不要買房、對方晚回訊息時、吵架後隔天早上）：
+2. 日常相處，分四個主題，每個主題都要同時寫出這兩人相處順的地方與會摩擦的地方（優點與挑戰），並至少給 2 個具體的生活場景（例如週末怎麼安排、一起決定要不要買房、對方晚回訊息時、吵架後隔天早上）：
    - 個性：兩人各自的個性底色，以及放在一起時的化學反應。
    - 兩人思考方式：各自怎麼想事情、做決定，用十神說明誰影響誰（例如「${b.name}是${a.name}的${syn.tenGodBForA}」在決策上的表現）。
    - 處理矛盾的方法：各自吵架時的反應、夫妻宮的合沖刑害如何放大或緩和衝突、怎麼和好最有效。
    - 感受親密及愛的方式：各自怎麼表達愛、怎麼感受到被愛，以及容易錯過對方心意的地方。
-3. 五行互補與生活建議。
+3. 五行互補與生活建議：互補帶來什麼，以及過度依賴對方補位的代價。
 4. 最後給兩人各 3 條相處提醒，具體到可以今天就做。`;
 }

@@ -173,5 +173,17 @@ describe('composite graph data and report', () => {
     for (const k of ['電磁通道', '友伴通道', '主導通道', '妥協通道']) expect(text).toContain(k);
     expect(text).not.toMatch(/undefined|NaN/);
     for (const k of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式', '下班回家']) expect(text).toContain(k);
+    expect(text).toContain('優點與挑戰要平衡');
+  });
+
+  it('companionship lines name the shared blind spot, compromise names the upside', () => {
+    const g = [5, 15, 6, 59, 2, 14];
+    const s = analyzeHdSynastry(g, [...g, 19]);
+    const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, s);
+    const comp = items.find((i) => i.term === '友伴通道')?.meaning ?? '';
+    expect(comp).toContain('例行公事');
+    expect(comp).toContain('盲點');
+    const kinds = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    expect(kinds.find((i) => i.term === '妥協通道')?.meaning).toContain('互補');
   });
 });
