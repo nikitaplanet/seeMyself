@@ -4,6 +4,7 @@ import { zodiacPos } from '@/lib/astro/compute';
 import {
     analyzeAstroSynastry,
     aspectBetween,
+    astroFit,
     astroSynastryItems,
     buildAstroSynastryAiPrompt,
     houseIn,
@@ -140,7 +141,15 @@ describe('report from real charts', () => {
         expect(all).not.toMatch(/undefined|null|NaN/);
         expect(all).toContain('甲的');
         expect(all).toContain('乙的');
-        expect(items.map((i) => i.term)).toEqual(['重點相位', '其他相位', '和諧與張力', '宮位疊加', '日常相處', '相處建議']);
+        expect(items.map((i) => i.term)).toEqual([
+            '重點相位',
+            '其他相位',
+            '和諧與張力',
+            '宮位疊加',
+            '日常相處',
+            '相處建議',
+            '這段關係的禮物',
+        ]);
         const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
         expect(prompt).toContain('## 比對相位');
         expect(prompt).not.toMatch(/undefined|NaN/);
@@ -149,8 +158,10 @@ describe('report from real charts', () => {
     it('prompt asks for the four daily-life themes', () => {
         const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
         for (const t of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式']) expect(prompt).toContain(t);
-        expect(prompt).toContain('優點與挑戰要平衡');
-        expect(prompt).toContain('相處順利的優點與容易摩擦的挑戰');
+        expect(prompt).toContain('語氣以鼓勵、先講優點為主');
+        expect(prompt).toContain('2:1');
+        expect(prompt).toContain('這段關係的禮物');
+        expect(prompt).not.toContain('比較不合');
     });
 });
 
@@ -201,7 +212,10 @@ describe('日常相處 and pair-specific copy', () => {
     it('easy aspects name a cost, tense ones a gift, and daily tags do not repeat', () => {
         const first = (x: AstroChart, y: AstroChart) =>
             astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y))[0].meaning;
-        expect(first(chart({ moon: 0 }), chart({ moon: 120 }))).toContain('難開口的事');
+        const soft = first(chart({ moon: 0 }), chart({ moon: 120 }));
+        expect(soft).toContain('難開口的事');
+        // Strength first: the growth point comes after the warm sentence.
+        expect(soft.indexOf('住在一起舒服')).toBeLessThan(soft.indexOf('難開口的事'));
         expect(first(chart({ saturn: 0 }), chart({ venus: 90 }))).toContain('經得起考驗');
         // 甲's Saturn squares 乙's Mars and Moon, 甲's Mars squares 乙's Saturn: three hard tags in 處理矛盾.
         const d = astroSynastryItems(
@@ -215,5 +229,72 @@ describe('日常相處 and pair-specific copy', () => {
         const tags = d.split('\n').filter((l) => l.startsWith('・相位加碼')).map((l) => l.split('——')[1]);
         expect(tags.length).toBeGreaterThan(1);
         expect(new Set(tags).size).toBe(tags.length);
+    });
+
+    it('closing gift is built from the pair and differs between pairs', () => {
+        const gift = (x: AstroChart, y: AstroChart) =>
+            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y)).at(-1)!;
+        const g1 = gift(p1a, p1b);
+        const g2 = gift(p2a, p2b);
+        expect(g1.term).toBe('這段關係的禮物');
+        expect(g1.meaning).not.toEqual(g2.meaning);
+        expect(g1.meaning).toContain('最珍貴的');
+        expect(g1.meaning).not.toMatch(/undefined|NaN/);
+        const sentences = g1.meaning.split('。').filter(Boolean).length;
+        expect(sentences).toBeGreaterThanOrEqual(2);
+        expect(sentences).toBeLessThanOrEqual(3);
+        // Only tense contacts: still names something real to treasure.
+        const tense = gift(chart({ sun: 0, venus: 10 }), chart({ moon: 90, mars: 190 }));
+        expect(tense.meaning).toMatch(/最珍貴的|值得珍惜/);
+    });
+});
+
+describe('fit signal', () => {
+    // 甲 and 乙: Sun–Moon square, Venus–Mars opposition, Sun–Sun square, Moon–Moon square, Saturn square Sun.
+    const hardA = chart({ sun: 0, moon: 100, venus: 200, mars: 300, saturn: 180 });
+    const hardB = chart({ sun: 90, moon: 190, venus: 140, mars: 20, saturn: 250 });
+
+    it('flags a clearly difficult pair and says so honestly', () => {
+        const syn = analyzeAstroSynastry(hardA, hardB);
+        const fit = astroFit(syn);
+        expect(fit.difficult).toBe(true);
+        expect(fit.coreTense).toBeGreaterThanOrEqual(3);
+        expect(fit.bond).toBe(false);
+        const items = astroSynastryItems({ name: '甲', chart: hardA }, { name: '乙', chart: hardB }, syn);
+        const daily = items.find((i) => i.term === '日常相處')!.meaning;
+        expect(daily.split('\n')[0]).toContain('【先說在前面】');
+        expect(daily).toContain('比較不合');
+        const last = items.at(-1)!;
+        expect(last.term).toBe('這段關係的課題與禮物');
+        expect(last.meaning).toContain('需要');
+        expect(last.meaning).toContain('值得珍惜');
+        expect(items.find((i) => i.term === '相處建議')!.meaning).toContain('三個實際的做法');
+        const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: hardA }, { name: '乙', chart: hardB }, syn);
+        expect(prompt).toContain('比較不合');
+    });
+
+    it('does not flag an ordinary pair, even one with some tension', () => {
+        for (const [x, y] of [
+            [
+                chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 100 }, { asc: 0 }),
+                chart({ sun: 95, mercury: 100, venus: 70, mars: 110, moon: 190 }, { asc: 90 }),
+            ],
+            [
+                chart({ sun: 35, mercury: 40, venus: 45, mars: 50, moon: 160 }, { asc: 30 }),
+                chart({ sun: 275, mercury: 280, venus: 285, mars: 290, moon: 150 }, { asc: 270 }),
+            ],
+        ]) {
+            const syn = analyzeAstroSynastry(x, y);
+            expect(astroFit(syn).difficult).toBe(false);
+            const items = astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, syn);
+            expect(items.find((i) => i.term === '日常相處')!.meaning).not.toContain('【先說在前面】');
+            expect(items.at(-1)!.term).toBe('這段關係的禮物');
+        }
+        const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+        const real = analyzeAstroSynastry(
+            computeAstro({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE }),
+            computeAstro({ date: '1992-11-03', time: '08:15', timezone: 'Asia/Taipei', place: PLACE }),
+        );
+        expect(astroFit(real)).toMatchObject({ difficult: false, bond: true });
     });
 });

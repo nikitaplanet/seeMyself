@@ -177,7 +177,7 @@ describe('no duplicated text', () => {
     const all = baziSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, analyzeBaziSynastry(a, b))
       .map((i) => i.meaning)
       .join('\n');
-    expect(all.match(/誰也不服誰/g)?.length).toBe(1);
+    expect(all.match(/聯手對外時特別有份量/g)?.length).toBe(1);
     expect(all).toContain('又是「恃勢之刑」');
   });
   it('same day stem merges the trait sentence', () => {
@@ -187,5 +187,71 @@ describe('no duplicated text', () => {
     )!.meaning;
     expect(d).toContain('【個性】兩人都是乙木');
     expect(d.match(/柔軟有韌性/g)?.length).toBe(1);
+  });
+});
+
+describe('這段關係的禮物 closing item', () => {
+  const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+  const chart = (date: string, time: string, gender: 'male' | 'female') =>
+    computeBazi({ date, time, timezone: 'Asia/Taipei', place: PLACE, gender });
+  const report = (x: ReturnType<typeof chart>, y: ReturnType<typeof chart>) =>
+    baziSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeBaziSynastry(x, y));
+  const a = chart('1990-05-12', '14:30', 'male');
+  const b = chart('1992-11-03', '08:15', 'female');
+  const c = chart('1985-03-20', '06:00', 'female');
+
+  it('sits just before 相處建議, has 2–3 sentences and is built from the pair', () => {
+    const items = report(a, b);
+    const i = items.findIndex((x) => x.term === '這段關係的禮物');
+    expect(i).toBe(items.length - 2);
+    expect(items[i + 1].term).toBe('相處建議');
+    const g = items[i].meaning;
+    const n = g.split('。').filter(Boolean).length;
+    expect(n).toBeGreaterThanOrEqual(2);
+    expect(n).toBeLessThanOrEqual(3);
+    // 沖-heavy pair (丑未 沖＋刑) still gets a meaningful positive about the 沖.
+    expect(g).toContain('丑未的沖');
+    expect(g).not.toMatch(/undefined|null|NaN|你/);
+  });
+
+  it('varies per pair', () => {
+    const g1 = report(a, b).find((x) => x.term === '這段關係的禮物')!.meaning;
+    const g2 = report(a, c).find((x) => x.term === '這段關係的禮物')!.meaning;
+    expect(g1).not.toEqual(g2);
+  });
+});
+
+describe('明顯不合 signal', () => {
+  const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+  const chart = (date: string, time: string, gender: 'male' | 'female') =>
+    computeBazi({ date, time, timezone: 'Asia/Taipei', place: PLACE, gender });
+
+  it('a normal pair (even one with 沖刑 but rescued by 喜用) stays in the encouraging tone', () => {
+    const a = chart('1990-05-12', '14:30', 'male');
+    const b = chart('1992-11-03', '08:15', 'female');
+    const syn = analyzeBaziSynastry(a, b);
+    expect(syn.fit.difficult).toBe(false);
+    const items = baziSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    expect(items.map((i) => i.term)).toContain('這段關係的禮物');
+    expect(items.find((i) => i.term === '日常相處')!.meaning).not.toContain('【先說在前面】');
+    expect(buildBaziSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn)).not.toContain('困難因素明顯多於');
+  });
+
+  it('a clearly difficult pair (日柱天剋地沖＋多處沖刑害＋忌神相衝) says so honestly', () => {
+    const a = chart('1995-11-11', '03:30', 'male'); // 丙午日
+    const b = chart('2001-06-06', '14:30', 'female'); // 庚子日
+    const syn = analyzeBaziSynastry(a, b);
+    expect(syn.fit.tianKeDiChong).toBe(true);
+    expect(syn.fit.difficult).toBe(true);
+    const items = baziSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    const daily = items.find((i) => i.term === '日常相處')!.meaning;
+    expect(daily.split('\n')[0]).toMatch(/^【先說在前面】/);
+    const close = items.find((i) => i.term === '這段關係的課題與禮物');
+    expect(close?.meaning).toContain('課題：');
+    expect(close?.meaning).toContain('禮物：');
+    expect(items.find((i) => i.term === '相處建議')!.meaning).toContain('伴侶諮商');
+    expect(buildBaziSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn)).toContain('困難因素明顯多於');
+    const all = items.map((i) => i.meaning).join('\n');
+    expect(all).not.toMatch(/undefined|null|NaN|你|\u732A/);
   });
 });

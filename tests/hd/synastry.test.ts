@@ -8,6 +8,7 @@ import {
   chartGates,
   classifyChannel,
   compositeGraphData,
+  hdFitIsDifficult,
   hdSynastryItems,
 } from '@/lib/hd/synastry';
 
@@ -173,7 +174,9 @@ describe('composite graph data and report', () => {
     for (const k of ['電磁通道', '友伴通道', '主導通道', '妥協通道']) expect(text).toContain(k);
     expect(text).not.toMatch(/undefined|NaN/);
     for (const k of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式', '下班回家']) expect(text).toContain(k);
-    expect(text).toContain('優點與挑戰要平衡');
+    expect(text).toContain('以優點為先');
+    expect(text).toContain('2:1');
+    expect(text).toContain('這段關係的禮物');
   });
 
   it('companionship lines name the shared blind spot, compromise names the upside', () => {
@@ -182,8 +185,57 @@ describe('composite graph data and report', () => {
     const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, s);
     const comp = items.find((i) => i.term === '友伴通道')?.meaning ?? '';
     expect(comp).toContain('例行公事');
-    expect(comp).toContain('盲點');
+    expect(comp).toContain('安排一件沒做過的小事');
     const kinds = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
     expect(kinds.find((i) => i.term === '妥協通道')?.meaning).toContain('互補');
+  });
+
+  it('closing gift item sits just before 相處建議 and is specific to the pair', () => {
+    const c = computeChart({ date: '1985-01-20', time: '23:10', timezone: 'Asia/Taipei' }, swephProvider);
+    const d = computeChart({ date: '1979-08-02', time: '05:40', timezone: 'Asia/Taipei' }, swephProvider);
+    const one = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    const two = hdSynastryItems({ name: '丙', chart: c }, { name: '丁', chart: d }, analyzeHdSynastry(chartGates(c), chartGates(d)));
+    for (const items of [one, two]) {
+      const terms = items.map((i) => i.term);
+      const at = terms.indexOf('這段關係的禮物');
+      expect(at).toBeGreaterThan(-1);
+      expect(terms[at + 1]).toBe('相處建議');
+      const text = items[at].meaning;
+      const n = text.split('。').filter((x) => x.trim()).length;
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(3);
+      expect(text).not.toMatch(/undefined|null|NaN/);
+    }
+    const gift = (items: typeof one) => items.find((i) => i.term === '這段關係的禮物')!.meaning;
+    expect(gift(one)).toContain('甲');
+    expect(gift(two)).toContain('丙');
+    expect(gift(one).replace(/甲|乙/g, '')).not.toBe(gift(two).replace(/丙|丁/g, ''));
+  });
+
+  it('fit signal: only a clearly demanding pair triggers the honest version', () => {
+    // A holds 5-15, 2-14, 29-46 in full; B has just one end of each → 3 compromise, no electromagnetic.
+    const hard = analyzeHdSynastry([5, 15, 2, 14, 29, 46], [15, 14, 46]);
+    const fast = { name: '甲', chart: { ...a, authority: 'sacral' as const } };
+    const slow = { name: '乙', chart: { ...b, authority: 'emotional' as const } };
+    expect(hdFitIsDifficult(fast, slow, hard)).toBe(true);
+    // Same structure but similar decision pace → not flagged.
+    expect(hdFitIsDifficult(fast, { ...slow, chart: { ...slow.chart, authority: 'splenic' as const } }, hard)).toBe(false);
+    // The hand-built pair has electromagnetic channels → not flagged.
+    expect(hdFitIsDifficult(fast, slow, analyzeHdSynastry(A, B))).toBe(false);
+
+    const items = hdSynastryItems(fast, slow, hard);
+    const terms = items.map((i) => i.term);
+    expect(terms).toContain('這段關係的課題與禮物');
+    expect(terms).not.toContain('這段關係的禮物');
+    const daily = items.find((i) => i.term === '日常相處')!.meaning.split('\n');
+    expect(daily[0]).toMatch(/^坦白說：/);
+    expect(daily.slice(1).map((l) => l.split('：')[0])).toEqual(['個性', '思考與決定', '處理矛盾', '親密與愛']);
+    expect(items.find((i) => i.term === '相處建議')!.meaning).toContain('諮商');
+    const prompt = buildHdSynastryAiPrompt({ ...fast, timeUnknown: false }, { ...slow, timeUnknown: false }, hard);
+    expect(prompt).toContain('不要硬湊正向');
+    expect(prompt).toContain('課題與禮物');
+
+    const normal = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    expect(normal.find((i) => i.term === '日常相處')!.meaning).not.toContain('坦白說');
   });
 });
