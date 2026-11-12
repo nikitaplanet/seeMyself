@@ -72,6 +72,17 @@ export function ChartView() {
                     {stored.saved?.name ?? '排盤結果'}
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {tab === 'astro' ? (
+                        <a
+                            href="https://astrolabe.astroinfo.com.tw/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-full border border-border bg-surface px-3 py-1 text-sm hover:border-accent hover:text-accent"
+                        >
+                            前往唐老師星盤
+                            <span className="sr-only">（另開新視窗）</span>
+                        </a>
+                    ) : null}
                     <SaveChartButton stored={stored} />
                     <Link href="/" className="text-sm underline hover:text-accent">
                         重新輸入出生資料
