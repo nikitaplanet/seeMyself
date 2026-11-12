@@ -6,6 +6,8 @@ export interface MeaningItem {
     hook?: string;
     /** Start folded; the reader opens it on demand (reference material such as 星盤依據). */
     collapsed?: boolean;
+    /** Basis badges shown under the card (姓名學 name_tags, e.g. 「外格 12 畫（木）」). */
+    tags?: string[];
 }
 
 /** 人類圖個人盤文案 lives in src/lib/hd/meaning.ts (theme cards + folded term reference). */

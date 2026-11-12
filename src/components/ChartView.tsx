@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CENTER_NAMES_ZH } from '@/lib/hd/constants';
@@ -33,6 +34,20 @@ import { ZiweiView } from './ziwei/ZiweiView';
 
 const serverSnapshot = (): string | null | undefined => undefined;
 
+// 姓名學 runs in the browser; its engine and the 康熙 dictionary are a separate chunk that is only
+// downloaded when the tab is first opened.
+const NamePersonalTab = dynamic(
+    () => import('./name/NameView').then((m) => m.NamePersonalTab),
+    {
+        ssr: false,
+        loading: () => (
+            <p className="rounded-md border border-border bg-surface px-4 py-6 text-muted">
+                正在載入姓名學字典…
+            </p>
+        ),
+    },
+);
+
 export function ChartView() {
     const raw = useSyncExternalStore<string | null | undefined>(
         subscribeStoredChart,
@@ -42,7 +57,7 @@ export function ChartView() {
     const stored = useMemo(() => (raw === undefined ? undefined : parseStoredChart(raw)), [raw]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [tab, setTab] = useState<'hd' | 'ziwei' | 'bazi' | 'astro'>('hd');
+    const [tab, setTab] = useState<'hd' | 'ziwei' | 'bazi' | 'astro' | 'name'>('hd');
 
     if (stored === undefined) return <ChartSkeleton />;
     if (stored === null) return <EmptyState />;
@@ -96,7 +111,7 @@ export function ChartView() {
                 </p>
             ) : null}
 
-            <div role="tablist" aria-label="命盤種類" className="tab-pill w-fit">
+            <div role="tablist" aria-label="命盤種類" className="tab-pill w-fit max-w-full flex-wrap">
                 <TabButton selected={tab === 'hd'} onClick={() => setTab('hd')}>
                     人類圖
                 </TabButton>
@@ -108,6 +123,9 @@ export function ChartView() {
                 </TabButton>
                 <TabButton selected={tab === 'astro'} onClick={() => setTab('astro')}>
                     星盤
+                </TabButton>
+                <TabButton selected={tab === 'name'} onClick={() => setTab('name')}>
+                    姓名學
                 </TabButton>
             </div>
 
@@ -122,6 +140,15 @@ export function ChartView() {
                 <BaziTab stored={stored} />
             ) : tab === 'astro' ? (
                 <AstroTab stored={stored} />
+            ) : tab === 'name' ? (
+                <NamePersonalTab
+                    subject={{
+                        savedId: stored.saved?.id ?? null,
+                        chartName: stored.saved?.name ?? null,
+                        date: stored.input.date,
+                        time: stored.input.time,
+                    }}
+                />
             ) : (
                 <div
                     className={`flex flex-col gap-6 ${busy ? 'opacity-60 transition-opacity' : ''}`}

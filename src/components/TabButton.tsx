@@ -24,7 +24,7 @@ export function TabButton({
             aria-selected={selected}
             aria-controls={controls}
             onClick={onClick}
-            className={`tab-pill-item cursor-pointer ${selected ? '' : 'hover:text-fg'}`}
+            className={`tab-pill-item cursor-pointer whitespace-nowrap ${selected ? '' : 'hover:text-fg'}`}
             data-active={selected ? 'true' : undefined}
         >
             {children}

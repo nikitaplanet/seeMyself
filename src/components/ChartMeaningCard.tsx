@@ -91,6 +91,7 @@ export function ChartMeaningCard({
                                     </div>
                                 </details>
                             </dd>
+                            <MeaningTags tags={entry.tags} />
                         </div>
                     ) : (
                         <div key={entry.term} className="flex flex-col gap-2">
@@ -111,11 +112,31 @@ export function ChartMeaningCard({
                                 </span>
                                 <MeaningText text={entry.meaning} />
                             </dd>
+                            <MeaningTags tags={entry.tags} />
                         </div>
                     ),
                 )}
             </dl>
         </section>
+    );
+}
+
+// Basis badges under a card (姓名學: which 格／字根 the text is built from). Nothing when empty.
+function MeaningTags({ tags }: { tags?: string[] }) {
+    if (!tags || tags.length === 0) return null;
+    return (
+        <dd>
+            <ul aria-label="依據" className="flex flex-wrap gap-1.5">
+                {tags.map((tag, i) => (
+                    <li
+                        key={`${i}-${tag}`}
+                        className="rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs text-muted"
+                    >
+                        {tag}
+                    </li>
+                ))}
+            </ul>
+        </dd>
     );
 }
 

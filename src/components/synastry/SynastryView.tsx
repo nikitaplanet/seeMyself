@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
@@ -63,14 +64,36 @@ import { TabButton } from '../TabButton';
 // the URL), written by the 雙人合盤 tab on /charts. Layout and tabs mirror the single result page
 // (ChartView); every analysis is pure client-side logic in src/lib/*/synastry.ts.
 
-type Tab = 'hd' | 'ziwei' | 'bazi' | 'astro';
+type Tab = 'hd' | 'ziwei' | 'bazi' | 'astro' | 'name';
 
 const TABS: Array<[Tab, string]> = [
     ['hd', '人類圖'],
     ['ziwei', '紫微斗數'],
     ['bazi', '八字'],
     ['astro', '星盤'],
+    ['name', '姓名學'],
 ];
+
+// 姓名學 runs in the browser; its engine and the 康熙 dictionary are a separate chunk that is only
+// downloaded when the tab is first opened.
+const NamePairTab = dynamic(() => import('../name/NameView').then((m) => m.NamePairTab), {
+    ssr: false,
+    loading: () => (
+        <p className="rounded-md border border-border bg-surface px-4 py-6 text-muted">
+            正在載入姓名學字典…
+        </p>
+    ),
+});
+
+function nameSubject(p: SynastryPerson) {
+    return {
+        savedId: p.id,
+        chartName: p.name,
+        displayName: p.name,
+        date: p.input.date,
+        time: p.input.time,
+    };
+}
 
 const serverSnapshot = (): string | null | undefined => undefined;
 
@@ -123,7 +146,7 @@ export function SynastryView() {
             </div>
             <PeopleStrip a={a} b={b} />
 
-            <div role="tablist" aria-label="命盤種類" className="tab-pill w-fit max-w-full">
+            <div role="tablist" aria-label="命盤種類" className="tab-pill w-fit max-w-full flex-wrap">
                 {TABS.map(([key, label]) => (
                     <TabButton
                         key={key}
@@ -144,6 +167,8 @@ export function SynastryView() {
                     <BaziTab a={a} b={b} />
                 ) : tab === 'astro' ? (
                     <AstroTab a={a} b={b} />
+                ) : tab === 'name' ? (
+                    <NamePairTab a={nameSubject(a)} b={nameSubject(b)} />
                 ) : (
                     <HdTab a={a} b={b} />
                 )}
