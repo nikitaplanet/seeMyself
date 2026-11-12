@@ -24,6 +24,8 @@ export interface MeaningItem {
     meaning: string;
     /** Optional one-line hook shown above the meaning (星盤準則 hook_quote, ≤ 20 字). */
     hook?: string;
+    /** Start folded; the reader opens it on demand (reference material such as 星盤依據). */
+    collapsed?: boolean;
 }
 
 const TYPE_OPERATE: Record<HDType, string> = {

@@ -69,27 +69,51 @@ export function ChartMeaningCard({
                 <p className="text-sm text-muted">{lead}</p>
             </div>
             <dl className="flex flex-col gap-5">
-                {items.map((entry) => (
-                    <div key={entry.term} className="flex flex-col gap-2">
-                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                            <dt className="font-medium">{entry.term}</dt>
-                            <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
-                                {entry.field}
-                            </p>
+                {items.map((entry) =>
+                    entry.collapsed ? (
+                        <div key={entry.term} className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                                <dt className="font-medium">{entry.term}</dt>
+                                <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
+                                    {entry.field}
+                                </p>
+                            </div>
+                            <dd>
+                                <details className="group rounded-md bg-surface-2 px-3 py-2 text-sm">
+                                    <summary className="cursor-pointer text-muted hover:text-fg">
+                                        <span className="group-open:hidden">展開{entry.term}</span>
+                                        <span className="hidden group-open:inline">
+                                            收合{entry.term}
+                                        </span>
+                                    </summary>
+                                    <div className="mt-3">
+                                        <MeaningText text={entry.meaning} />
+                                    </div>
+                                </details>
+                            </dd>
                         </div>
-                        {entry.hook && (
-                            <p className="border-l-2 border-accent pl-3 font-serif text-base text-fg">
-                                「{entry.hook}」
-                            </p>
-                        )}
-                        <dd className="grid grid-cols-[4.5rem_1fr] gap-x-3 rounded-md bg-surface-2 px-3 py-2 text-sm sm:grid-cols-[5.5rem_1fr]">
-                            <span className="pt-0.5 text-xs tracking-wide text-muted">
-                                意思說明
-                            </span>
-                            <MeaningText text={entry.meaning} />
-                        </dd>
-                    </div>
-                ))}
+                    ) : (
+                        <div key={entry.term} className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                                <dt className="font-medium">{entry.term}</dt>
+                                <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
+                                    {entry.field}
+                                </p>
+                            </div>
+                            {entry.hook && (
+                                <p className="border-l-2 border-accent pl-3 font-serif text-base text-fg">
+                                    「{entry.hook}」
+                                </p>
+                            )}
+                            <dd className="grid grid-cols-[4.5rem_1fr] gap-x-3 rounded-md bg-surface-2 px-3 py-2 text-sm sm:grid-cols-[5.5rem_1fr]">
+                                <span className="pt-0.5 text-xs tracking-wide text-muted">
+                                    意思說明
+                                </span>
+                                <MeaningText text={entry.meaning} />
+                            </dd>
+                        </div>
+                    ),
+                )}
             </dl>
         </section>
     );

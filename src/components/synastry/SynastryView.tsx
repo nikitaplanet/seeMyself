@@ -100,13 +100,26 @@ export function SynastryView() {
                 <h1 className="min-w-0 break-words font-serif text-3xl font-medium tracking-wide">
                     {a.name} × {b.name} 雙人合盤
                 </h1>
-                <Link
-                    href="/charts"
-                    onClick={() => rememberChartsView('synastry')}
-                    className="text-sm underline hover:text-accent"
-                >
-                    回命盤列表
-                </Link>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {tab === 'astro' ? (
+                        <a
+                            href="https://astrolabe.astroinfo.com.tw/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-full border border-border bg-surface px-3 py-1 text-sm hover:border-accent hover:text-accent"
+                        >
+                            前往唐老師星盤
+                            <span className="sr-only">（另開新視窗）</span>
+                        </a>
+                    ) : null}
+                    <Link
+                        href="/charts"
+                        onClick={() => rememberChartsView('synastry')}
+                        className="text-sm underline hover:text-accent"
+                    >
+                        回命盤列表
+                    </Link>
+                </div>
             </div>
             <PeopleStrip a={a} b={b} />
 
