@@ -135,9 +135,9 @@ describe('ziweiNatalReport', () => {
             ]);
             expect(it.meaning).toMatch(/（.+）/);
         }
-        expect(items.at(-2)!.collapsed).toBe(true);
+        expect(items.at(-2)!.collapsed).toBeFalsy();
         expect(items.at(-2)!.meaning.split('\n')).toHaveLength(12);
-        expect(items.at(-1)!.collapsed).toBe(true);
+        expect(items.at(-1)!.collapsed).toBeFalsy();
         expect(items.map((i) => i.meaning).join('\n')).not.toMatch(/僕役|官祿/);
     });
 

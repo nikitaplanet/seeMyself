@@ -1672,15 +1672,13 @@ export function ziweiMeaningItems(chart: ZiweiChart): MeaningItem[] {
         term: '十二宮主星',
         field: '命盤上十二個宮位各自的主星，是上面各段解析的依據；沒有主星的宮位，借對面那一宮的主星來看。',
         meaning: palaceListLines(chart).join('\n'),
-        collapsed: true,
     });
     if (chart.mutagens.length > 0) {
         items.push({
             term: '生年四化',
             field: '出生年帶來的四個重點：化祿是順手與收穫，化權是想主導的地方，化科是名聲與助力，化忌是最在意、值得多練習的地方。',
             meaning: mutagenLines(chart).join('\n'),
-            collapsed: true,
-        });
+            });
     }
     return items;
 }

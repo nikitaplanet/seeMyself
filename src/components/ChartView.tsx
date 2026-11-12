@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CENTER_NAMES_ZH } from '@/lib/hd/constants';
+import { CHANNEL_TRAIT } from '@/lib/hd/meaningReference';
 import { buildHdAiPrompt } from '@/lib/hd/prompt';
 import type { BirthInput, ChartResult, NodeMode } from '@/lib/hd/types';
 import {
@@ -283,15 +284,22 @@ function ChannelList({ chart }: { chart: ChartResult }) {
                 已成立的通道
             </h2>
             {chart.channels.length === 0 ? (
-                <p className="text-muted">沒有已成立的通道。</p>
+                <p className="text-muted">
+                    目前沒有已成立的通道，個人特色較分散在閘門與開放中心的學習上。這代表你很有彈性，能在不同人與環境中學到很多；選擇身邊的人時多用點心，他們會大大影響你的狀態。
+                </p>
             ) : (
                 <ul className="flex flex-col divide-y divide-border">
                     {chart.channels.map((c) => (
-                        <li key={c.id} className="flex flex-wrap items-baseline gap-x-3 py-2">
-                            <span className="w-14 font-semibold tabular-nums">{c.id}</span>
-                            <span>
-                                {CENTER_NAMES_ZH[c.centers[0]]} — {CENTER_NAMES_ZH[c.centers[1]]}
-                            </span>
+                        <li key={c.id} className="flex flex-col gap-1 py-2">
+                            <div className="flex flex-wrap items-baseline gap-x-3">
+                                <span className="w-14 font-semibold tabular-nums">{c.id}</span>
+                                <span>
+                                    {CENTER_NAMES_ZH[c.centers[0]]} — {CENTER_NAMES_ZH[c.centers[1]]}
+                                </span>
+                            </div>
+                            {CHANNEL_TRAIT[c.id] ? (
+                                <p className="text-sm text-muted">{CHANNEL_TRAIT[c.id]}</p>
+                            ) : null}
                         </li>
                     ))}
                 </ul>

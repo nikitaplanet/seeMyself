@@ -780,7 +780,6 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
         .filter(Boolean)
         .join('\n'),
     ),
-    collapsed: true,
   });
 
   const wxLines: string[] = [

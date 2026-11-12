@@ -79,11 +79,11 @@ function expectCard(
 }
 
 describe('八字個人盤主題卡片', () => {
-  it('covers the eleven guideline themes in order, then the folded reference items', () => {
+  it('covers the eleven guideline themes in order, then the reference items', () => {
     for (const chart of CHARTS) {
       const items = baziMeaningItems(chart);
       expect(items.slice(0, 11).map((x) => x.term)).toEqual(PERSONAL_TERMS);
-      expect(items.slice(11).every((x) => x.collapsed)).toBe(true);
+      expect(items.some((x) => x.collapsed)).toBe(false);
       expect(new Set(items.map((x) => x.term)).size).toBe(items.length);
     }
   });

@@ -122,7 +122,7 @@ describe('hdThemeCards', () => {
 });
 
 describe('hdMeaningItems', () => {
-  it('puts the theme cards first and folds the term reference', () => {
+  it('puts the theme cards first then the term reference', () => {
     const items = hdMeaningItems(base);
     expect(items.slice(0, THEMES.length).map((x) => x.term)).toEqual(THEMES);
     for (const it of items.slice(0, THEMES.length)) {
@@ -133,8 +133,8 @@ describe('hdMeaningItems', () => {
     }
     const rest = items.slice(THEMES.length);
     expect(rest.map((x) => x.term)).toEqual(
-      expect.arrayContaining(['類型', '策略', '內在權威', '人生角色', '定義型態', '輪迴交叉', '通道']),
+      expect.arrayContaining(['類型', '策略', '內在權威', '人生角色', '定義型態', '輪迴交叉']),
     );
-    for (const it of rest) expect(it.collapsed).toBe(true);
+    for (const it of rest) expect(it.collapsed).toBeFalsy();
   });
 });

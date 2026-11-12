@@ -1163,7 +1163,7 @@ const PILLAR_NOTE: Record<BaziPillar['key'], string> = {
 };
 
 function ref(term: string, field: string, meaning: string): MeaningItem {
-  return { term, field, meaning, collapsed: true };
+  return { term, field, meaning };
 }
 
 function referenceItems(env: Env): MeaningItem[] {

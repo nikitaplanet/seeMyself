@@ -119,7 +119,7 @@ const CENTER_OPEN_TRAIT: Record<CenterId, string> = {
     root: '容易把外在的壓力當成自己的，急著把事情做完好擺脫它；先分辨哪件事真的急，再一件一件來。',
 };
 
-const CHANNEL_TRAIT: Record<string, string> = {
+export const CHANNEL_TRAIT: Record<string, string> = {
     '1-8': '有自己的創造節奏，做出來是為了貢獻，不是為了表演。留意別為了迎合而改掉風格；先做出你真心想做的，對的人自然會找到。',
     '2-14': '方向對了，資源與驅力會跟著來；方向不對就容易空忙。定期問自己「現在做的事，是我想去的方向嗎？」，比一味加班更有效。',
     '3-60': '習慣在限制裡突變，格式與突破同時存在。突破不照時程表來，卡住的期間不代表沒進展；低潮也是醞釀的一部分。',
@@ -272,7 +272,7 @@ function joinZh(parts: string[]): string {
 }
 
 function item(term: string, field: string, meaning: string): MeaningItem {
-    return { term, field, meaning, collapsed: true };
+    return { term, field, meaning };
 }
 
 export function hdReferenceItems(chart: ChartResult): MeaningItem[] {
@@ -345,31 +345,6 @@ export function hdReferenceItems(chart: ChartResult): MeaningItem[] {
                 '未定義中心',
                 '較易受環境影響，也較能彈性學習。',
                 open.map((c) => `${CENTER_NAMES_ZH[c]}：${CENTER_OPEN_TRAIT[c]}`).join('\n'),
-            ),
-        );
-    }
-
-    if (chart.channels.length > 0) {
-        items.push(
-            item(
-                '通道',
-                '兩個中心之間已接通的固定能力，是較穩定的個人特色。',
-                chart.channels
-                    .map((ch) => {
-                        const trait = CHANNEL_TRAIT[ch.id] ?? '這是兩個中心之間已接通的固定能力。';
-                        const a = CENTER_NAMES_ZH[ch.centers[0]];
-                        const b = CENTER_NAMES_ZH[ch.centers[1]];
-                        return `${ch.id}（${a}—${b}）：${trait}`;
-                    })
-                    .join('\n'),
-            ),
-        );
-    } else {
-        items.push(
-            item(
-                '通道',
-                '兩個中心之間已接通的固定能力，是較穩定的個人特色。',
-                '目前沒有已成立的通道，個人特色較分散在閘門與開放中心的學習上。這代表你很有彈性，能在不同人與環境中學到很多；選擇身邊的人時多用點心，他們會大大影響你的狀態。',
             ),
         );
     }

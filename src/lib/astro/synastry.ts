@@ -5417,7 +5417,6 @@ function basisItem(ctx: Ctx): MeaningItem {
         term: '星盤依據',
         field: '每個板塊採用的高權重接觸（分數 1–100），給想對照星盤的人參考。',
         meaning: lines.join('\n'),
-        collapsed: true,
     };
 }
 

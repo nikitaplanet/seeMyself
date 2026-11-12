@@ -448,8 +448,7 @@ describe('report: 個性互動 and ten sections in card format', () => {
             ]);
             expect(items[GIFT].term).toMatch(/^這段關係的(課題與)?禮物$/);
             expect(items[BASIS].term).toBe('星盤依據');
-            expect(items[BASIS].collapsed).toBe(true);
-            expect(items.filter((i) => i.collapsed)).toHaveLength(1);
+            expect(items.filter((i) => i.collapsed)).toHaveLength(0);
             expect(items).toHaveLength(13);
         },
     );
