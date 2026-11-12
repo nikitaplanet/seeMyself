@@ -1,7 +1,27 @@
 import type { PartnerKey } from '@/lib/hd/synastry';
 import type { MeaningItem } from '@/lib/ui/personMeaning';
-import { ASPECT_ANGLES, ASPECT_NAMES, ASPECT_ORBS, BODY_NAMES, formatDegMin, SIGN_NAMES } from './labels';
+import {
+    ASPECT_ANGLES,
+    ASPECT_NAMES,
+    ASPECT_ORBS,
+    BODY_NAMES,
+    formatDegMin,
+    SIGN_NAMES,
+} from './labels';
 import { BODY_FUNCTION } from './meaning';
+import {
+    AXIS_NAMES,
+    SECTION_ORDER,
+    SECTION_TITLES,
+    THEMES,
+    weighSynastry,
+    type AxisKey,
+    type SectionId,
+    type SynastryWeighting,
+    type ThemeId,
+    type ThemeScore,
+    type WeightedContact,
+} from './synastryWeight';
 import type { AspectType, AstroBodyKey, AstroChart, AstroZodiacPos } from './types';
 
 // 星盤比對（synastry）— pure logic, no React, client-safe (labels/types only, never compute.ts).
@@ -53,7 +73,8 @@ export function synastryPoints(chart: AstroChart): SynastryPoint[] {
     const pts: SynastryPoint[] = chart.bodies
         .filter((b) => !(chart.timeUnknown && b.key === 'moon'))
         .map((b) => ({ key: b.key, longitude: b.longitude }));
-    if (chart.angles && !chart.timeUnknown) pts.push({ key: 'asc', longitude: chart.angles.asc.longitude });
+    if (chart.angles && !chart.timeUnknown)
+        pts.push({ key: 'asc', longitude: chart.angles.asc.longitude });
     return pts;
 }
 
@@ -185,8 +206,13 @@ export function analyzeAstroSynastry(a: AstroChart, b: AstroChart): AstroSynastr
 // ---------------------------------------------------------------------------
 // Report text
 // ---------------------------------------------------------------------------
-// Copy is written per planet pair and per aspect family (合 / 和諧 / 張力), with the two people's
-// roles spelled out (whose Moon, whose Mars), so two different contacts never read the same.
+// The report follows 星盤開發準則 §3B/§4: five sections in a fixed order, each fed only by the
+// contacts the weighting engine (synastryWeight.ts) dealt to it, so no contact is written twice.
+// The pair's 互動主軸 (top themes) is computed first and frames 亮點 and 磨合 as two sides of one
+// quality. Each card: hook ≤ 20 字, 【解析】 two paragraphs ≤ 80 字, 【相處場景】 ≤ 60 字,
+// 【給兩人的建議】 ≤ 50 字. Contact sentences come from the per-pair tables below (whose Moon,
+// whose Mars, per aspect family) and carry their chart basis only in a short parenthetical.
+// Afterwards: 這段關係的禮物 (or 課題與禮物 for a flagged pair) and the 星盤依據 reference card.
 
 export interface AstroPartner {
     name: string;
@@ -199,21 +225,6 @@ function familyOf(type: AspectType): Family {
     if (type === 'conjunction') return 'conj';
     return type === 'trine' || type === 'sextile' ? 'soft' : 'hard';
 }
-
-/** One short nuance per aspect, appended after the pair-specific note. */
-const ASPECT_NUANCE: Record<AspectType, string> = {
-    conjunction: '',
-    trine: '三分相是天生的順，兩人不用費力就站在同一邊；偶爾把這份默契說出口，它會更穩。',
-    sextile: '六分相是「一推就動」的順：只要多一點主動安排，好處會一路放大。',
-    square: '四分相的磨合多半落在日常小事上，每磨順一次，兩人就更懂得怎麼互相推一把。',
-    opposition: '對分相像照鏡子：在對方身上看到自己缺的那一面，吸引力由此而來；找到平衡點，兩人就能互相補位。',
-};
-
-/** For a clearly difficult pair (see astroFit): the tense nuances, said more plainly. */
-const DIFFICULT_NUANCE: Partial<Record<AspectType, string>> = {
-    square: '四分相的摩擦多半出現在日常小事上、而且會反覆發生，需要兩人有意識地練習才會變順。',
-    opposition: '對分相像照鏡子，既吸引也拉扯，容易各執一端；重點是找平衡，而不是分輸贏。',
-};
 
 /** p = holder of the first planet in the note key, q = holder of the second. */
 type Phrase = (p: string, q: string) => string;
@@ -600,116 +611,693 @@ const PAIR_NOTES: Record<string, PairNote> = {
     },
 };
 
-/** What a slower planet does to a personal point, per aspect family (fallback for non-key pairs). */
-const ACTOR: Partial<Record<SynastryPointKey, Record<Family, string>>> = {
-    jupiter: {
-        conj: '放大與鼓勵，讓人更有信心；偶爾一起冷靜評估一下就好',
-        soft: '帶來信心與好運，是很溫暖的支持',
-        hard: '把彼此的格局撐大，記得承諾前先量力而為',
-    },
-    saturn: {
-        conj: '帶來責任與結構，給人可以依靠的穩定',
-        soft: '帶來穩定與耐心，是能一起走長路的力量',
-        hard: '帶來一些要求，一起走過之後是很牢的承諾',
-    },
-    uranus: {
-        conj: '帶來刺激與驚喜，生活多了新鮮感；也給彼此保留一點自由',
-        soft: '帶來新鮮與自由感，相處輕鬆不黏膩',
-        hard: '帶來意外與變化，也帶兩人跳出老套；多一點彈性就能享受它',
-    },
-    neptune: {
-        conj: '帶來浪漫與心靈的共鳴；也記得看見彼此真實的樣子',
-        soft: '帶來溫柔的心靈共鳴，常有說不出的懂',
-        hard: '帶來一種說不清的牽引，遇到誤會時多問一句就能澄清',
-    },
-    pluto: {
-        conj: '帶來深刻的吸引與轉變，也記得尊重彼此的空間',
-        soft: '帶來深度與互相改變的力量，關係會越走越深',
-        hard: '逼出彼此最真實的自己，放下掌控、多一點信任就能走得更深',
-    },
+/** Plain-language noun for what a point stands for in the other person's life. */
+const AREA: Record<SynastryPointKey, string> = {
+    sun: '人生目標',
+    moon: '情緒',
+    mercury: '想法',
+    venus: '感情',
+    mars: '行動',
+    jupiter: '信心',
+    saturn: '責任感',
+    uranus: '自由',
+    neptune: '想像',
+    pluto: '深層的自己',
+    northNode: '人生方向',
+    chiron: '舊傷',
+    asc: '第一印象',
+};
+
+/** Actor + other person's area → [strength, growth point]; p = actor's holder, q = the other. */
+type ActorNote = (p: string, q: string, area: string) => [string, string];
+
+/** Slower planets touching the other person's point (used when no PAIR_NOTES entry exists). */
+const ACTOR_NOTES: Partial<Record<SynastryPointKey, Record<Family, ActorNote>>> = {
     northNode: {
-        conj: '帶來命運感，像來推動彼此的人生方向',
-        soft: '帶來順向的成長，相處中自然往好的方向走',
-        hard: '帶來方向上的思考，正好讓人看清自己真正想走的路',
+        // Node contacts are about the Node holder's growth: q's planet nudges p forward.
+        conj: (p, q, area) => [
+            `${q}${area}正好落在${p}想成長的方向上，${q}常在不經意間推${p}一把。`,
+            `${p}可以留意${q}鼓勵自己嘗試的事，那多半是下一步。`,
+        ],
+        soft: (p, q, area) => [
+            `${q}${area}讓${p}更容易往想去的方向走，相處中自然一起成長。`,
+            `順勢的成長也需要行動，${p}可以把感受化成具體的一步。`,
+        ],
+        hard: (p, q, area) => [
+            `${q}${area}逼${p}看清自己真正想走的路，這份提醒很難得。`,
+            `方向不同時，把它當成提醒而不是阻礙。`,
+        ],
     },
     chiron: {
-        conj: '碰觸舊傷，也帶來療癒的機會',
-        soft: '帶來溫和的療癒，讓人覺得被接住',
-        hard: '可能碰到舊傷，願意談開就是療癒的起點',
+        conj: (p, q, area) => [
+            `${p}會碰到${q}${area}裡的舊傷，也帶來被療癒的機會。`,
+            `碰到敏感處時，先問一句「這讓你想起什麼嗎」。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}能溫和地接住${q}${area}裡的脆弱，讓${q}覺得被理解。`,
+            `被接住之後，${q}也讓${p}知道自己需要什麼。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}無心的話可能碰到${q}${area}裡的痛處，願意談開就是療癒的起點。`,
+            `碰到痛處時說出來，比默默退開更能修復。`,
+        ],
+    },
+    pluto: {
+        conj: (p, q, area) => [
+            `${p}對${q}${area}有很深的影響力，兩人在一起都會改變。`,
+            `影響力強時，記得尊重彼此的空間。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}帶著${q}${area}往更深處走，關係越走越有分量。`,
+            `深度之外，也留一點輕鬆玩樂的時間。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}會逼出${q}${area}裡最真實的一面，走過之後兩人都更強。`,
+            `想掌握對方時先停一下，說出自己真正的擔心。`,
+        ],
+    },
+    neptune: {
+        conj: (p, q, area) => [
+            `${p}讓${q}${area}多了浪漫與想像，兩人常有說不出的懂。`,
+            `浪漫之外，也看見對方真實的樣子。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}對${q}${area}有種溫柔的體諒，像心靈上的共鳴。`,
+            `重要的事還是講清楚，別只靠感覺。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}和${q}之間有種說不清的牽引，讓${q}${area}很想靠近。`,
+            `${q}容易對${p}抱著美好的想像，落差出現時多問一句，就能少很多誤會。`,
+        ],
+    },
+    uranus: {
+        conj: (p, q, area) => [
+            `${p}總能讓${q}${area}有新鮮感與驚喜，日子很少一成不變。`,
+            `驚喜之外也給彼此可預期的安排，讓人放心。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}讓${q}${area}多了自由與新意，相處輕鬆不黏膩。`,
+            `太輕鬆時，偶爾也確認一下彼此的心意。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}常打亂${q}${area}的節奏，也逼兩人跳出老套。`,
+            `${p}臨時改變計畫時先說一聲，${q}就不會覺得被丟下。`,
+        ],
+    },
+    saturn: {
+        conj: (p, q, area) => [
+            `${p}為${q}${area}帶來結構與穩定，是可以依靠的力量。`,
+            `${p}的標準偶爾太嚴，多說一句肯定就好。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}用耐心撐住${q}${area}，是能一起走長路的力量。`,
+            `穩定之餘，也留一點計畫外的輕鬆。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}對${q}${area}有要求，磨過之後會變成很牢的承諾。`,
+            `${q}覺得被要求時，直接問清楚${p}真正在意的是什麼。`,
+        ],
+    },
+    jupiter: {
+        conj: (p, q, area) => [
+            `${p}很會替${q}${area}打氣，${q}在${p}身邊更敢放手去做。`,
+            `熱情一上來容易一起答應太多，重要的事先睡一晚再決定。`,
+        ],
+        soft: (p, q, area) => [
+            `${p}的樂觀常讓${q}${area}更有底氣，兩人在一起像是運氣變好了。`,
+            `順利時也記得一起踩點煞車，量力而為。`,
+        ],
+        hard: (p, q, area) => [
+            `${p}把${q}${area}的格局撐大，常帶${q}看見更多可能。`,
+            `${p}的鼓勵有時給得太滿，${q}可以說出自己真實的步調。`,
+        ],
     },
 };
 
-const FAMILY_TONE: Record<Family, string> = {
-    conj: '融在一起，存在感很強，彼此的影響很直接',
-    soft: '彼此順得來，不費力就互相支持',
-    hard: '有些摩擦，也互相推動成長',
+const ACTOR_ORDER: SynastryPointKey[] = [
+    'northNode',
+    'chiron',
+    'pluto',
+    'neptune',
+    'uranus',
+    'saturn',
+    'jupiter',
+];
+
+/** The angle between two points, in plain words (for the parenthetical chart basis). */
+const ANGLE_PLAIN: Record<AspectType, string> = {
+    conjunction: '疊在一起',
+    trine: '順向呼應',
+    sextile: '輕快呼應',
+    square: '互相拉扯',
+    opposition: '兩端對望',
 };
+
+// ---------------------------------------------------------------------------
+// Sign-coloured wording. The commonest contacts are not written as fixed sentences: they are
+// composed from how each planet behaves in its sign, so a water Moon with a fire Mars reads
+// differently from an earth Moon with an air Mars. Indexed 0 = 牡羊 … 11 = 雙魚.
+// ---------------------------------------------------------------------------
+
+type Twelve = readonly [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+];
+
+/** Noun phrases that attach right after a name: 「甲」+「敢衝敢闖的性子」. */
+const SIGN_DESC: Partial<Record<SynastryPointKey, Twelve>> = {
+    sun: [
+        '敢衝敢闖的性子',
+        '穩穩前進的步調',
+        '好奇多變的腦袋',
+        '顧家念舊的心',
+        '想發光的熱情',
+        '凡事做到好的認真',
+        '重和諧的體貼',
+        '認定就到底的執著',
+        '嚮往遠方的樂觀',
+        '一步步往上爬的決心',
+        '不按牌理的獨立',
+        '柔軟又愛做夢的心',
+    ],
+    moon: [
+        '說來就來的情緒',
+        '需要安穩的心',
+        '靠聊天消化的心情',
+        '渴望被照顧的心',
+        '想被捧在手心的感受',
+        '需要秩序感的情緒',
+        '怕衝突、愛和平的心',
+        '深藏不露的情感',
+        '需要自由呼吸的心情',
+        '習慣自己扛的情緒',
+        '需要一點距離的心',
+        '容易被觸動的心',
+    ],
+    venus: [
+        '直接熱烈的愛',
+        '細水長流的溫柔',
+        '愛聊愛玩的心意',
+        '把人照顧好的愛',
+        '大方寵人的愛',
+        '藏在細節裡的心意',
+        '浪漫講究的愛',
+        '全心投入的愛',
+        '自在不黏人的愛',
+        '說到做到的愛',
+        '像朋友一樣的愛',
+        '無條件付出的溫柔',
+    ],
+    mars: [
+        '說做就做的衝勁',
+        '慢而堅持的耐力',
+        '靠嘴巴推進的行動力',
+        '護短的保護欲',
+        '想贏的好勝心',
+        '講求效率的執行力',
+        '先顧全局的行動',
+        '一出手就到底的狠勁',
+        '說走就走的豪爽',
+        '有計畫的拚勁',
+        '不走老路的行動',
+        '跟著感覺走的行動',
+    ],
+    mercury: [
+        '想到就說的直率',
+        '想清楚才開口的穩重',
+        '轉得飛快的腦袋',
+        '帶著感情的說話方式',
+        '很會說故事的口才',
+        '條理分明的思路',
+        '會看兩邊的判斷',
+        '一針見血的洞察',
+        '天馬行空的想法',
+        '重結論的務實',
+        '與眾不同的觀點',
+        '靠直覺的理解',
+    ],
+};
+
+/** Second phrasings for the same signs, used when a phrase was already said in an earlier card. */
+const SIGN_DESC_ALT: Partial<Record<SynastryPointKey, Twelve>> = {
+    sun: [
+        '一往直前的勇氣',
+        '踏實可靠的本性',
+        '愛探索的好奇心',
+        '重感情的溫厚',
+        '大方耀眼的自信',
+        '細心務實的態度',
+        '優雅的分寸感',
+        '深沉的意志',
+        '愛自由的開朗',
+        '沉穩的企圖心',
+        '特立獨行的想法',
+        '善感的浪漫',
+    ],
+    moon: [
+        '急性子的心情',
+        '慢熱的安全感',
+        '多變的心思',
+        '戀家的柔軟',
+        '想被看見的心',
+        '容易操心的感受',
+        '需要和諧的心情',
+        '愛恨分明的情緒',
+        '樂天的心情',
+        '內斂的情感',
+        '冷靜的情緒',
+        '敏感的心思',
+    ],
+    venus: [
+        '來得快的心動',
+        '重陪伴的感情',
+        '輕鬆有趣的喜歡',
+        '溫柔顧家的情意',
+        '熱烈的寵愛',
+        '貼心的照顧',
+        '講究氣氛的浪漫',
+        '濃烈的深情',
+        '開朗大方的喜歡',
+        '穩重長情的愛',
+        '尊重空間的愛',
+        '夢幻的溫柔',
+    ],
+    mars: [
+        '直衝的火力',
+        '不動如山的韌性',
+        '靈活的應變',
+        '顧家的拚勁',
+        '帶頭的氣勢',
+        '一絲不苟的做事方式',
+        '講道理的行動',
+        '不輕易放手的堅持',
+        '冒險的膽量',
+        '耐操的實幹',
+        '特立獨行的做法',
+        '隨和的行動',
+    ],
+    mercury: [
+        '心直口快的個性',
+        '慢條斯理的思考',
+        '機靈的口才',
+        '貼心的說法',
+        '有自信的表達',
+        '細膩的分析',
+        '圓融的說法',
+        '深入的思考',
+        '豪邁的說話方式',
+        '踏實的判斷',
+        '跳躍的思考',
+        '感性的表達',
+    ],
+};
+
+/**
+ * The 禮物 card's own phrasings for the same signs, so the closing card never repeats a phrase
+ * the sections already used (and never needs a refer-back to get around it).
+ */
+const SIGN_DESC_GIFT: Partial<Record<SynastryPointKey, Twelve>> = {
+    sun: [
+        '敢做第一個的膽子',
+        '不慌不忙的定力',
+        '什麼都想試的好奇',
+        '把人放在心上的溫情',
+        '閃閃發亮的自信',
+        '把細節顧好的用心',
+        '讓人舒服的分寸',
+        '專一到底的認真',
+        '往外闖的熱忱',
+        '肯吃苦的毅力',
+        '有自己一套的獨立',
+        '容易心軟的善良',
+    ],
+    moon: [
+        '藏不住的心情',
+        '要慢慢暖起來的心',
+        '需要說出口的情緒',
+        '需要被抱著的心',
+        '需要被肯定的心',
+        '需要秩序的安全感',
+        '想被溫柔對待的心',
+        '只對信任的人打開的心',
+        '不想被綁住的心情',
+        '不輕易示弱的心',
+        '需要空間的感受',
+        '像海綿一樣的感受',
+    ],
+    venus: [
+        '說愛就愛的直接',
+        '用陪伴表達的喜歡',
+        '靠聊天拉近的感情',
+        '把家顧好的心意',
+        '捨得給的大方',
+        '記得小事的體貼',
+        '懂得營造氣氛的浪漫',
+        '一旦愛上就很深的感情',
+        '輕鬆自在的喜歡',
+        '慢慢累積的承諾',
+        '給人空間的喜歡',
+        '願意為人付出的心',
+    ],
+    mars: [
+        '一點就燃的行動',
+        '慢慢磨的韌勁',
+        '邊說邊做的機動',
+        '為家人拚的力氣',
+        '不服輸的志氣',
+        '把事做到好的勤快',
+        '先商量再動手的習慣',
+        '咬住不放的意志',
+        '想走就走的灑脫',
+        '按部就班的努力',
+        '別出心裁的做法',
+        '順勢而為的柔軟',
+    ],
+    mercury: [
+        '有話直說的爽快',
+        '一字一句的踏實',
+        '一點就通的反應',
+        '溫柔的說話方式',
+        '有感染力的表達',
+        '面面俱到的思考',
+        '講求公平的判斷',
+        '看穿表面的眼光',
+        '天南地北的話題',
+        '說到做到的務實',
+        '別人想不到的點子',
+        '充滿畫面的想像',
+    ],
+};
+
+/** Slower planets by element (火 土 風 水). */
+const ELEMENT_DESC: Partial<Record<SynastryPointKey, readonly [string, string, string, string]>> = {
+    jupiter: ['熱情的鼓勵', '實在的支持', '開闊的眼界', '溫暖的包容'],
+    saturn: ['直接的要求', '踏實的責任感', '講道理的規矩', '默默扛起的責任'],
+    uranus: ['衝出框架的新鮮感', '慢慢改變的韌性', '天外飛來的點子', '難以預料的感受'],
+    neptune: ['浪漫的熱望', '溫柔的理想', '飄逸的想像', '深深的共感'],
+    pluto: ['強烈的意志', '沉住氣的掌控力', '看透人心的眼光', '深沉的影響力'],
+    northNode: ['想闖的方向', '想扎根的方向', '想學習的方向', '想交心的方向'],
+    chiron: ['不敢衝的舊傷', '不安穩的舊傷', '怕被誤解的舊傷', '怕被丟下的舊傷'],
+};
+
+function descOf(p: AstroPartner, key: SynastryPointKey, forGift = false): string {
+    if (key === 'asc') return '給人的第一印象';
+    if (!bodyOf(p, key)) return `的${AREA[key]}`;
+    const sign = signOf(p, key);
+    const bySign = (forGift && SIGN_DESC_GIFT[key]) || SIGN_DESC[key];
+    if (bySign) return bySign[sign];
+    const byElement = ELEMENT_DESC[key];
+    return byElement ? byElement[elementOf(sign)] : AREA[key];
+}
+
+/** A deterministic hash of both charts (all longitudes), for choosing between phrasings. */
+function pairHash(a: AstroPartner, b: AstroPartner, salt: number): number {
+    let h = 2166136261 ^ salt;
+    for (const p of [a, b])
+        for (const body of p.chart.bodies) {
+            h ^= Math.round(body.longitude * 10);
+            h = Math.imul(h, 16777619) >>> 0;
+        }
+    h ^= h >>> 13;
+    return Math.imul(h, 2246822519) >>> 0;
+}
+
+function pickHash<T>(list: readonly T[], a: AstroPartner, b: AstroPartner, salt: number): T {
+    return list[pairHash(a, b, salt) % list.length];
+}
+
+/** p holds the first planet of the key, q the second; dp / dq are their sign phrases. */
+type Composed = (p: string, q: string, dp: string, dq: string) => [string, string];
+
+const COMPOSED: Record<string, Record<Family, readonly Composed[]>> = {
+    [noteKey('sun', 'moon')]: {
+        conj: [
+            (p, q, dp, dq) => [
+                `${p}${dp}與${q}${dq}疊在一起，兩人常有「就是你」的熟悉感。`,
+                `角色容易固定成${p}帶頭，小事也可以偶爾換${q}作主。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}${dq}本能地支持${p}${dp}，像早就認識一樣自然。`,
+                `${p}往前衝時，也回頭聽聽${q}心裡的聲音。`,
+            ],
+        ],
+        soft: [
+            (p, q, dp, dq) => [
+                `${p}${dp}，正好被${q}${dq}穩穩接住，一個往前、一個給家的感覺。`,
+                `順到不太需要講，${q}也記得把自己的需要說出口。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}${dq}在${p}${dp}旁邊特別安心，兩人很自然地互相成全。`,
+                `偶爾問一句「最近你真正需要的是什麼」，${p}和${q}會更貼近。`,
+            ],
+        ],
+        hard: [
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}常互相拉扯，卻也逼兩人把生活過得更完整。`,
+                `${p}衝得快時，先回頭照顧${q}${dq}，拉扯就成了互相照顧。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}${dq}提醒${p}生活不只有目標，${p}${dp}則帶${q}走出舒適圈。`,
+                `重要決定前，${p}先問${q}「這對你的心情有什麼影響」。`,
+            ],
+        ],
+    },
+    [noteKey('moon', 'mars')]: {
+        conj: [
+            (p, q, dp, dq) => [
+                `${q}${dq}一下就能點燃${p}${dp}，熱情來得又快又真。`,
+                `${q}說話時放慢一點，${p}${dp}會更接得住。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}貼得很近，${q}的保護欲讓${p}覺得被護著。`,
+                `${q}出手前先問一句，${p}會覺得被尊重。`,
+            ],
+        ],
+        soft: [
+            (p, q, dp, dq) => [
+                `${q}${dq}會護著${p}${dp}，${p}也懂得怎麼讓${q}慢下來。`,
+                `和好得快，也記得事後聊聊${p}真正卡住的地方。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}遇上${q}${dq}，鬧彆扭很快就能和好，相處有溫度也有彈性。`,
+                `${q}火氣上來時，${p}一句「我在」比講道理更有用。`,
+            ],
+        ],
+        hard: [
+            (p, q, dp, dq) => [
+                `${q}${dq}常讓${p}${dp}敢把話說出來，兩人很少假裝沒事。`,
+                `${q}急著解決時，先等${p}${dp}被安撫，再談對錯。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}碰上${q}${dq}，火花不小，卻也讓兩人更認真看待彼此。`,
+                `約好一句暫停暗號，${q}聽到就先停，${p}也說好什麼時候回來談。`,
+            ],
+        ],
+    },
+    [noteKey('venus', 'mars')]: {
+        conj: [
+            (p, q, dp, dq) => [
+                `${q}${dq}直接撞上${p}${dp}，化學反應一開始就很明顯。`,
+                `火花之外，也聊聊${p}和${q}各自的界線。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}會主動靠近，${p}${dp}也很享受被${q}${dq}追著跑。`,
+                `${p}偶爾也主動一次，${q}會很驚喜。`,
+            ],
+        ],
+        soft: [
+            (p, q, dp, dq) => [
+                `${q}${dq}遇上${p}${dp}，一個主動、一個回應，心動很自然。`,
+                `偶爾換個約會方式，讓${p}${dp}一直有新鮮感。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}很吃${q}${dq}這一套，兩人的熱度穩定又自在。`,
+                `${q}安排驚喜時，也問問${p}最近想要什麼。`,
+            ],
+        ],
+        hard: [
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}節奏不同，正是這份落差讓吸引力一直都在。`,
+                `${q}來得快、${p}想慢慢來；把想要的說出口，比等對方猜有效。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}${dq}和${p}${dp}之間有種讓人在意的張力，心動不容易淡。`,
+                `${p}想被怎麼對待，直接告訴${q}，別讓${q}${dq}亂猜。`,
+            ],
+        ],
+    },
+    [noteKey('moon', 'venus')]: {
+        conj: [
+            (p, q, dp, dq) => [
+                `${q}${dq}正好落在${p}${dp}上，是家常感最強的組合之一。`,
+                `${q}習慣當給的一方，${p}也可以問一句「那你呢？」。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}在${q}${dq}裡被溫柔接住，相處柔和又暖。`,
+                `${q}付出太多時，${p}也主動照顧回去。`,
+            ],
+        ],
+        soft: [
+            (p, q, dp, dq) => [
+                `${q}${dq}自然知道怎麼讓${p}${dp}放鬆，一杯熱茶、一個擁抱就夠。`,
+                `碰上錢、家人這類硬話題，${p}和${q}先約好時間再談。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}遇上${q}${dq}，關係的氣氛柔和又溫暖。`,
+                `${p}也把感謝說出口，讓${q}知道自己的用心被看見。`,
+            ],
+        ],
+        hard: [
+            (p, q, dp, dq) => [
+                `${q}的心意一直都在，只要摸清${p}${dp}要什麼，就最懂怎麼疼${p}。`,
+                `${q}${dq}送出的，不一定是${p}要的；直接說「今天我想要的是……」。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}表達愛的方式不同，對準之後格外甜。`,
+                `${p}心情不好時，先告訴${q}要的是陪伴還是禮物。`,
+            ],
+        ],
+    },
+    [noteKey('sun', 'venus')]: {
+        conj: [
+            (p, q, dp, dq) => [
+                `${q}${dq}真心欣賞${p}${dp}，${p}在${q}面前很容易發光。`,
+                `寵得多，也讓${q}放心說出小小的不滿。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}一拍即合，兩人一起出現總帶著甜味。`,
+                `${p}也記得回寵${q}，別只當被寵的一方。`,
+            ],
+        ],
+        soft: [
+            (p, q, dp, dq) => [
+                `${p}${dp}正是${q}${dq}最喜歡的樣子，相處甜而不膩。`,
+                `${p}和${q}氣氛太好時，小問題容易被擱著，趁心情好聊開。`,
+            ],
+            (p, q, dp, dq) => [
+                `${q}常主動稱讚${p}，${p}${dp}在${q}${dq}裡被好好疼著。`,
+                `${p}也回送一份心意，讓${q}知道被看見。`,
+            ],
+        ],
+        hard: [
+            (p, q, dp, dq) => [
+                `${q}欣賞${p}，而品味的落差常把${p}${dp}帶去沒試過的地方。`,
+                `${q}${dq}希望${p}多些浪漫時，換成邀請，就不像要求改變。`,
+            ],
+            (p, q, dp, dq) => [
+                `${p}${dp}和${q}${dq}的品味各有一套，輪流照對方的方式過更豐富。`,
+                `意見不同時，${p}和${q}今年你安排、明年我安排。`,
+            ],
+        ],
+    },
+};
+
+/** Composed gift phrases for the same contacts (any family). */
+const COMPOSED_GIFT: Record<
+    string,
+    readonly ((p: string, q: string, dp: string, dq: string) => string)[]
+> = {
+    [noteKey('sun', 'moon')]: [
+        (p, q, dp, dq) => `${p}${dp}有了${q}${dq}當歸處`,
+        (p, q, dp, dq) => `${q}${dq}在${p}${dp}身邊找到了方向`,
+        (p, q, dp, dq) => `${p}${dp}和${q}${dq}一前一後，走得又遠又穩`,
+    ],
+    [noteKey('moon', 'mars')]: [
+        (p, q, dp, dq) => `${q}${dq}守著${p}${dp}，關係裡有熱度也有保護`,
+        (p, q, dp, dq) => `${p}${dp}給了${q}${dq}一個可以放下武裝的地方`,
+        (p, q, dp, dq) => `${q}${dq}一出手，${p}${dp}就覺得有人撐腰`,
+    ],
+    [noteKey('venus', 'mars')]: [
+        (p, q, dp, dq) => `${q}${dq}和${p}${dp}一來一往，心動一直沒有退燒`,
+        (p, q, dp, dq) => `${p}${dp}總能被${q}${dq}看見、追上`,
+        (p, q, dp, dq) => `${q}${dq}點燃了${p}${dp}，兩人之間始終有火花`,
+    ],
+    [noteKey('moon', 'venus')]: [
+        (p, q, dp, dq) => `${q}${dq}懂得怎麼照顧${p}${dp}`,
+        (p, q, dp, dq) => `${p}${dp}在${q}${dq}裡被溫柔地照顧著`,
+        (p, q, dp, dq) => `${q}${dq}剛好是${p}${dp}最需要的那種疼`,
+    ],
+    [noteKey('sun', 'venus')]: [
+        (p, q, dp, dq) => `${q}${dq}看見了${p}${dp}最可愛的地方`,
+        (p, q, dp, dq) => `${p}${dp}在${q}${dq}眼裡閃閃發亮`,
+        (p, q, dp, dq) => `${q}${dq}讓${p}${dp}更敢做自己`,
+    ],
+};
+
+/** Oriented composed note for an aspect, or null when the pair has no composed table. */
+function composedNote(
+    x: InterAspect,
+    a: AstroPartner,
+    b: AstroPartner,
+    which: 'note',
+): [string, string, string] | null;
+function composedNote(
+    x: InterAspect,
+    a: AstroPartner,
+    b: AstroPartner,
+    which: 'gift',
+): string | null;
+function composedNote(
+    x: InterAspect,
+    a: AstroPartner,
+    b: AstroPartner,
+    which: 'note' | 'gift',
+): [string, string, string] | string | null {
+    const forward = COMPOSED[noteKey(x.a, x.b)] !== undefined;
+    const key = forward ? noteKey(x.a, x.b) : noteKey(x.b, x.a);
+    if (!COMPOSED[key]) return null;
+    const [p, q, kp, kq] = forward ? [a, b, x.a, x.b] : [b, a, x.b, x.a];
+    const dp = descOf(p, kp, which === 'gift');
+    const dq = descOf(q, kq, which === 'gift');
+    if (which === 'gift') return pickHash(COMPOSED_GIFT[key], a, b, 7)(p.name, q.name, dp, dq);
+    const fam = familyOf(x.type);
+    const list = COMPOSED[key][fam];
+    const i = pairHash(a, b, 3) % list.length;
+    return [...list[i](p.name, q.name, dp, dq), `pair:${key}:${fam}`];
+}
+
+/**
+ * [strength, growth point, source id] for an aspect, with the roles of the two people spelled
+ * out. The source id names the template, so two contacts from the same template are never both
+ * written.
+ */
+function aspectNote(x: InterAspect, a: AstroPartner, b: AstroPartner): [string, string, string] {
+    const composed = composedNote(x, a, b, 'note');
+    if (composed) return composed;
+    const fam = familyOf(x.type);
+    const direct = PAIR_NOTES[noteKey(x.a, x.b)];
+    if (direct) return [...direct[fam](a.name, b.name), `pair:${noteKey(x.a, x.b)}:${fam}`];
+    const flipped = PAIR_NOTES[noteKey(x.b, x.a)];
+    if (flipped) return [...flipped[fam](b.name, a.name), `pair:${noteKey(x.b, x.a)}:${fam}`];
+    const actor = ACTOR_ORDER.find((k) => x.a === k || x.b === k);
+    if (actor) {
+        const notes = ACTOR_NOTES[actor]!;
+        const pair =
+            x.a === actor
+                ? notes[fam](a.name, b.name, descOf(b, x.b))
+                : notes[fam](b.name, a.name, descOf(a, x.a));
+        return [...pair, `actor:${actor}:${fam}`];
+    }
+    return [
+        `${a.name}${descOf(a, x.a)}和${b.name}${descOf(b, x.b)}${fam === 'hard' ? '常常互相推一把' : '彼此順得來'}。`,
+        `多說一句自己的感受，默契會更穩。`,
+        `generic:${fam}`,
+    ];
+}
 
 function functionOf(k: SynastryPointKey): string {
     return k === 'asc' ? '外在形象' : BODY_FUNCTION[k];
 }
-
-/** Pair-specific note: who does what to whom, in this aspect family. */
-function aspectNote(
-    x: InterAspect,
-    a: AstroPartner,
-    b: AstroPartner,
-    difficult = false,
-): { theme: string; text: string } {
-    const fam = familyOf(x.type);
-    const direct = PAIR_NOTES[noteKey(x.a, x.b)];
-    const flipped = PAIR_NOTES[noteKey(x.b, x.a)];
-    const note = direct ?? flipped;
-    if (note) {
-        const [plus, grow] = direct ? direct[fam](a.name, b.name) : flipped[fam](b.name, a.name);
-        // A clearly difficult pair: tense contacts lead with the work, then what is still real.
-        const text = difficult && fam === 'hard' ? `這是兩人比較吃力的地方：${grow}${plus}` : `${plus}${grow}`;
-        return { theme: note.theme, text };
-    }
-    const actA = ACTOR[x.a];
-    const actB = ACTOR[x.b];
-    if (actA && !actB)
-        return { theme: '', text: `${a.name}的${POINT_NAMES[x.a]}對${b.name}的${functionOf(x.b)}${actA[fam]}` };
-    if (actB && !actA)
-        return { theme: '', text: `${b.name}的${POINT_NAMES[x.b]}對${a.name}的${functionOf(x.a)}${actB[fam]}` };
-    return { theme: '', text: `${a.name}的${functionOf(x.a)}與${b.name}的${functionOf(x.b)}${FAMILY_TONE[fam]}` };
-}
-
-function aspectHead(x: InterAspect, a: AstroPartner, b: AstroPartner): string {
-    return `${a.name}的${POINT_NAMES[x.a]} ${x.name} ${b.name}的${POINT_NAMES[x.b]}（容許度 ${x.orb.toFixed(1)}°）`;
-}
-
-function aspectLine(x: InterAspect, a: AstroPartner, b: AstroPartner, withNuance: boolean, difficult = false): string {
-    const n = aspectNote(x, a, b, difficult);
-    const nuance = withNuance ? ((difficult && DIFFICULT_NUANCE[x.type]) || ASPECT_NUANCE[x.type]) : '';
-    return `${aspectHead(x, a, b)}：${n.theme ? `${n.theme}。` : ''}${n.text}${n.text.endsWith('。') ? '' : '。'}${nuance}`;
-}
-
-const HOUSE_AREA: Record<number, string> = {
-    1: '自我與外在形象',
-    2: '金錢、價值觀與安全感',
-    3: '溝通、學習與日常往來',
-    4: '家庭與內心的根',
-    5: '戀愛、玩樂與創造',
-    6: '日常作息、工作與健康',
-    7: '伴侶與一對一關係',
-    8: '親密、信任與共同資源',
-    9: '信念、旅行與視野',
-    10: '事業與社會地位',
-    11: '朋友、社群與願景',
-    12: '潛意識與隱藏的一面',
-};
-
-/** What the visiting planet brings (src = whose planet). */
-const OVERLAY_ROLE: Record<string, string> = {
-    sun: '的存在感',
-    moon: '的情緒與照顧',
-    mercury: '的話題與想法',
-    venus: '的好感與溫柔',
-    mars: '的熱情與衝勁',
-    jupiter: '的鼓勵與樂觀',
-    saturn: '的責任感與穩定',
-};
 
 /** How the house owner (q) feels it, as an everyday scene. p = whose planet. */
 const HOUSE_SCENE: Record<number, Phrase> = {
@@ -727,44 +1315,6 @@ const HOUSE_SCENE: Record<number, Phrase> = {
     12: (p, q) => `觸及${q}不輕易示人的一面，連結很深，有些感受要慢慢說才說得清`,
 };
 
-/** Classic combinations that deserve their own sentence. */
-const OVERLAY_SPECIAL: Record<string, Phrase> = {
-    'sun|7': (p, q) => `${q}很容易把${p}當成理想伴侶的形象，兩人走在一起就很像一對；也記得看見${p}本來的樣子`,
-    'moon|4': (p, q) => `${p}讓${q}有「回到家」的感覺，兩人窩在家最療癒`,
-    'moon|12': (p, q) => `${p}能感受到${q}沒說出口的情緒，是很深的默契`,
-    'venus|5': (p, q) => `${q}和${p}在一起特別有戀愛感，約會、禮物、浪漫小驚喜都很加分`,
-    'venus|7': (p, q) => `${q}容易把${p}視為理想伴侶，也很適合長期合作`,
-    'venus|8': (p, q) => `${p}的愛會碰到${q}最私密的一面，身體與情感的親密感都強，多給彼此安心感就更穩`,
-    'mars|1': (p, q) => `${p}的行動力直接帶動${q}，很有吸引力，也常激勵${q}去嘗試`,
-    'mars|5': (p, q) => `${p}讓${q}玩得盡興，熱情與吸引力都很明顯`,
-    'mars|7': (p, q) => `${p}在${q}的伴侶宮帶來推動力，兩人一起做事很有勁，事前講好分工就更順`,
-    'mars|8': (p, q) => `${p}和${q}之間吸引力強，信任與共同財務多溝通，就能讓這份熱度更安穩`,
-    'saturn|1': (p, q) => `${q}會覺得${p}很可靠、讓人安定，偶爾也希望${p}放鬆一點`,
-    'saturn|4': (p, q) => `${p}可能成為${q}家中的支柱，對家務與家庭也有自己的標準`,
-    'saturn|5': (p, q) => `${p}讓${q}的玩樂和戀愛變得認真而穩定，偶爾也一起單純地玩`,
-    'saturn|7': (p, q) => `${q}容易把${p}視為適合承諾的對象，關係穩、責任明確，浪漫可以另外安排`,
-    'saturn|8': (p, q) => `${q}對${p}的親密與信任需要時間建立；慢，但一旦建立就很牢`,
-    'mercury|3': (p, q) => `兩人每天有聊不完的話，訊息往來很密，${p}常是${q}第一個想分享的人`,
-    'venus|3': (p, q) => `${p}的溫柔表現在日常對話裡，${q}覺得跟${p}聊天很舒服、很被欣賞`,
-    'saturn|3': (p, q) => `${p}會認真回應${q}說的話，讓${q}覺得被好好聽見`,
-    'saturn|9': (p, q) => `${p}對${q}的信念與人生觀很認真，像一位可靠的老師`,
-    'saturn|10': (p, q) => `${p}對${q}的事業有實際的督促，像嚴格但可靠的教練`,
-    'jupiter|7': (p, q) => `${p}讓${q}對這段關係充滿信心，覺得和${p}在一起運氣變好`,
-};
-
-/** Body-specific tail for the generic overlay line, so two planets in the same house read differently. */
-const OVERLAY_TWIST: Record<string, string> = {
-    sun: '；這一塊會成為兩人相處的亮點',
-    moon: '；在這一塊彼此特別容易情緒共振，好心情會互相傳染',
-    mercury: '；這一塊是兩人最常聊起、也最聊得起勁的話題',
-    venus: '；在這一塊相處起來特別甜',
-    mars: '；熱度高，這一塊做起事來很有勁',
-    jupiter: '；這一塊會因為對方變得更寬、更樂觀',
-    saturn: '；在這一塊需要一點時間磨合，磨過之後會變得踏實可靠',
-};
-
-const KEY_HOUSES = new Set([1, 5, 7, 8]);
-
 function item(term: string, field: string, meaning: string): MeaningItem {
     return { term, field, meaning };
 }
@@ -776,212 +1326,8 @@ function caveatLine(a: AstroPartner, b: AstroPartner): string {
         : '';
 }
 
-// ---------------------------------------------------------------------------
-// 日常相處 — per-sign / per-element tables (index 0 = 牡羊 … 11 = 雙魚; elements 0 火 1 土 2 風 3 水)
-// ---------------------------------------------------------------------------
-
-type Twelve = readonly [string, string, string, string, string, string, string, string, string, string, string, string];
-
-const SUN_TRAIT: Twelve = [
-    '直接、有衝勁，想到就去做，是身邊人的發動機；等待時會有點心急',
-    '穩定可靠、懂得享受生活，給人踏實感；改變需要多一點時間',
-    '好奇、反應快，總帶來新鮮話題，熱度來得快，需要常保新意',
-    '顧家、重感情，對親近的人照顧得無微不至，心情起伏時需要一點安全的角落',
-    '大方、溫暖，像小太陽，喜歡被看見與肯定',
-    '細心、要求品質，能把事情做得漂亮，對自己有時也要求得太多',
-    '體貼、重公平，很會照顧關係的和諧，表態前習慣多想一想',
-    '深情、重信任，認定了就全心投入，給的愛很深',
-    '樂觀、愛自由，帶人看見更大的世界，需要探索與意義',
-    '務實、有責任感，說到做到、很能託付，偶爾需要被提醒放鬆',
-    '獨立、有主見，常有別人想不到的觀點，需要個人空間',
-    '溫柔、共感強，很能體會別人的感受，也需要照顧好自己的界線',
-];
-
-const ASC_TRAIT: Twelve = [
-    '直率、有活力',
-    '穩重、親切，越熟越溫暖',
-    '機靈、好聊',
-    '溫和、讓人安心',
-    '大方、有存在感',
-    '細心、得體',
-    '優雅、好相處',
-    '沉穩、有深度',
-    '開朗、坦率',
-    '成熟、可靠',
-    '特別、友善',
-    '溫柔、隨和',
-];
-
-const MERCURY_TRAIT: Twelve = [
-    '想到就說，決定很快，很能帶動討論',
-    '慢慢想，想通了就很篤定，結論可靠',
-    '邊聊邊想，點子多、角度廣，定案需要一點時間',
-    '帶著感受與經驗判斷，善解人意，話會放在心上',
-    '說話有自信，很會用故事打動人',
-    '分析細節、找出問題，思慮周到，是很好的把關者',
-    '多方衡量、懂得看雙方立場，判斷公道',
-    '看動機與底層原因，一針見血，很能看穿問題核心',
-    '先想大方向，視野寬，細節可以交給搭檔',
-    '重結論與可行性，務實，讓想法真正落地',
-    '跳出框架，有自己的一套邏輯，常有獨到見解',
-    '靠直覺與畫面思考，想像力豐富，說起來像在畫畫',
-];
-
-const MARS_TRAIT: Twelve = [
-    '有話當場說開，說完就過去，不記仇',
-    '很有耐性、不輕易動氣，真的在意時會堅持到底',
-    '習慣用說的處理，願意把話講開，吵架也像在溝通',
-    '很顧關係、不會把話說絕，不舒服時會先安靜下來',
-    '坦蕩、有骨氣，吵完也大方，不小氣',
-    '會指出具體問題，事後很願意實際改善',
-    '很願意妥協、維持和平，不滿要記得早點說',
-    '平時沉得住氣，真談開時非常誠實、直指核心',
-    '直來直往，很快就雨過天晴',
-    '冷靜、講規矩，很少失控說重話',
-    '理性講理，需要時會先離開一下冷靜，很少說傷人的話',
-    '很能體諒對方的難處，容易把委屈先吞下，需要被邀請說出來',
-];
-
-const MOON_REPAIR: Twelve = [
-    '先動一動、把情緒消化完再談',
-    '一頓好吃的、一個擁抱這種身體上的安撫',
-    '把事情好好聊開、說清楚',
-    '被抱住、確認你還在',
-    '一句「你對我很重要」的肯定',
-    '具體的道歉與改進做法',
-    '溫和的語氣與公平的解決方式',
-    '完全的坦白與真心話',
-    '一點空間，再用輕鬆的方式和好',
-    '自己消化的時間，之後看到你的行動',
-    '被尊重的空間，以及平靜的對話',
-    '溫柔的陪伴與被理解',
-];
-
-const VENUS_TRAIT: Twelve = [
-    '用直接追求、熱烈表示來愛人，最喜歡被主動追，需要一點新鮮與挑戰',
-    '用陪伴、美食與實際照顧來愛人，需要穩定的身體親近與安全感',
-    '用聊天、分享新鮮事來愛人，被聽懂就覺得被愛',
-    '用照顧與家的感覺來愛人，需要被細心呵護',
-    '用大方寵愛與讚美來愛人，需要被當成特別的人',
-    '用行動與小細節來愛人，被記住小需要就很感動',
-    '用浪漫的氛圍與體貼來愛人，需要被溫柔對待',
-    '用全心投入與深度連結來愛人，需要百分之百的信任',
-    '用一起探險、學習來愛人，需要自由與一起成長',
-    '用承諾與長期規劃來愛人，看重說到做到，表達含蓄卻很可靠',
-    '用朋友般的尊重來愛人，需要保有自己的空間',
-    '用浪漫付出與心靈相通來愛人，需要被溫柔理解',
-];
-
-const MOON_SAFE: Twelve = [
-    '能直接表達、不被壓抑',
-    '規律的作息與熟悉的環境',
-    '隨時能聊、能分享',
-    '有家的感覺、被需要',
-    '被欣賞、被放在心上',
-    '生活井然有序',
-    '關係和諧、氣氛溫和',
-    '被完全信任、彼此忠誠',
-    '有自由、對未來有希望',
-    '掌控感與可預期的未來',
-    '被尊重的獨立空間',
-    '溫柔、不被批判的氛圍',
-];
-
-/** Scenes per element pair; key "i|j" with i <= j; phrase(p = element i holder, q = element j holder). */
-type ElementScenes = Record<string, Phrase>;
-
-const PERSONA_SCENE: ElementScenes = {
-    '0|0': () =>
-        '兩人都是火象，熱情、行動快，決定吃什麼、去哪玩常常三秒定案，在一起很少無聊；兩人都想帶頭時，輪流掌舵就好。',
-    '1|1': () =>
-        '兩人都是土象，重實際、守承諾，存錢、規劃、照顧家都很合拍，是能一起把日子過穩的組合；偶爾安排一點計畫外的小冒險，生活會更有滋味。',
-    '2|2': () =>
-        '兩人都是風象，愛聊天、重朋友，一起看展、聽講座、跟朋友聚會都開心，永遠有話可說；感受上來時，也試試停下來聊聊心裡的感覺。',
-    '3|3': () =>
-        '兩人都是水象，感受細膩、重情義，常不必說就懂對方的心情，是很深的心靈伴侶；低落時由狀態好的一方先拉對方出門走走。',
-    '0|1': (f, e) =>
-        `${f}是火象，想到就想出發；${e}是土象，會先確認預算和細節。一起安排旅行時，${f}丟點子、${e}負責落地，正好互補：${f}讓生活有冒險，${e}讓冒險有著落。節奏對不上時，就是該分工的訊號。`,
-    '0|2': (f, a) =>
-        `${f}是火象、${a}是風象，一個有衝勁、一個有點子，臨時報名活動、說走就走去夜市都很對味，在一起總有新鮮事；開了頭的事，記得一起收尾。`,
-    '0|3': (f, w) =>
-        `${f}是火象，直接、熱烈；${w}是水象，細膩、重氛圍。${f}的熱情能把${w}從心事裡拉出來，${w}的溫柔讓${f}學會慢下來感受。${f}說話時多看一眼${w}的表情，${w}有在意的事直接說，兩人就能互相成全。`,
-    '1|2': (e, a) =>
-        `${e}是土象，重實際；${a}是風象，重想法。${a}帶來新鮮的點子和視野，${e}讓生活有底、讓點子成真。週末一人想看展、一人想整理家裡時，一人決定一半的行程就好。`,
-    '1|3': (e, w) =>
-        `${e}是土象、${w}是水象，一個用行動照顧、一個用感受連結，很容易過出安穩又溫暖的小日子；${e}偶爾把心意說出口，${w}把不安講具體，默契會更深。`,
-    '2|3': (a, w) =>
-        `${a}是風象，習慣用道理看事情；${w}是水象，先感覺再說。磨合好了，${a}的冷靜是${w}情緒翻湧時的錨，${w}則讓${a}的生活多了溫度。${w}心情不好時，先問一句「你要建議還是要陪伴」，就能少很多誤會。`,
-};
-
-const THINK_SCENE: ElementScenes = {
-    '0|0': () => '兩人的水星都是火象，想到就說、決定很快，討論常變成熱烈的腦力激盪；輪流把話說完，點子會更完整。',
-    '1|1': () => '兩人的水星都是土象，做決定看數字與可行性，買大東西前會一起比價、看評價，很少後悔；新點子出現時，也給它一點機會。',
-    '2|2': () => '兩人的水星都是風象，能從新聞一路聊到哲學，跟對方說話永遠不悶；做決定時給自己設個期限，就不會一直討論下去。',
-    '3|3': () => '兩人的水星都是水象，判斷常靠直覺，很能聽懂彼此的弦外之音；意見不同時，記得多聽內容、少猜語氣。',
-    '0|1': (f, e) =>
-        `${f}的水星是火象，靠直覺很快做決定；${e}的水星是土象，要資料、要時間。${f}的直覺抓得住機會，${e}的謹慎避得開坑，像決定要不要搬家，一個看見可能、一個看見細節。先講好「什麼時候定案」，兩人都安心。`,
-    '0|2': (f, a) =>
-        `${f}的水星是火象、${a}的是風象，想法都轉得快，一起構想計畫很有火花；${f}想立刻做、${a}還想多比較時，先定個試做的小步驟。`,
-    '0|3': (f, w) =>
-        `${f}的水星是火象，說話直接、重結論；${w}的是水象，說話繞著感受。${f}能幫猶豫的${w}下決定，${w}也常察覺${f}沒注意到的人情細節，是很實用的互補。重要的話題，${f}放慢一點，${w}直接點出真正在意的事。`,
-    '1|2': (e, a) =>
-        `${e}的水星是土象，要具體步驟；${a}的是風象，喜歡先討論各種可能。規劃旅行時，${a}列出十個景點，${e}會問「交通怎麼接」——一個發想、一個篩選，合起來就是很好的計畫，分成兩個步驟來做就好。`,
-    '1|3': (e, w) =>
-        `${e}的水星是土象，靠事實與經驗判斷；${w}的是水象，靠直覺與感受。${w}的直覺常常很準，${e}的查證則能避免誤判，兩人一起看人、看事很少看走眼。`,
-    '2|3': (a, w) =>
-        `${a}的水星是風象，用邏輯與比較思考；${w}的是水象，先感覺對不對。一個看道理、一個看人心，兩種思考加起來特別周全；討論時先說感受、再談方法，就很順。`,
-};
-
-const FIGHT_SCENE: ElementScenes = {
-    '0|0': () =>
-        '兩人的火星都是火象，有話直說，鬧彆扭來得快去得也快，很少隔夜；情緒上來時先各自冷靜五分鐘，說出口的話會更溫柔。',
-    '1|1': () =>
-        '兩人的火星都是土象，都不輕易起衝突，相處平穩；真的意見不同時，把爭點拆成具體可交換的條件，很快就能鬆動。',
-    '2|2': () =>
-        '兩人的火星都是風象，意見不同時多半用說的、講道理，很少冷戰；講完道理後補一句關心，感情會更貼近。',
-    '3|3': () =>
-        '兩人的火星都是水象，都很顧及對方的感受，很少說出傷人的重話；不舒服時可能都在等對方先開口，約好「不舒服 24 小時內要說」就好。',
-    '0|1': (f, e) =>
-        `${f}的火星是火象，有話當場說；${e}的是土象，習慣先忍一忍。一個敢把問題攤開、一個穩得住局面，其實很互補。${f}說完就沒事時，給${e}一點消化的時間；${e}也試著早點說，別讓小事累積。`,
-    '0|2': (f, a) =>
-        `${f}的火星是火象、${a}的是風象，意見不同時一個有熱度、一個反應快，好處是講開就散，很少悶著；記得討論的是事情，不是人。`,
-    '0|3': (f, w) =>
-        `${f}的火星是火象，想當下說開；${w}的是水象，受傷時會先安靜下來。${f}願意面對問題，${w}聽得出話底下的委屈，兩人合起來能把事情談到真正的重點。${f}先降低音量，${w}說好什麼時候回來談，節奏就對上了。`,
-    '1|2': (e, a) =>
-        `${e}的火星是土象，處理分歧要具體的改法；${a}的是風象，習慣講道理、分析。${a}把問題說清楚，${e}把結論落實，分工對了反而很有效率；談完寫下一條具體約定，兩人都踏實。`,
-    '1|3': (e, w) =>
-        `${e}的火星是土象、${w}的是水象，都不愛正面衝突，平常日子很平靜、很少爭吵。小小的不舒服容易各自放著，誰先把話溫柔地講白，誰就幫了這段關係一把。`,
-    '2|3': (a, w) =>
-        `${a}的火星是風象，意見不同時很理性；${w}的是水象，感受很滿。${a}的冷靜能幫爭執降溫，${w}的感受則提醒${a}問題真正卡在哪。${a}先承認對方的感受，${w}再聽${a}的理由，就能一起找到出口。`,
-};
-
-const LOVE_SCENE: ElementScenes = {
-    '0|0': () => '兩人的金星都是火象，愛要熱烈、要表現，驚喜約會、說走就走的旅行最對味，感情很有活力；熱度平穩時，輪流主動再點燃。',
-    '1|1': () => '兩人的金星都是土象，愛是陪伴與實際照顧，一起吃好吃的、把家佈置舒服就很幸福；偶爾把甜話說出口，對方會很驚喜。',
-    '2|2': () => '兩人的金星都是風象，愛是聊得來、有新鮮感，一起逛書店、看展、跟朋友聚會就很開心；也留一些只屬於兩人的時間。',
-    '3|3': () => '兩人的金星都是水象，愛是情感交融與被懂，一個眼神、一首歌就能心意相通；想確認時直接問一句，比猜更安心。',
-    '0|1': (f, e) =>
-        `${f}的金星是火象，愛是熱情與驚喜；${e}的是土象，愛是穩定與實際照顧。${f}讓${e}的日子多了心跳，${e}讓${f}的熱情有地方落地。紀念日一個想臨時出遊、一個想吃頓好的時，輪流照對方的方式過就好。`,
-    '0|2': (f, a) =>
-        `${f}的金星是火象、${a}的是風象，兩人都愛新鮮，一起探索新餐廳、新活動很有戀愛感；偶爾也安排一個慢慢的、靜靜陪伴的晚上。`,
-    '0|3': (f, w) =>
-        `${f}的金星是火象，用熱烈的行動示愛；${w}的是水象，要的是情感上被懂。${f}的熱烈能把${w}從心事裡拉出來，${w}的細膩讓${f}的愛多了深度。${f}想去熱鬧的地方慶祝、${w}想安靜吃頓飯時，兩種都排進行程。`,
-    '1|2': (e, a) =>
-        `${e}的金星是土象，愛是陪伴與實際照顧；${a}的是風象，愛是聊天與新鮮感。${a}帶${e}出門透氣，${e}讓${a}有個安穩的地方可以回來。可以一週安排一次「${a}的出門日」、一次「${e}的在家日」。`,
-    '1|3': (e, w) =>
-        `${e}的金星是土象，用做的表達愛（接送、煮飯、修東西）；${w}的是水象，用感受表達愛。兩人都很顧家，是溫暖踏實的組合；${e}偶爾把心意說出來，${w}也記得看見${e}默默做的事。`,
-    '2|3': (a, w) =>
-        `${a}的金星是風象，愛需要空間與對話；${w}的是水象，愛需要親近與融合。這組很會互相補位：${w}讓${a}學會靠近，${a}讓${w}有呼吸的空間。需要獨處時說一句「我需要空間，不是不愛你」，就不會被誤會。`,
-};
-
 function elementOf(sign: number): number {
     return sign % 4;
-}
-
-function sceneFor(table: ElementScenes, signA: number, signB: number, a: string, b: string): string {
-    const ea = elementOf(signA);
-    const eb = elementOf(signB);
-    return ea <= eb ? table[`${ea}|${eb}`](a, b) : table[`${eb}|${ea}`](b, a);
 }
 
 function bodyOf(p: AstroPartner, key: AstroBodyKey) {
@@ -995,13 +1341,17 @@ function moonLabel(p: AstroPartner): { text: string; sign: number } | null {
     if (!p.chart.timeUnknown) return { text: `月亮在${m.signName}`, sign: m.sign };
     // Time unknown → the chart uses noon; the Moon moves ~6–7.5° either way within the day.
     const deg = m.degree + m.minute / 60;
-    if (deg < 7.5) return { text: `月亮可能在${SIGN_NAMES[(m.sign + 11) % 12]}或${m.signName}（出生時間不確定）`, sign: m.sign };
-    if (deg > 22.5) return { text: `月亮可能在${m.signName}或${SIGN_NAMES[(m.sign + 1) % 12]}（出生時間不確定）`, sign: m.sign };
+    if (deg < 7.5)
+        return {
+            text: `月亮可能在${SIGN_NAMES[(m.sign + 11) % 12]}或${m.signName}（出生時間不確定）`,
+            sign: m.sign,
+        };
+    if (deg > 22.5)
+        return {
+            text: `月亮可能在${m.signName}或${SIGN_NAMES[(m.sign + 1) % 12]}（出生時間不確定）`,
+            sign: m.sign,
+        };
     return { text: `月亮大致在${m.signName}（出生時間不確定，以當天位置推估）`, sign: m.sign };
-}
-
-function findAspect(syn: AstroSynastry, x: SynastryPointKey, y: SynastryPointKey): InterAspect[] {
-    return syn.aspects.filter((s) => pairId(s.a, s.b) === pairId(x, y));
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,7 +1366,11 @@ function findAspect(syn: AstroSynastry, x: SynastryPointKey, y: SynastryPointKey
 // Everyone else gets the default strengths-first tone.
 
 const CORE = new Set<SynastryPointKey>(['sun', 'moon', 'venus', 'mars', 'asc']);
-const BOND_PAIRS = new Set([pairId('sun', 'moon'), pairId('venus', 'mars'), pairId('moon', 'venus')]);
+const BOND_PAIRS = new Set([
+    pairId('sun', 'moon'),
+    pairId('venus', 'mars'),
+    pairId('moon', 'venus'),
+]);
 
 export interface AstroFit {
     difficult: boolean;
@@ -1040,212 +1394,59 @@ export function astroFit(syn: AstroSynastry): AstroFit {
             ((s.a === 'saturn' && CORE.has(s.b)) || (s.b === 'saturn' && CORE.has(s.a))),
     ).length;
     const bond = core.some((s) => BOND_PAIRS.has(pairId(s.a, s.b)) && familyOf(s.type) !== 'hard');
-    const difficult = coreTense >= 3 && coreSoft <= 1 && !bond && (saturnHard >= 1 || coreTense >= 5);
+    const difficult =
+        coreTense >= 3 && coreSoft <= 1 && !bond && (saturnHard >= 1 || coreTense >= 5);
     return { difficult, coreTense, coreSoft, saturnHard, bond };
-}
-
-function difficultyLine(fit: AstroFit): string {
-    const saturn = fit.saturnHard > 0 ? `，另有 ${fit.saturnHard} 組土星的緊張接觸` : '';
-    return `【先說在前面】\n坦白說，這兩張盤在核心相位上比較不合：太陽、月亮、金星、火星與上升之間有 ${fit.coreTense} 組張力相位、只有 ${fit.coreSoft} 組和諧相位${saturn}，日月、金火、月金之間也沒有順向的連結。\n這代表兩人的生活節奏、表達愛與處理情緒的方式差異很大，相處會比多數伴侶更費力，以下的挑戰請認真看待。\n這不是判決，很多伴侶也是在這樣的盤上走出來的，前提是兩人都願意有意識地投入。`;
-}
-
-/** One-line daily tag for an aspect already explained under 重點相位, worded for the theme. */
-function dailyAspectLines(
-    syn: AstroSynastry,
-    a: AstroPartner,
-    b: AstroPartner,
-    pairs: [SynastryPointKey, SynastryPointKey][],
-    tag: Record<Family, string[]>,
-    difficult: boolean,
-): string[] {
-    // Rotate through the variants so two aspects of the same family never get the same tag.
-    const used: Record<Family, number> = { conj: 0, soft: 0, hard: 0 };
-    return pairs.flatMap(([x, y]) =>
-        findAspect(syn, x, y).flatMap((s) => {
-            const fam = familyOf(s.type);
-            const text = tag[fam][used[fam]++ % tag[fam].length];
-            const head = `・相位加碼：${a.name}的${POINT_NAMES[s.a]}${s.name}${b.name}的${POINT_NAMES[s.b]}——${text}`;
-            // Key pairs are explained under 重點相位; others may not be listed, so say it here.
-            if (s.key) return [`${head}（說明見「重點相位」）。`];
-            const n = aspectNote(s, a, b, difficult).text;
-            return [`${head}。`, `${n}${n.endsWith('。') ? '' : '。'}`];
-        }),
-    );
-}
-
-export function dailyLifeLines(a: AstroPartner, b: AstroPartner, syn: AstroSynastry): string[] {
-    const lines: string[] = [];
-    const fit = astroFit(syn);
-    const hard = fit.difficult;
-    if (hard) lines.push(difficultyLine(fit));
-    const sunA = bodyOf(a, 'sun');
-    const sunB = bodyOf(b, 'sun');
-
-    // 個性
-    if (sunA && sunB) {
-        lines.push(
-            '【個性】',
-            `${a.name}太陽在${sunA.signName}：${SUN_TRAIT[sunA.sign]}。`,
-            `${b.name}太陽在${sunB.signName}：${SUN_TRAIT[sunB.sign]}。`,
-            sceneFor(PERSONA_SCENE, sunA.sign, sunB.sign, a.name, b.name),
-        );
-    }
-    const ascLine = (p: AstroPartner) =>
-        p.chart.angles && !p.chart.timeUnknown
-            ? `${p.name}上升${p.chart.angles.asc.signName}，初見面給人${ASC_TRAIT[p.chart.angles.asc.sign]}的感覺`
-            : `${p.name}的出生時間不確定，上升無法判斷`;
-    lines.push(`第一印象：${ascLine(a)}。`, `${ascLine(b)}。`);
-
-    // 思考方式
-    const merA = bodyOf(a, 'mercury');
-    const merB = bodyOf(b, 'mercury');
-    if (merA && merB) {
-        lines.push(
-            '【思考方式】',
-            `${a.name}水星在${merA.signName}：${MERCURY_TRAIT[merA.sign]}。`,
-            `${b.name}水星在${merB.signName}：${MERCURY_TRAIT[merB.sign]}。`,
-            sceneFor(THINK_SCENE, merA.sign, merB.sign, a.name, b.name),
-            ...dailyAspectLines(
-                syn,
-                a,
-                b,
-                [
-                    ['mercury', 'mercury'],
-                    ['mercury', 'saturn'],
-                    ['mercury', 'mars'],
-                ],
-                {
-                    conj: ['說話頻率很接近，一開口就接得上', '一開口就有分量，彼此都聽得很認真'],
-                    soft: ['討論起來順，是溝通的一大助力', '想法接得上，常聊出新點子', '一個說、一個接，對話很少冷場'],
-                    hard: [
-                        '說話時偶爾卡住，也正好逼兩人把話講得更清楚',
-                        '意見常不同，談完的結論通常比各想各的周全',
-                        '想法常碰撞，碰出來的火花也常是好點子',
-                    ],
-                },
-                hard,
-            ),
-        );
-    }
-
-    // 處理矛盾
-    const marsA = bodyOf(a, 'mars');
-    const marsB = bodyOf(b, 'mars');
-    const moonA = moonLabel(a);
-    const moonB = moonLabel(b);
-    if (marsA && marsB) {
-        lines.push(
-            '【處理矛盾】',
-            `${a.name}火星在${marsA.signName}：${MARS_TRAIT[marsA.sign]}。`,
-            `${b.name}火星在${marsB.signName}：${MARS_TRAIT[marsB.sign]}。`,
-            sceneFor(FIGHT_SCENE, marsA.sign, marsB.sign, a.name, b.name),
-        );
-        if (moonA && moonB)
-            lines.push(
-                `和好的鑰匙：${a.name}${moonA.text}，需要${MOON_REPAIR[moonA.sign]}。`,
-                `${b.name}${moonB.text}，需要${MOON_REPAIR[moonB.sign]}。`,
-            );
-        lines.push(
-            ...dailyAspectLines(
-                syn,
-                a,
-                b,
-                [
-                    ['mars', 'mars'],
-                    ['moon', 'mars'],
-                    ['mars', 'saturn'],
-                    ['moon', 'saturn'],
-                ],
-                {
-                    conj: ['一碰就有火花，熱情和脾氣出自同一處', '情緒來得又近又快，好處是很少悶著'],
-                    soft: ['意見不同時有緩衝，和好不難', '鬧彆扭也容易和好，和好後記得把事情談完'],
-                    hard: [
-                        '這裡最需要耐心，也是兩人最在意彼此的地方',
-                        '同一件事可能反覆出現，每談開一次就更懂對方的底線',
-                        '節奏不同時容易互相催促，慢慢磨合的伴侶通常更懂得收放',
-                    ],
-                },
-                hard,
-            ),
-        );
-    }
-
-    // 感受親密及愛
-    const venA = bodyOf(a, 'venus');
-    const venB = bodyOf(b, 'venus');
-    if (venA && venB) {
-        lines.push(
-            '【感受親密與愛】',
-            `${a.name}金星在${venA.signName}，${VENUS_TRAIT[venA.sign]}。`,
-            `${b.name}金星在${venB.signName}，${VENUS_TRAIT[venB.sign]}。`,
-            sceneFor(LOVE_SCENE, venA.sign, venB.sign, a.name, b.name),
-        );
-        if (moonA && moonB)
-            lines.push(
-                `讓人安心的來源：${a.name}${moonA.text}，安心來自${MOON_SAFE[moonA.sign]}。`,
-                `${b.name}${moonB.text}，安心來自${MOON_SAFE[moonB.sign]}。`,
-            );
-        lines.push(
-            ...dailyAspectLines(
-                syn,
-                a,
-                b,
-                [
-                    ['venus', 'mars'],
-                    ['moon', 'venus'],
-                    ['moon', 'moon'],
-                    ['sun', 'moon'],
-                    ['venus', 'saturn'],
-                ],
-                {
-                    conj: ['親密感很強，彼此靠得很近', '靠得很近，也記得留一點各自的空間'],
-                    soft: ['讓親近變得自然，是很溫暖的連結', '溫度穩定，相處讓人安心', '彼此照顧得順手，偶爾說出口會更甜'],
-                    hard: ['愛的方式需要對準，對準之後吸引力格外持久', '心意都在，只是常送往不同方向；說清楚就能接住'],
-                },
-                hard,
-            ),
-        );
-    }
-    return lines;
 }
 
 // ---------------------------------------------------------------------------
 // 這段關係的禮物 — what is most precious, built from this pair's own data.
 // ---------------------------------------------------------------------------
 
-/** What a contact gives the two of them, regardless of family. p/q as in PAIR_NOTES. */
-const GIFT: Record<string, Phrase> = {
-    [noteKey('sun', 'moon')]: (p, q) => `${p}的方向和${q}的心接得上，一個往前走，一個讓前進有家可回`,
-    [noteKey('sun', 'sun')]: () => `兩人的人生方向能彼此照見，常在對方身上看見自己想成為的樣子`,
-    [noteKey('moon', 'moon')]: () => `生活節奏裡那種不用說的懂，回到家就能放鬆`,
-    [noteKey('venus', 'mars')]: (p, q) => `一份真實的吸引力，${q}的主動與${p}的回應讓心動一直都在`,
-    [noteKey('sun', 'venus')]: (p, q) => `${q}真心欣賞${p}本來的樣子，在${q}眼裡，${p}很可愛`,
-    [noteKey('moon', 'venus')]: (p, q) => `${q}知道怎麼疼${p}，${p}在這段關係裡被溫柔地照顧著`,
-    [noteKey('venus', 'venus')]: () => `喜歡的東西彼此加分，能一起把日子過得有味道`,
-    [noteKey('sun', 'mars')]: (p, q) => `${q}的行動力推著${p}的目標往前，兩人是能一起把事做成的隊友`,
-    [noteKey('moon', 'mars')]: (p, q) => `${q}護著${p}，${p}也能讓${q}的火氣柔下來，關係很有溫度`,
-    [noteKey('asc', 'sun')]: (p, q) => `${q}看得見${p}的好，兩人走在一起很有光`,
-    [noteKey('asc', 'moon')]: (p, q) => `${q}在${p}身邊很快就能放鬆，像回到熟悉的地方`,
-    [noteKey('asc', 'venus')]: (p, q) => `${q}對${p}有自然的好感，一見面就喜歡`,
-    [noteKey('mercury', 'mercury')]: () => `聊得來，想法碰在一起常激出新的點子`,
-    [noteKey('mercury', 'moon')]: (p, q) => `${p}的話說得進${q}心裡，${q}心煩時知道可以找誰`,
-    [noteKey('mercury', 'venus')]: (p, q) => `${p}說的話讓${q}覺得被欣賞，聊天就有戀愛感`,
-    [noteKey('mercury', 'mars')]: (p, q) => `${p}想、${q}做，點子在兩人手裡很少只停在嘴上`,
-    [noteKey('mercury', 'sun')]: (p, q) => `${p}懂${q}在想什麼，是${q}難得的知音`,
-    [noteKey('mars', 'mars')]: () => `並肩做事很有勁，是能一起扛事的搭檔`,
-    [noteKey('saturn', 'sun')]: (p, q) => `${p}是${q}可以靠的人，${q}在${p}身邊越來越踏實`,
-    [noteKey('saturn', 'moon')]: (p, q) => `${p}給${q}「有人會一直在」的安定，這份陪伴經得起時間`,
-    [noteKey('saturn', 'mercury')]: (p, q) => `${p}認真對待${q}的想法，讓${q}的點子落地成真`,
-    [noteKey('saturn', 'venus')]: (p) => `${p}的愛說到做到，兩人之間有難得的忠誠與承諾`,
-    [noteKey('saturn', 'mars')]: (p, q) => `${q}的衝勁加上${p}的耐性，能把事情做得又快又穩`,
-    [noteKey('saturn', 'asc')]: (p, q) => `${p}讓${q}覺得可靠，是遇到事會想找的人`,
+/**
+ * What a contact gives the two of them, regardless of family; p/q as in PAIR_NOTES and dp/dq the
+ * sign phrases of their planets, so the same contact reads differently for different signs. The
+ * five commonest contacts are in COMPOSED_GIFT.
+ */
+type GiftPhrase = (p: string, q: string, dp: string, dq: string) => string;
+
+const GIFT: Record<string, GiftPhrase> = {
+    [noteKey('sun', 'sun')]: (p, q, dp, dq) =>
+        `${p}${dp}和${q}${dq}彼此照見，都在對方身上看見想成為的樣子`,
+    [noteKey('moon', 'moon')]: (p, q, dp, dq) => `${p}${dp}和${q}${dq}節奏相通，回到家就能放鬆`,
+    [noteKey('venus', 'venus')]: (p, q, dp, dq) => `${p}${dp}和${q}${dq}彼此加分，日子越過越有味道`,
+    [noteKey('sun', 'mars')]: (p, q, dp, dq) =>
+        `${q}${dq}推著${p}${dp}往前，兩人是能把事做成的隊友`,
+    [noteKey('asc', 'sun')]: (p, q, _dp, dq) => `${q}${dq}讓${p}整個人亮了起來，兩人走在一起很有光`,
+    [noteKey('asc', 'moon')]: (p, q, _dp, dq) =>
+        `${q}${dq}在${p}身邊很快就能放鬆，像回到熟悉的地方`,
+    [noteKey('asc', 'venus')]: (p, q, _dp, dq) => `${q}${dq}一見到${p}就被吸引，好感來得自然`,
+    [noteKey('mercury', 'mercury')]: (p, q, dp, dq) => `${p}${dp}碰上${q}${dq}，常激出新的點子`,
+    [noteKey('mercury', 'moon')]: (p, q, dp, dq) =>
+        `${p}${dp}說得進${q}${dq}裡，${q}心煩時知道可以找誰`,
+    [noteKey('mercury', 'venus')]: (p, q, dp, dq) => `${p}${dp}讓${q}${dq}被聽見，聊天就有戀愛感`,
+    [noteKey('mercury', 'mars')]: (p, q, dp, dq) =>
+        `${p}${dp}出主意、${q}${dq}去實現，點子很少只停在嘴上`,
+    [noteKey('mercury', 'sun')]: (p, q, dp, dq) => `${p}${dp}最懂${q}${dq}，是${q}難得的知音`,
+    [noteKey('mars', 'mars')]: (p, q, dp, dq) => `${p}${dp}和${q}${dq}並肩，是能一起扛事的搭檔`,
+    [noteKey('saturn', 'sun')]: (p, q, dp, dq) => `${p}${dp}給了${q}${dq}一個可以靠的地方`,
+    [noteKey('saturn', 'moon')]: (p, q, dp, dq) => `${p}${dp}讓${q}${dq}知道「有人會一直在」`,
+    [noteKey('saturn', 'mercury')]: (p, q, dp, dq) => `${p}${dp}讓${q}${dq}落地成真`,
+    [noteKey('saturn', 'venus')]: (p, q, dp, dq) => `${p}${dp}守著${q}${dq}，兩人之間有難得的忠誠`,
+    [noteKey('saturn', 'mars')]: (p, q, dp, dq) => `${q}${dq}加上${p}${dp}，能把事情做得又快又穩`,
+    [noteKey('saturn', 'asc')]: (p, q, dp) => `${p}${dp}讓${q}覺得可靠，是遇到事會想找的人`,
 };
 
 function giftOf(s: InterAspect, a: AstroPartner, b: AstroPartner): string | null {
-    const direct = GIFT[noteKey(s.a, s.b)];
-    if (direct) return direct(a.name, b.name);
-    const flipped = GIFT[noteKey(s.b, s.a)];
-    return flipped ? flipped(b.name, a.name) : null;
+    const composed = composedNote(s, a, b, 'gift');
+    if (composed) return composed;
+    // Orient to the table key: p holds the first planet of the key, q the second.
+    const forward = GIFT[noteKey(s.a, s.b)] !== undefined;
+    const key = forward ? noteKey(s.a, s.b) : noteKey(s.b, s.a);
+    const phrase = GIFT[key] as GiftPhrase | undefined;
+    if (!phrase) return null;
+    const [p, q, kp, kq] = forward ? [a, b, s.a, s.b] : [b, a, s.b, s.a];
+    return phrase(p.name, q.name, descOf(p, kp, true), descOf(q, kq, true));
 }
 
 const ELEMENT_NAMES = ['火', '土', '風', '水'];
@@ -1257,27 +1458,15 @@ function elementGift(a: AstroPartner, b: AstroPartner): string | null {
     if (!sa || !sb) return null;
     const ea = elementOf(sa.sign);
     const eb = elementOf(sb.sign);
-    if (ea === eb)
-        return `兩人的太陽同屬${ELEMENT_NAMES[ea]}象，看重的東西很像，很多事不用解釋，對方就懂`;
+    const basis =
+        ea === eb
+            ? `（兩人的太陽同屬${ELEMENT_NAMES[ea]}象）`
+            : `（${a.name}的太陽屬${ELEMENT_NAMES[ea]}象、${b.name}的屬${ELEMENT_NAMES[eb]}象）`;
+    if (ea === eb) return `兩人骨子裡看重的東西很像，很多事不用解釋，對方就懂${basis}`;
     const pair = [ea, eb].sort().join('|');
     if (pair === '0|2' || pair === '1|3')
-        return `${a.name}的${ELEMENT_NAMES[ea]}象太陽與${b.name}的${ELEMENT_NAMES[eb]}象太陽天生互相助長，${pair === '0|2' ? '一個給點子、一個給熱度，在一起總是越聊越有勁' : '一個給踏實、一個給溫度，能一起把日子過得安穩又暖'}`;
-    return `${a.name}是${ELEMENT_NAMES[ea]}象、${b.name}是${ELEMENT_NAMES[eb]}象，各自帶來對方身上沒有的東西，兩人在一起，生活的樣貌比一個人時完整`;
-}
-
-const GIFT_HOUSES = new Set([4, 5, 7]);
-const GIFT_BODIES = new Set<AstroBodyKey>(['sun', 'moon', 'venus', 'jupiter']);
-
-/** A warm house overlay (Sun / Moon / Venus / Jupiter in the 4th, 5th or 7th), if any. */
-function overlayGift(a: AstroPartner, b: AstroPartner, syn: AstroSynastry): string | null {
-    const o = syn.overlays.find((x) => GIFT_BODIES.has(x.body) && GIFT_HOUSES.has(x.house));
-    if (!o) return null;
-    const [src, dst] = o.from === 'a' ? [a, b] : [b, a];
-    const special = OVERLAY_SPECIAL[`${o.body}|${o.house}`];
-    const text = special
-        ? special(src.name, dst.name)
-        : `${src.name}${OVERLAY_ROLE[o.body]}${HOUSE_SCENE[o.house](src.name, dst.name)}`;
-    return `${src.name}的${BODY_NAMES[o.body]}落在${dst.name}的第 ${o.house} 宮，${text}`;
+        return `兩人的本性天生互相助長，${pair === '0|2' ? '一個給點子、一個給熱度，在一起總是越聊越有勁' : '一個給踏實、一個給溫度，能一起把日子過得安穩又暖'}${basis}`;
+    return `兩人各自帶來對方身上沒有的東西，在一起時，生活的樣貌比一個人時完整${basis}`;
 }
 
 /** What a clearly difficult pair needs, from its tense core / Saturn contacts; lower = said first. */
@@ -1286,13 +1475,37 @@ function needOf(s: InterAspect): [number, string] {
     if (pairId(s.a, s.b) === pairId('sun', 'moon')) return [0, '追目標時也照顧對方的心情'];
     if (has('venus')) return [1, '把想要的愛說清楚而不靠猜'];
     if (has('moon')) return [2, '情緒上來時先停一下再談'];
-    if (has('saturn')) return [3, '土星一方多肯定、少糾正'];
+    if (has('saturn')) return [3, '把期待說成肯定而不是糾正'];
     if (has('mars') || pairId(s.a, s.b) === pairId('sun', 'sun')) return [4, '把較勁變成合作'];
     if (has('asc')) return [5, '多給彼此認識的時間'];
     return [6, '多一點耐心與明確的溝通'];
 }
 
-function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: AstroFit): MeaningItem {
+/** The temperament mix of the two planets behind a gift, by their elements; key "i|j", i <= j. */
+const GIFT_FLAVOR: Record<string, Phrase> = {
+    '0|0': () => '兩股熱度疊在一起，做什麼都起勁',
+    '1|1': () => '兩份踏實放在一起，日子穩得像一座山',
+    '2|2': () => '兩個腦袋一起轉，永遠有新鮮話題',
+    '3|3': () => '兩顆敏感的心互相映照，懂得特別深',
+    '0|1': (f, e) => `${f}敢衝、${e}穩得住，剛好互補`,
+    '0|2': (f, a) => `${f}點火、${a}搧風，想法很快就能動起來`,
+    '0|3': (f, w) => `${f}給熱度、${w}給溫柔，冷暖剛剛好`,
+    '1|2': (e, a) => `${a}出主意、${e}顧現實，計畫很能落地`,
+    '1|3': (e, w) => `${e}給依靠、${w}給體貼，安穩裡有溫度`,
+    '2|3': (a, w) => `${a}講道理、${w}懂人心，兩人看事情格外周全`,
+};
+
+interface Gift {
+    text: string;
+    aspect: InterAspect;
+}
+
+function giftItem(
+    a: AstroPartner,
+    b: AstroPartner,
+    syn: AstroSynastry,
+    fit: AstroFit,
+): MeaningItem {
     const sentences: string[] = [];
     // Bonding pairs first, then other core contacts, then the rest; soft before conjunction; tighter first.
     const rank = (s: InterAspect) =>
@@ -1305,7 +1518,28 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
                 Number(familyOf(x.type) === 'conj') - Number(familyOf(y.type) === 'conj') ||
                 x.orb - y.orb,
         );
-    const gifts = [...new Set(warm.map((s) => giftOf(s, a, b)).filter((g): g is string => g !== null))];
+    const seen = new Set<string>();
+    const gifts: Gift[] = [];
+    for (const s of warm) {
+        const text = giftOf(s, a, b);
+        if (text && !seen.has(text)) {
+            seen.add(text);
+            gifts.push({ text, aspect: s });
+        }
+    }
+    // The temperament mix of the two planets behind a gift; no fixed opening frame.
+    const flavor = (g: Gift) => {
+        const ea = elementOf(signOf(a, g.aspect.a));
+        const eb = elementOf(signOf(b, g.aspect.b));
+        return ea <= eb
+            ? GIFT_FLAVOR[`${ea}|${eb}`](a.name, b.name)
+            : GIFT_FLAVOR[`${eb}|${ea}`](b.name, a.name);
+    };
+
+    const giftBasis = (g: Gift) =>
+        `（${a.name}的${POINT_NAMES[g.aspect.a]}與${b.name}的${POINT_NAMES[g.aspect.b]}${ANGLE_PLAIN[g.aspect.type]}）`;
+    const flavorBasis = (g: Gift) =>
+        `（${a.name}的${POINT_NAMES[g.aspect.a]}屬${ELEMENT_NAMES[elementOf(signOf(a, g.aspect.a))]}象、${b.name}的${POINT_NAMES[g.aspect.b]}屬${ELEMENT_NAMES[elementOf(signOf(b, g.aspect.b))]}象）`;
 
     if (fit.difficult) {
         const tense = syn.aspects.filter(
@@ -1313,14 +1547,25 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
                 familyOf(s.type) === 'hard' &&
                 ((CORE.has(s.a) && CORE.has(s.b)) || s.a === 'saturn' || s.b === 'saturn'),
         );
-        const needs = [...new Set(tense.map(needOf).sort((x, y) => x[0] - y[0]).map((n) => n[1]))].slice(0, 3);
+        const needs = [
+            ...new Set(
+                tense
+                    .map(needOf)
+                    .sort((x, y) => x[0] - y[0])
+                    .map((n) => n[1]),
+            ),
+        ].slice(0, 3);
         sentences.push(
             `坦白說，要讓這段關係走得好，${a.name}和${b.name}需要${needs.map((n) => `「${n}」`).join('、')}，而且要持續練習；這比多數伴侶多花心力，但做得到。`,
         );
-        const first = gifts[0] ?? (warm[0] ? `${a.name}的${POINT_NAMES[warm[0].a]}與${b.name}的${POINT_NAMES[warm[0].b]}形成${warm[0].name}，在${bothFunctions(warm[0])}上有天生的默契` : null);
-        if (first) sentences.push(`同時，你們之間也有真實而值得珍惜的東西：${first}。`);
+        const first = gifts[0]
+            ? `${gifts[0].text}${giftBasis(gifts[0])}`
+            : warm[0]
+              ? `兩人在${bothFunctions(warm[0])}上有天生的默契（${a.name}的${POINT_NAMES[warm[0].a]}與${b.name}的${POINT_NAMES[warm[0].b]}${ANGLE_PLAIN[warm[0].type]}）`
+              : null;
+        if (first) sentences.push(`這是兩人之間真實的好：${first}。`);
         const el = elementGift(a, b);
-        if (el) sentences.push(`${first ? '另外，' : '值得珍惜的是，'}${el}。`);
+        if (el) sentences.push(`${el}。`);
         return item(
             '這段關係的課題與禮物',
             '誠實說出這段關係需要的功課，也記下兩人之間真實的好。',
@@ -1328,173 +1573,1453 @@ function giftItem(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: Ast
         );
     }
 
-    if (gifts[0]) sentences.push(`${a.name}和${b.name}之間最珍貴的，是${gifts[0]}。`);
+    if (gifts[0]) sentences.push(`${gifts[0].text}${giftBasis(gifts[0])}。`);
     else {
         // Nothing easy among the named pairs: the tightest contact is still a gift, earned together.
         const tight = syn.aspects.map((s) => giftOf(s, a, b)).find((g): g is string => g !== null);
-        if (tight) sentences.push(`${a.name}和${b.name}之間最珍貴的，是一份要一起磨才拿得到、卻很真實的連結：${tight}。`);
+        if (tight) sentences.push(`這份連結要一起磨才拿得到，卻很真實：${tight}。`);
     }
-    if (gifts[1]) {
-        if (sentences.length > 0) sentences[sentences.length - 1] += `還有，${gifts[1]}。`;
-        else sentences.push(`${gifts[1]}。`);
-    }
-    const extra = overlayGift(a, b, syn) ?? (gifts[1] ? null : elementGift(a, b));
-    if (extra) sentences.push(`${extra}。`);
-    if (sentences.length < 2) {
+    // Second line: another gift, or else the temperament mix behind the first one.
+    if (gifts[1]) sentences.push(`${gifts[1].text}${giftBasis(gifts[1])}。`);
+    else if (gifts[0]) sentences.push(`${flavor(gifts[0])}${flavorBasis(gifts[0])}。`);
+    else {
         const el = elementGift(a, b);
-        if (el && !sentences.includes(`${el}。`)) sentences.push(`${el}。`);
+        if (el) sentences.push(`${el}。`);
     }
-    if (sentences.length === 0) sentences.push(`${a.name}和${b.name}之間的影響溫和，關係的樣子會由兩人親手寫成，這本身就是一份自由。`);
-    return item('這段關係的禮物', '從兩人最順的相位、元素與宮位，整理這段關係最珍貴的地方。', sentences.slice(0, 3).join('\n'));
-}
-
-export function astroSynastryItems(a: AstroPartner, b: AstroPartner, syn: AstroSynastry): MeaningItem[] {
-    const items: MeaningItem[] = [];
-    const caveat = caveatLine(a, b);
-    const fit = astroFit(syn);
-    const key = syn.aspects.filter((x) => x.key);
-    const rest = syn.aspects.filter((x) => !x.key);
-    const seenTypes = new Set<AspectType>();
-
-    items.push(
-        item(
-            '重點相位',
-            '合盤最常看的幾組：日月、金火、月月、水水、日金、上升，以及土星與個人行星的接觸。',
-            [
-                ...(key.length > 0
-                    ? key.map((x) => {
-                          const first = !seenTypes.has(x.type);
-                          seenTypes.add(x.type);
-                          return aspectLine(x, a, b, first, fit.difficult);
-                      })
-                    : ['重點組合之間沒有形成主要相位，兩人的連結多來自其他行星的互動。']),
-                caveat,
-            ]
-                .filter(Boolean)
-                .join('\n'),
-        ),
+    if (sentences.length === 0)
+        sentences.push(
+            `${a.name}和${b.name}之間的影響溫和，關係的樣子會由兩人親手寫成，這本身就是一份自由。`,
+        );
+    return item(
+        '這段關係的禮物',
+        '從兩人最順的互動、行星所在的星座與元素，整理這段關係最珍貴的地方。',
+        sentences.join('\n'),
     );
-
-    const shown = rest.slice(0, 10);
-    items.push(
-        item(
-            '其他相位',
-            '其餘行星之間的主要相位，依容許度由緊到鬆列出（最多 10 組）。',
-            shown.length > 0
-                ? shown.map((x) => aspectLine(x, a, b, false, fit.difficult)).join('\n')
-                : '其餘行星之間沒有主要相位。',
-        ),
-    );
-
-    const total = syn.harmonious + syn.tense + syn.conjunctions;
-    const balance = fit.difficult
-        ? '張力相位集中在太陽、月亮、金星、火星這些最影響日常相處的點上，摩擦會比較明顯，也比較常出現；這組合需要兩人都願意多溝通、多體諒，才能把差異變成互相成長的力量。'
-        : total === 0
-          ? '兩盤之間幾乎沒有主要相位，彼此的影響溫和，關係的樣子更多由兩人親手經營，自由度很高。'
-          : syn.harmonious > syn.tense * 1.5
-            ? '和諧相位明顯較多，相處起來順、少摩擦，是很舒服的組合；偶爾一起挑戰新事物，會讓這份順更有活力。'
-            : syn.tense > syn.harmonious * 1.5
-              ? '張力相位較多，兩人之間有很強的火花與成長力量，彼此都會因對方而改變；多一點溝通與包容，這股力量就會往好的方向走。'
-              : '和諧與張力相位大致平衡，既有默契，也有互相推動的力量；順的時候好好享受，卡的時候正是一起長大的機會。';
-    items.push(
-        item(
-            '和諧與張力',
-            '三分、六分屬和諧；四分、對分屬張力；合相則看兩顆星的性質。',
-            `和諧 ${syn.harmonious} 組、張力 ${syn.tense} 組、合相 ${syn.conjunctions} 組。${balance}`,
-        ),
-    );
-
-    const overlayLines = (from: PartnerKey): string[] => {
-        const [src, dst] = from === 'a' ? [a, b] : [b, a];
-        const list = syn.overlays.filter((o) => o.from === from);
-        if (list.length === 0) return [];
-        return [
-            `${src.name}的行星落在${dst.name}的宮位：`,
-            ...list.map((o) => {
-                const special = OVERLAY_SPECIAL[`${o.body}|${o.house}`];
-                const text = special
-                    ? special(src.name, dst.name)
-                    : `${src.name}${OVERLAY_ROLE[o.body]}${HOUSE_SCENE[o.house](src.name, dst.name)}${OVERLAY_TWIST[o.body]}`;
-                return `${KEY_HOUSES.has(o.house) ? '★ ' : ''}${BODY_NAMES[o.body]} → 第 ${o.house} 宮（${HOUSE_AREA[o.house]}）：${text}。`;
-            }),
-        ];
-    };
-    const overlay = [...overlayLines('a'), ...overlayLines('b')];
-    items.push(
-        item(
-            '宮位疊加',
-            '一人的行星落在另一人的哪一宮，表示你在對方生活的哪一塊最有影響。★ 為第 1、5、7、8 宮這些和關係最直接相關的宮位。',
-            overlay.length > 0
-                ? overlay.join('\n')
-                : '兩人都沒有可用的宮位資料（需要確定的出生時間與出生地），因此不做宮位疊加。',
-        ),
-    );
-
-    items.push(
-        item(
-            '日常相處',
-            '從太陽、上升看個性，水星看思考方式，火星與月亮看怎麼溝通分歧與和好，金星與月亮看怎麼感受愛。以下是生活中可能出現的場景。',
-            [...dailyLifeLines(a, b, syn), caveat].filter(Boolean).join('\n'),
-        ),
-    );
-
-    items.push(item('相處建議', '依相位與宮位整理的提醒。', adviceLines(a, b, syn, fit).join('\n')));
-    items.push(giftItem(a, b, syn, fit));
-    return items;
 }
 
 function bothFunctions(s: InterAspect): string {
     return s.a === s.b ? `雙方的${functionOf(s.a)}` : `${functionOf(s.a)}與${functionOf(s.b)}`;
 }
 
-function adviceLines(a: AstroPartner, b: AstroPartner, syn: AstroSynastry, fit: AstroFit): string[] {
-    const lines: string[] = [];
-    const fams = (x: SynastryPointKey, y: SynastryPointKey) => new Set(findAspect(syn, x, y).map((s) => familyOf(s.type)));
+/** Axis contacts: p = planet holder, q = the person whose angle it touches → [strength, growth]. */
+const AXIS_NOTES: Record<
+    Exclude<AxisKey, 'asc'>,
+    (p: string, q: string, role: string) => [string, string]
+> = {
+    dsc: (p, q, role) => [
+        `${q}很容易把${p}${role}看成理想伴侶的樣子，兩人一對一相處特別有感。`,
+        `理想的投射之外，也看見${p}本來的樣子。`,
+    ],
+    mc: (p, q, role) => [
+        `${p}${role}推著${q}的事業與人生方向，像是${q}往前走的推手。`,
+        `${p}的期待別變成壓力，讓${q}自己決定節奏。`,
+    ],
+    ic: (p, q, role) => [
+        `${p}${role}碰到${q}心裡對家的感覺，在一起有種回到根的踏實。`,
+        `熟悉感強，也容易牽動早年家庭的情緒，慢慢說開就好。`,
+    ],
+};
 
-    if (fit.difficult)
-        lines.push(
-            '這組合盤需要比較多的經營，三個實際的做法：一、每週固定一次不滑手機的對話時間，把這週卡住的事說出來；二、事先約好吵架的規則（不翻舊帳、需要時可以喊暫停、24 小時內回來談）；三、如果同樣的問題反覆出現，考慮一起找伴侶諮商，這是投資，不是失敗。',
-        );
+/** What each angle stands for in its owner's life (for the slower points on an angle). */
+const AXIS_AREA: Record<AxisKey, string> = {
+    asc: '形象',
+    dsc: '伴侶觀',
+    mc: '人生方向',
+    ic: '內心的根',
+};
 
-    const easy = syn.aspects.filter((s) => s.type === 'trine' || s.type === 'sextile').slice(0, 1);
-    for (const s of easy)
+/** Saturn / Node / Pluto / Chiron on an angle: p = planet holder, q = angle owner. */
+const SLOW_AXIS_NOTES: Partial<
+    Record<AstroBodyKey, (p: string, q: string, area: string) => [string, string]>
+> = {
+    saturn: (p, q, area) => [
+        `${p}在${q}的${area}裡是一股穩定的力量，讓${q}覺得這個人可以託付。`,
+        `${p}的認真有時像壓力，${q}可以直接說出需要的鬆緊。`,
+    ],
+    northNode: (p, q, area) => [
+        `${q}在${area}上的樣子，正好指向${p}想成長的方向，像一面引路的鏡子。`,
+        `${p}可以多留意${q}身上吸引自己的地方，那常是自己的下一步。`,
+    ],
+    pluto: (p, q, area) => [
+        `${p}對${q}的${area}有很深的影響，兩人在一起都會被改變。`,
+        `影響越深，越要尊重${q}自己做決定的空間。`,
+    ],
+    chiron: (p, q, area) => [
+        `${p}會碰到${q}在${area}上的敏感處，也帶來被療癒的機會。`,
+        `碰到敏感處時，先停下來問問對方的感受。`,
+    ],
+};
+
+/** Growth point per house overlay; p = planet holder, q = house owner. */
+const HOUSE_GROW: Record<number, Phrase> = {
+    1: (p, q) => `${p}的影響很直接，給${q}建議時用分享代替要求。`,
+    2: () => `一起花錢前先講好各自的底線。`,
+    3: () => `訊息太密時，也允許彼此偶爾晚回。`,
+    4: () => `回到家的放鬆裡，也留意彼此的情緒有沒有被看見。`,
+    5: () => `玩樂之外，也一起經營平淡的日常。`,
+    6: () => `分工時講清楚標準，免得一方默默做太多。`,
+    7: (p, q) => `${q}對${p}的期待，可以直接拿出來討論。`,
+    8: () => `信任需要時間，別急著要對方全部攤開。`,
+    9: () => `觀念不同時，把它當成旅途中的新風景。`,
+    10: (p, q) => `${p}的建議別變成評分，讓${q}自己做主。`,
+    11: () => `朋友圈之外，也保留只屬於兩人的時間。`,
+    12: () => `沒說出口的感受，要慢慢練習說清楚。`,
+};
+
+const HOUSE_SHORT: Record<number, string> = {
+    1: '自我',
+    2: '金錢',
+    3: '溝通',
+    4: '家庭',
+    5: '戀愛',
+    6: '日常',
+    7: '伴侶',
+    8: '親密',
+    9: '視野',
+    10: '事業',
+    11: '朋友',
+    12: '潛意識',
+};
+
+interface ContactText {
+    plus: string;
+    grow: string;
+    /** Plain-language chart basis, shown in parentheses. */
+    basis: string;
+    /** Which template the sentences came from (see aspectNote). */
+    source: string;
+}
+
+function holders(from: PartnerKey, a: AstroPartner, b: AstroPartner): [AstroPartner, AstroPartner] {
+    return from === 'a' ? [a, b] : [b, a];
+}
+
+function contactText(c: WeightedContact, a: AstroPartner, b: AstroPartner): ContactText {
+    if (c.kind === 'aspect') {
+        const x = c.aspect;
+        const [plus, grow, source] = aspectNote(x, a, b);
+        return {
+            plus,
+            grow,
+            source,
+            basis: `${a.name}的${POINT_NAMES[x.a]}與${b.name}的${POINT_NAMES[x.b]}${ANGLE_PLAIN[x.type]}`,
+        };
+    }
+    const [src, dst] = holders(c.from, a, b);
+    if (c.kind === 'axis') {
+        const basis = `${src.name}的${BODY_NAMES[c.body]}貼近${dst.name}的${AXIS_NAMES[c.axis]}`;
+        const slow = SLOW_AXIS_NOTES[c.body];
+        if (slow) {
+            const [plus, grow] = slow(src.name, dst.name, AXIS_AREA[c.axis]);
+            return { plus, grow, basis, source: `slowAxis:${c.body}` };
+        }
+        if (c.axis === 'asc') {
+            // PAIR_NOTES asc entries: p = ASC holder, q = the planet holder.
+            const note = PAIR_NOTES[noteKey('asc', c.body)];
+            const [plus, grow] = note
+                ? note.conj(dst.name, src.name)
+                : ([
+                      `${src.name}${descOf(src, c.body)}直接打在${dst.name}給人的第一印象上，${dst.name}在${src.name}身邊更像自己。`,
+                      `影響很直接，${src.name}給意見時留一點空間。`,
+                  ] as [string, string]);
+            return { plus, grow, basis, source: note ? `pair:asc>${c.body}:conj` : 'axis:asc' };
+        }
+        const [plus, grow] = AXIS_NOTES[c.axis](src.name, dst.name, descOf(src, c.body));
+        return { plus, grow, basis, source: `axis:${c.axis}` };
+    }
+    // The planet's sign colours the overlay: 「甲說做就做的衝勁」點亮乙的玩心….
+    const plus = `${src.name}${descOf(src, c.body)}${HOUSE_SCENE[c.house](src.name, dst.name)}`;
+    return {
+        plus: `${plus}。`,
+        grow: HOUSE_GROW[c.house](src.name, dst.name),
+        source: `house:${c.house}`,
+        basis: `${src.name}的${BODY_NAMES[c.body]}落入${dst.name}的${HOUSE_SHORT[c.house]}宮`,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Length-limited composition (準則 §4B: hook ≤ 20, paragraphs ≤ 80, scene ≤ 60, advice ≤ 50 字)
+// ---------------------------------------------------------------------------
+
+export const LIMITS = { hook: 20, paragraph: 80, scene: 60, advice: 50 } as const;
+
+/** Trim to `max` characters at the last clause break, ending with 。 (never mid-word). */
+export function clampZh(text: string, max: number): string {
+    const t = text.trim();
+    if (t.length <= max) return t;
+    const head = t.slice(0, max);
+    for (const marks of ['。！？', '；', '，：、']) {
+        let cut = -1;
+        for (const m of marks) cut = Math.max(cut, head.lastIndexOf(m));
+        if (cut >= max / 3) return `${head.slice(0, cut)}。`;
+    }
+    return `${t.slice(0, max - 1)}。`;
+}
+
+function stripEnd(s: string): string {
+    return s.replace(/[。！？；，]+$/, '');
+}
+
+/** A sentence followed by its chart basis in parentheses, within the paragraph limit. */
+function withBasis(
+    prefix: string,
+    sentence: string,
+    basis: string,
+    max: number = LIMITS.paragraph,
+): string {
+    const tail = `（${basis}）。`;
+    const room = max - prefix.length - tail.length;
+    if (room < 12) return clampZh(`${prefix}${sentence}`, max);
+    return `${prefix}${stripEnd(clampZh(sentence, room + 1))}${tail}`;
+}
+
+// ---------------------------------------------------------------------------
+// Section copy, per theme. Each section owns its own words so the five never echo each other.
+// ---------------------------------------------------------------------------
+
+/**
+ * Section copy. Every field has variants; `pickBy` chooses one from the pair's own data (the signs
+ * of the planets behind the section's lead contact and how tight it is), so two pairs that share a
+ * theme still read differently.
+ */
+interface ThemeCopy {
+    hook: readonly string[];
+    scene: readonly string[];
+    advice: readonly string[];
+}
+
+const HIGHLIGHT: Record<ThemeId, ThemeCopy> = {
+    spark: {
+        hook: [
+            '一靠近，空氣就熱起來',
+            '有你在，日子就有火花',
+            '你一笑，我就想跟著出發',
+            '火花不是偶然，是日常',
+        ],
+        scene: [
+            '臨時起意的約會、一起出門的路上，你們很自然就玩開了，旁人也看得出這份火花。',
+            '一起看演唱會、衝去夜市排隊時，兩人的興奮會互相傳染，越玩越起勁。',
+            '週末臨時決定去海邊，兩人收拾背包只花十分鐘。',
+        ],
+        advice: [
+            '每個月安排一次沒做過的約會，讓熱度有新的柴火。',
+            '把一起挑戰的小目標寫下來，例如一起跑完一場路跑。',
+            '偶爾讓對方安排一次驚喜行程，自己只負責出席。',
+        ],
+    },
+    care: {
+        hook: ['在你身邊，心就安靜下來', '有你在的地方，就是家'],
+        scene: [
+            '累了一天回到家，一起吃頓飯、窩在沙發上，不必多說話就覺得被接住。',
+            '颱風天窩在家煮一鍋湯、追一部劇，是你們最滿足的時刻。',
+        ],
+        advice: [
+            '把對方為你做的小事說出來，一句謝謝就能讓暖意加倍。',
+            '固定一個只屬於兩人的家常儀式，例如週末一起煮早餐。',
+        ],
+    },
+    admire: {
+        hook: ['在你眼裡，我剛好很好', '你看我的眼神，讓我更喜歡自己'],
+        scene: [
+            '朋友聚會時，你們常默默替對方說好話，一起出現就帶著甜味。',
+            '一人換了新髮型，另一人總是第一個發現、第一個稱讚。',
+        ],
+        advice: [
+            '具體稱讚對方今天做得好的一件事，讓欣賞被聽見。',
+            '每週挑一件對方做得漂亮的事，當面說出來。',
+        ],
+    },
+    mirror: {
+        hook: ['你往前走，我替你點燈', '你的目標，也是我的事', '站在一起，就更像自己'],
+        scene: [
+            '一人談起新計畫，另一人會本能地想怎麼幫忙，兩人一起把日子往前推。',
+            '一人準備面試或比賽時，另一人會默默把後勤打理好。',
+            '一人上台表現時，台下最用力鼓掌的一定是另一人。',
+        ],
+        advice: [
+            '每季一起回顧彼此的目標，替對方記下一件已經做到的事。',
+            '重要的決定前，先問對方「這件事你最在意的是什麼」。',
+            '每年替對方寫一張「今年你最棒的三件事」。',
+        ],
+    },
+    mind: {
+        hook: ['話匣子一開，就關不起來', '跟你說話，從來不無聊', '兩個腦袋，比一個好用'],
+        scene: [
+            '從晚餐聊到深夜、從新聞聊到夢想，你們的對話很少冷場。',
+            '一起看完電影，回家路上的討論常比電影本身還精彩。',
+            '一起玩桌遊或解謎時，兩人的配合常讓朋友嘖嘖稱奇。',
+        ],
+        advice: [
+            '把聊出來的好點子挑一個真的去做，讓默契有成果。',
+            '一起開一本共同筆記，記下兩人想做的事。',
+            '每月一起讀一本書或看一部紀錄片，再互相交換心得。',
+        ],
+    },
+    bond: {
+        hook: ['說好的事，就會做到', '靠得住，是你們的浪漫'],
+        scene: [
+            '遇到搬家、換工作這種大事，兩人會一起排步驟，一件件扛過去。',
+            '說好的紀念日、答應的接送，兩人都記得牢牢的。',
+        ],
+        advice: [
+            '替兩人訂一個一年後想完成的共同目標。',
+            '每年一起檢查一次存款與計畫，讓可靠看得見。',
+        ],
+    },
+    depth: {
+        hook: [
+            '一眼就看見彼此的深處',
+            '你懂我沒說出口的那一半',
+            '在你面前，不必假裝',
+            '你懂我，比我自己還早',
+        ],
+        scene: [
+            '深夜談心時，你們聊得比跟任何人都深，常有被看透卻不害怕的感覺。',
+            '一人不舒服時，另一人往往不用問就察覺到了。',
+            '一起經歷過低潮後，兩人之間多了一種旁人看不懂的默契。',
+        ],
+        advice: [
+            '固定留一段不被打擾的時間，只談心裡話。',
+            '偶爾一起寫信給一年後的彼此，留住此刻的心意。',
+            '把彼此最難忘的一段對話記下來，偶爾拿出來回味。',
+        ],
+    },
+    freedom: {
+        hook: ['和你在一起，世界變大了', '跟你在一起，每天都不一樣'],
+        scene: [
+            '說走就走的小旅行、沒試過的新店，你們一起嘗鮮時最有活力。',
+            '一人突發奇想要去學衝浪，另一人的第一反應是「好啊，一起」。',
+        ],
+        advice: [
+            '把「一起嘗試新事物」排進每月行程，別讓日子變成慣性。',
+            '每季挑一個兩人都沒去過的地方走走。',
+        ],
+    },
+    expand: {
+        hook: ['有你打氣，膽子變大了', '你讓我相信自己做得到', '跟你在一起，好運都變多了'],
+        scene: [
+            '其中一人想報名課程或轉換跑道時，另一人常是第一個說「去吧」的人。',
+            '一起計畫出國或進修時，兩人越聊越有信心。',
+            '一人說出新點子，另一人馬上幫忙想怎麼做大。',
+        ],
+        advice: [
+            '每年一起訂一個想挑戰的新目標，互相當啦啦隊。',
+            '把對方的好消息分享給朋友，讓鼓勵被更多人看見。',
+            '把兩人一起完成的好事寫成清單，貼在冰箱上。',
+        ],
+    },
+};
+
+/** 磨合: `turn` says how the 主軸's bright side flips while adjusting. */
+const FRICTION: Record<ThemeId, ThemeCopy & { turn: readonly string[] }> = {
+    spark: {
+        hook: ['熱度太高，也會燙到彼此', '火花和火氣，常是同一把火', '越在乎，聲音越大'],
+        turn: [
+            '一方想立刻解決、一方還在氣頭上，小事也可能越吵越大',
+            '兩人都有脾氣時，誰也不想先低頭',
+            '熱情一轉身，就成了互不相讓',
+        ],
+        scene: [
+            '討論到一半語氣變衝，一人想吵完、一人想走開，牆就在這時築起來。',
+            '開車迷路、排隊太久這種小事，都可能點燃一場拌嘴。',
+            '一人在意的小細節被另一人忽略，語氣就突然變硬。',
+        ],
+        advice: [
+            '約好一句暫停暗號，喊出來就各自冷靜十分鐘。',
+            '吵架時先坐下來，站著講話火氣更容易上來。',
+            '火氣上來時先喝口水，數到十再開口。',
+        ],
+    },
+    care: {
+        hook: ['太在乎，反而怕說出口', '越在意，越容易受傷'],
+        turn: [
+            '在意的程度不同步時，一方覺得被冷落、一方覺得被盯緊',
+            '一方的照顧，另一方可能感覺像管束',
+        ],
+        scene: [
+            '一人晚回訊息，另一人開始胡思亂想，見面時氣氛就悶了下來。',
+            '一人忙著加班，另一人做好的晚餐涼在桌上，委屈就說不出口。',
+        ],
+        advice: [
+            '講好「忙的時候怎麼報平安」，讓在乎有固定的出口。',
+            '把「你都不關心我」換成「我今天需要你陪」。',
+        ],
+    },
+    admire: {
+        hook: ['太想維持美好，反而不說', '笑著說沒事，心裡卻有事'],
+        turn: [
+            '小小的不滿被一句「沒關係」蓋過，累積久了才突然爆開',
+            '怕對方失望，就把真實的想法藏起來',
+        ],
+        scene: [
+            '表面上一切都好，心裡卻記著上次沒說完的話，距離就這樣拉開。',
+            '一起挑禮物時明明不喜歡，卻笑著說「很好啊」。',
+        ],
+        advice: [
+            '每週留十分鐘，各說一件希望對方調整的小事。',
+            '約定一句「我有點不舒服」，說出口不必附理由。',
+        ],
+    },
+    mirror: {
+        hook: ['同路的人，也會搶方向盤', '都想對方好，卻各有想法', '太像的人，也會互相較勁'],
+        turn: [
+            '大方向一致，細節卻常卡在誰要配合誰',
+            '一人往前衝時，另一人的步調常被忽略',
+            '兩人都想當主角時，誰也不肯退一步',
+        ],
+        scene: [
+            '決定週末行程或大筆花費時，一人想照計畫、一人想照感覺，空氣瞬間僵住。',
+            '一人興奮宣布新決定，另一人卻覺得自己沒被問過。',
+            '一起出門時，一人想照自己的步調，另一人卻覺得被拖著走。',
+        ],
+        advice: [
+            '大事輪流做主，這次你決定、下次換我。',
+            '做決定前留一天給對方想，別當場要答案。',
+            '每次出遊各自挑一個行程，互相陪對方完成。',
+        ],
+    },
+    mind: {
+        hook: ['同一句話，聽成兩種意思', '說的和聽到的，常差一點', '話太多，也會說錯話'],
+        turn: [
+            '說者無心、聽者有意，訊息裡一個語氣就能誤會半天',
+            '一人講重點、一人講感受，常常雞同鴨講',
+            '反應太快時，話常比想法先出口',
+        ],
+        scene: [
+            '文字訊息越回越短、越回越冷，其實只是兩人用的說法不一樣。',
+            '一句「你決定就好」，一人聽成體貼，另一人聽成敷衍。',
+            '一人隨口開的玩笑，另一人卻記了一整天。',
+        ],
+        advice: [
+            '重要的事改用電話或見面談，別只靠文字。',
+            '吵完後各自說一句「我剛剛真正想說的是……」。',
+            '開玩笑前想一下，對方今天的心情適不適合。',
+        ],
+    },
+    bond: {
+        hook: ['承諾越重，越怕做不好', '在乎做到，也怕做不到'],
+        turn: ['一方的標準像考卷，另一方開始擔心怎麼做都不及格', '責任感太強時，相處就少了輕鬆'],
+        scene: [
+            '一句「你應該」說出口，另一人就默默縮起來，不想再分享。',
+            '計畫被打亂時，一人急著補救，另一人只想先喘口氣。',
+        ],
+        advice: [
+            '把期待講成具體的小事，做到時當面說聲謝謝。',
+            '每週留一個不排行程的晚上，什麼都不必做好。',
+        ],
+    },
+    depth: {
+        hook: [
+            '太想抓緊，反而握痛',
+            '愛得深，也容易抓得緊',
+            '靠得太近，反而喘不過氣',
+            '在乎，不等於要抓住',
+        ],
+        turn: [
+            '在意到想掌握對方的一切，信任就容易變成試探',
+            '情緒一深，就分不清是關心還是不安',
+            '越懂彼此，越容易拿對方的弱點當武器',
+        ],
+        scene: [
+            '查看行程、追問細節的時刻，另一人會本能地把心門關上。',
+            '一人沉默不語，另一人就開始猜是不是自己做錯了什麼。',
+            '爭執時一句戳到痛處的話，會讓兩人冷戰好幾天。',
+        ],
+        advice: [
+            '說出自己害怕的是什麼，而不是去檢查對方。',
+            '不安時先說「我有點慌」，而不是去質問。',
+            '約定吵架時不提對方的舊傷和家人。',
+        ],
+    },
+    freedom: {
+        hook: ['自由很迷人，也讓人不安', '想要空間，也想要確定'],
+        turn: [
+            '一方需要空間、一方需要確定，計畫臨時改變時最容易起摩擦',
+            '新鮮感來得快，安定感卻跟不上',
+        ],
+        scene: [
+            '約好的事臨時取消、訊息突然變少，另一人的不安就冒出來。',
+            '一人說想一個人出國走走，另一人心裡開始打鼓。',
+        ],
+        advice: [
+            '再忙也留一個固定的聯絡時間，讓自由有個錨點。',
+            '改變計畫前先說一聲，再自由也不突然。',
+        ],
+    },
+    expand: {
+        hook: ['想得很大，腳步要跟上', '夢想很大，也要算預算', '樂觀太多，也會失焦'],
+        turn: [
+            '一起畫大餅很開心，落實時才發現彼此的節奏不同',
+            '一人說好時，另一人其實還沒準備好',
+            '一人只看機會，另一人卻在擔心代價',
+        ],
+        scene: [
+            '計畫講得熱烈，真正要付錢、排時間時，一人開始猶豫。',
+            '答應了太多聚會和行程，週末反而累得沒時間相處。',
+            '一人興奮地刷卡買了新東西，另一人看著帳單皺眉。',
+        ],
+        advice: [
+            '每個大計畫先拆出第一步，做完再談下一步。',
+            '答應新計畫前，先看看兩人的行事曆和存款。',
+            '大額花費前約好「等三天再決定」。',
+        ],
+    },
+};
+
+const INTIMACY: Record<ThemeId, ThemeCopy> = {
+    care: {
+        hook: ['最軟的地方，交給對方', '脆弱的時候，有人接住', '被你照顧，是件幸福的事'],
+        scene: [
+            '生病或低潮時，一人自然靠過去照顧，另一人也願意放下逞強。',
+            '深夜一通「我睡不著」的訊息，另一人就打了電話過來。',
+            '一人加班晚歸，桌上總有另一人留下的一盞燈和熱湯。',
+        ],
+        advice: [
+            '說出「我今天需要的是……」，讓照顧對準心意。',
+            '低潮時直接說要擁抱、要安靜，還是要陪著說話。',
+            '輪流當照顧的那一方，別讓一人總是付出。',
+        ],
+    },
+    spark: {
+        hook: ['親密裡帶著電流', '靠近的時候，心跳會加速', '一個眼神，就讓人心動'],
+        scene: [
+            '牽手、擁抱這些肢體接觸最能讓你們和好，也最容易重新點燃彼此。',
+            '一個突然的擁抱，常比十句道歉更快讓兩人和好。',
+            '分開幾天再見面時，兩人的思念會一下子湧上來。',
+        ],
+        advice: [
+            '把身體的親近和心裡的話一起照顧，別只靠其中一種。',
+            '每天至少一次好好的擁抱，再忙也不省略。',
+            '偶爾安排只有兩人的小旅行，找回心動的感覺。',
+        ],
+    },
+    admire: {
+        hook: ['被溫柔看見，就敢靠近', '被珍惜的感覺，讓人敞開', '你的喜歡，讓我變得勇敢'],
+        scene: [
+            '收到對方記得你喜好的小禮物時，心會一下子軟下來。',
+            '對方記得你隨口提過的小事時，你會突然很想靠近。',
+            '一人緊張時，另一人一句「你很好」就讓心定下來。',
+        ],
+        advice: [
+            '記下對方最近提過想要的東西，找個平常日送上。',
+            '說出對方哪一個小動作最讓你心動。',
+            '睡前說一件今天欣賞對方的小事。',
+        ],
+    },
+    mirror: {
+        hook: ['你的心事，我接得住', '說到一半，你就懂了'],
+        scene: [
+            '一人說起煩惱，另一人聽著聽著就懂了真正卡住的地方。',
+            '一人在外受了委屈，回家看到對方的臉就鬆了一口氣。',
+        ],
+        advice: [
+            '先問一句「要建議還是要陪伴」，再決定怎麼回應。',
+            '聽對方說心事時，先別急著給答案。',
+        ],
+    },
+    bond: {
+        hook: ['信任慢慢來，來了就很牢', '慢慢靠近，才靠得長久'],
+        scene: [
+            '剛開始交心時會有點保留，等到一起扛過某個難關，距離忽然就近了。',
+            '一起度過一段辛苦的日子後，兩人說話的方式都變柔軟了。',
+        ],
+        advice: ['別急著要對方掏心，給信任一點時間發芽。', '每完成一件一起努力的事，就慶祝一下。'],
+    },
+    mind: {
+        hook: ['說得出口，就靠得更近', '話說開了，心也近了', '聊著聊著，心就靠近了'],
+        scene: [
+            '睡前的長談是你們最貼近的時刻，話說開了，心也跟著打開。',
+            '一起散步時聊起小時候的事，常常聊到捨不得回家。',
+            '一人分享了一段童年回憶，另一人聽完更懂了對方的反應。',
+        ],
+        advice: [
+            '睡前放下手機十分鐘，聊聊今天最有感覺的一件事。',
+            '輪流問對方一個沒問過的問題，認識會越來越深。',
+            '每週問對方一次「最近有什麼讓你在意的事？」',
+        ],
+    },
+    depth: {
+        hook: ['靈魂層次的懂', '心底有條暗道相通', '你看得見我的心'],
+        scene: [
+            '有些感受不用說完，對方就接上了，像心底有條暗道相通。',
+            '一首歌、一部電影，常讓兩人同時紅了眼眶。',
+            '一人只是嘆了口氣，另一人就放下手邊的事坐過來。',
+            '夜深人靜時，兩人常聊到彼此心裡最柔軟的地方。',
+        ],
+        advice: [
+            '再懂彼此，也把重要的感受說出口，別只靠猜。',
+            '感覺到對方不對勁時，直接問一句「你還好嗎」。',
+            '偶爾一起回想剛認識的時候，說說當時心裡的感覺。',
+        ],
+    },
+    expand: {
+        hook: ['愛讓人變得更大方', '和你在一起，心變寬了'],
+        scene: [
+            '一人心情低落時，另一人總能找到讓人重新看見希望的角度。',
+            '一人犯了錯，另一人總能笑著說「沒關係，下次會更好」。',
+        ],
+        advice: [
+            '低潮時先陪著，等心情回穩再一起想下一步。',
+            '把對方的鼓勵記在心上，也找機會回送一句。',
+        ],
+    },
+    freedom: {
+        hook: ['靠近，也保有自己', '黏在一起，也各自精彩'],
+        scene: [
+            '你們能各忙各的又不覺得疏遠，見面時反而更珍惜。',
+            '一人去旅行時，另一人在家也過得自在，回來時有說不完的話。',
+        ],
+        advice: [
+            '說一句「我需要空間，不是不愛你」，避免誤會。',
+            '約好各自獨處的時間，也約好重聚的時間。',
+        ],
+    },
+};
+
+/** Saturn on a personal planet: p = the Saturn holder, q = the other → [scene, advice] variants. */
+const SATURN_ON: Partial<Record<SynastryPointKey, readonly (readonly [Phrase, Phrase])[]>> = {
+    sun: [
+        [
+            (p, q) => `${q}談起夢想時，${p}會先問「那第一步是什麼」，讓夢想有了骨架。`,
+            (p) => `${p}多肯定對方已經做到的，再談還差什麼。`,
+        ],
+        [
+            (p, q) => `${q}換工作、做大決定時，${p}是最先幫忙算風險的人。`,
+            (p, q) => `${q}說清楚要的是支持還是建議，${p}就不必猜。`,
+        ],
+    ],
+    moon: [
+        [
+            (p, q) => `${q}情緒低落時，${p}給的常是實際的安排，而不是一個擁抱。`,
+            (p, q) => `${q}直接說「我現在需要被抱一下」，${p}就知道怎麼做。`,
+        ],
+        [
+            (p, q) => `${q}想撒嬌時，${p}可能還在想明天的待辦事項。`,
+            (p) => `${p}每天留五分鐘只陪伴、不解決問題。`,
+        ],
+    ],
+    venus: [
+        [
+            (p, q) => `紀念日怎麼過，${p}考慮的是長久，${q}在意的是當下的心意。`,
+            (p) => `把浪漫排進行事曆，${p}照表操課也是一種愛。`,
+        ],
+        [
+            (p, q) => `${q}想要甜言蜜語時，${p}的愛常藏在默默付帳和接送裡。`,
+            (p, q) => `${q}說出想聽的那句話，${p}練習說出口。`,
+        ],
+    ],
+    mars: [
+        [
+            (p, q) => `${q}想馬上行動時，${p}會先踩煞車評估風險。`,
+            (p, q) => `先講好哪些事${q}可以自己決定，其餘再一起商量。`,
+        ],
+        [
+            (p, q) => `${q}一頭熱時，${p}一句「再想想」常讓氣氛冷下來。`,
+            (p) => `${p}先說「好主意」，再一起看細節。`,
+        ],
+    ],
+    mercury: [
+        [
+            (p, q) => `${q}隨口提的點子，${p}會認真追問細節與可行性。`,
+            (p) => `${p}先說「這想法很有意思」，再談能不能做。`,
+        ],
+        [
+            (p, q) => `${q}講得正起勁時，${p}一句糾正就可能讓話題中斷。`,
+            (p, q) => `${p}先聽完${q}整段話，再提出自己的看法。`,
+        ],
+    ],
+};
+
+type LessonKey = 'saturn' | 'northNode' | 'pluto' | 'chiron' | 'none';
+
+const LESSON: Record<LessonKey, ThemeCopy> = {
+    saturn: {
+        hook: [
+            '這段關係，讓人學會負責',
+            '一起長大，比一起快樂更難得',
+            '承諾是你們共同的功課',
+            '慢慢來，比較快',
+            '把喜歡，練成長久',
+        ],
+        scene: [
+            '面對錢、家人、未來規劃這些現實壓力時，你們會被逼著一起長大。',
+            '談到買房、結婚或照顧家人時，兩人會發現彼此都很認真。',
+            '其中一人遇到工作低潮時，另一人會陪著一步步把日子撐穩。',
+        ],
+        advice: [
+            '每半年談一次未來規劃，把責任分得清清楚楚。',
+            '把家務、開銷和照顧家人的分工寫下來，定期調整。',
+            '壓力大的時候，先肯定對方已經做到的部分。',
+        ],
+    },
+    northNode: {
+        hook: [
+            '像是來推彼此一把的人',
+            '遇見你，人生轉了個彎',
+            '你讓我看見下一步',
+            '你的出現，是一份提醒',
+        ],
+        scene: [
+            '在一起之後，常發現自己走上原本沒想過、卻更適合的路。',
+            '對方隨口的一句建議，後來常變成改變人生的決定。',
+            '回頭看認識前後的自己，兩人都覺得變了不少。',
+        ],
+        advice: [
+            '把對方鼓勵你嘗試的事記下來，挑一件真的去做。',
+            '每年一起回顧「因為你，我開始做的事」。',
+            '對方推你一把時，先試一個月再決定要不要。',
+        ],
+    },
+    pluto: {
+        hook: [
+            '在彼此身上看見真正的自己',
+            '走過深水區，就更靠近',
+            '這段關係會改變你們',
+            '愛讓人重新認識自己',
+        ],
+        scene: [
+            '某些爭執會碰到很深的舊傷，走過之後，兩人都像換了個人。',
+            '一次深談後，其中一人說出了從沒跟別人說過的事。',
+            '兩人在一起後，各自都放下了一些過去的執著。',
+        ],
+        advice: [
+            '遇到觸及舊傷的話題，先停下來說「這讓我想起……」。',
+            '情緒很深時，先約好只聽不評論。',
+            '必要時一起找諮商師聊聊，這是投資不是失敗。',
+        ],
+    },
+    chiron: {
+        hook: ['舊傷在這裡，被溫柔接住', '傷口被看見，才會好', '你碰到的，也是我能好的地方'],
+        scene: [
+            '對方無心的一句話可能碰到痛處，也可能正是療癒的開始。',
+            '說起過去的難過時，對方的沉默陪伴比安慰更有用。',
+            '兩人都曾被某件事傷過，聊開之後反而更親近。',
+        ],
+        advice: [
+            '願意說出舊傷的來由，對方才知道怎麼小心對待。',
+            '碰到痛處時說一句「這裡我比較敏感」。',
+            '慢慢說，不急著一次把過去講完。',
+        ],
+    },
+    none: {
+        hook: ['關係的樣子，由你們親手寫', '沒有劇本，只有選擇', '你們的課題是每天的小事'],
+        scene: [
+            '沒有太重的命定感，你們的課題多半來自每天的小選擇。',
+            '少了命中注定的戲劇感，相處反而輕鬆自在。',
+            '關係走向哪裡，大多取決於兩人怎麼安排生活。',
+        ],
+        advice: [
+            '一起寫下這段關係最在乎的三件事，定期回頭看看。',
+            '每年選一個兩人共同的新目標。',
+            '遇到分岔路時，問問彼此想成為什麼樣的伴侶。',
+        ],
+    },
+};
+
+type DailyKey = 'soft' | 'hard' | 'house' | 'none';
+
+const DAILY: Record<DailyKey, ThemeCopy> = {
+    soft: {
+        hook: [
+            '連瑣事都能聊成樂趣',
+            '生活小事，一說就通',
+            '日常的頻率剛好對上',
+            '你一句、我一句，事情就辦好了',
+            '默契藏在每天的對話裡',
+        ],
+        scene: [
+            '排家事、決定晚餐、規劃週末，你們三言兩語就能定案，很少為小事卡住。',
+            '一起逛超市時，常常不用講就拿了對方想要的東西。',
+            '傳訊息聊今天發生的事，是你們每天最期待的時刻。',
+            '決定假日要去哪裡時，兩人常常一拍即合。',
+            '一人提議、一人補充，連買家電都能很快做好決定。',
+            '下班路上一通電話，就把晚餐和明天的行程都排好了。',
+        ],
+        advice: [
+            '趁順的時候，把錢和家人這類硬話題也排進來談。',
+            '溝通順暢時，順便約好吵架的規則。',
+            '偶爾換個話題深聊，別只聊生活瑣事。',
+            '把兩人的好溝通延伸到難開口的話題上。',
+            '每週找一天一起規劃下週行程。',
+            '把生活裡的小感謝說出口，默契會更深。',
+            '一起訂一個月的共同小目標，例如每週運動兩次。',
+        ],
+    },
+    hard: {
+        hook: [
+            '說法不同，不代表心意不同',
+            '換個說法，就不必吵',
+            '一樣的事，兩種講法',
+            '溝通是你們的必修課',
+            '想法不同，正好互補',
+        ],
+        scene: [
+            '一人說「隨便」、一人當真，晚餐吃什麼都能僵持半天。',
+            '同一件家事，一人覺得做完了，另一人覺得還沒做好。',
+            '傳訊息時一個句點，就可能讓對方以為你生氣了。',
+            '一人想先講結論，另一人想從頭說起，對話常卡在一半。',
+            '規劃旅行時，一人要詳細行程，另一人只想隨興走。',
+        ],
+        advice: [
+            '對話卡住時，先複述一次「你的意思是……嗎？」',
+            '重要的事當面談，別在訊息裡吵架。',
+            '先說「我想聽你講完」，再說自己的看法。',
+            '說話前先講「我想表達的是……」，減少誤會。',
+            '吵架時一次只談一件事，別翻舊帳。',
+        ],
+    },
+    house: {
+        hook: ['生活的節奏，慢慢磨成默契', '過日子的方式，一起找', '家裡的規則，兩人一起定'],
+        scene: [
+            '誰洗碗、幾點睡、週末要不要出門，這些小事是你們最常交換意見的地方。',
+            '一人愛早起、一人愛晚睡，同住後才發現作息要對齊。',
+            '買東西、記帳、整理房間，是兩人最常一起商量的事。',
+        ],
+        advice: [
+            '把家務和作息寫成一張分工表，定期一起調整。',
+            '每個月開一次「家庭會議」，十分鐘就好。',
+            '各自保留一塊可以照自己習慣的小角落。',
+        ],
+    },
+    none: {
+        hook: ['平淡的日子，也能過出味道', '默契要一起慢慢攢', '日常是你們的練習場'],
+        scene: [
+            '日常互動沒有特別的火花或卡點，生活的默契要靠一起累積。',
+            '兩人的生活節奏各有一套，要多花點時間互相認識。',
+            '小事上很少爭執，但也要記得常常交流近況。',
+        ],
+        advice: [
+            '固定一個兩人的小儀式，例如週日一起吃早午餐。',
+            '每天睡前花五分鐘聊聊今天的一件事。',
+            '一起做一件家事，順便聊聊天。',
+        ],
+    },
+};
+
+/** How the two argue, by the elements of their Mars signs (0 火 1 土 2 風 3 水); key "i|j", i <= j. */
+
+const ARGUE: Record<string, readonly [Phrase, Phrase, Phrase]> = {
+    '0|0': [
+        () => '吵架時兩人都直來直往，來得快也去得快，很少隔夜。',
+        () => '兩人脾氣都來得快，吵完通常一頓宵夜就和好。',
+        () => '兩人吵架時音量都不小，但只要有一人先笑出來，氣就消了。',
+    ],
+    '1|1': [
+        () => '兩人都不輕易動氣，真的卡住時，把爭點拆成具體條件最快鬆動。',
+        () => '意見不同時兩人都很固執，誰也不想先讓，冷靜一晚再談最有效。',
+        () => '兩人吵架很少大聲，比較常是各自悶著，誰先遞杯水誰就先破冰。',
+    ],
+    '2|2': [
+        () => '意見不同多半靠講道理解決，很少冷戰，講完記得補一句關心。',
+        () => '兩人吵架像辯論，邏輯都很清楚，但別忘了對方也有感受。',
+        () => '吵架時兩人都想把話說贏，記得問一句「我們要解決的是什麼」。',
+    ],
+    '3|3': [
+        () => '兩人都怕傷到對方，不舒服時可能都在等對方先開口。',
+        () => '兩人受傷時都會先退回自己的殼裡，需要有人先遞出台階。',
+        () => '兩人都容易把委屈往肚裡吞，寫張紙條有時比當面講更容易。',
+    ],
+    '0|1': [
+        (f, e) => `吵架時${f}想當場說開，${e}想先消化，一快一慢其實很互補。`,
+        (f, e) => `${f}的火氣來得快，${e}則慢慢累積，等${e}開口時通常已經忍很久了。`,
+        (f, e) => `${f}要的是馬上有結論，${e}要的是想清楚再說，先約好討論的時間就不會僵。`,
+    ],
+    '0|2': [
+        (f, a) => `吵架時${f}有熱度、${a}反應快，好處是講開就散，很少悶著。`,
+        (f, a) => `${f}吵架靠氣勢，${a}吵架靠口才，吵完常常一起笑出來。`,
+        (f, a) => `${a}會把吵架變成討論，${f}則需要先把情緒發洩完，順序對了就好談。`,
+    ],
+    '0|3': [
+        (f, w) => `吵架時${f}想馬上談，${w}受傷時會先安靜，需要約好回來談的時間。`,
+        (f, w) => `${f}說話直接，${w}聽了容易往心裡去，語氣放軟一點就差很多。`,
+        (f, w) => `${w}需要先被安撫，${f}急著講道理只會讓${w}更想躲。`,
+    ],
+    '1|2': [
+        (e, a) => `意見不同時，${a}負責把問題講清楚，${e}負責把結論落實。`,
+        (e, a) => `${a}想把每個理由講清楚，${e}只想知道接下來怎麼做。`,
+        (e, a) => `${e}吵架時話不多，${a}卻停不下來，留點沉默給${e}整理想法。`,
+    ],
+    '1|3': [
+        () => '兩人都不愛正面衝突，小小的不舒服容易各自放著，要有人先溫柔地講白。',
+        (e, w) => `${w}受委屈時會先沉默，${e}要主動問一句才會知道。`,
+        (e, w) => `${e}習慣用行動道歉，${w}更想聽到一句「對不起，我懂你的難過」。`,
+    ],
+    '2|3': [
+        (a, w) => `吵架時${a}講道理、${w}講感受，先承認感受再談理由就順了。`,
+        (a, w) => `${a}吵架時越講越冷靜，${w}卻越聽越難過，先抱一下再談會好很多。`,
+        (a, w) => `${w}需要時間消化情緒，${a}別急著追問「所以到底怎麼了」。`,
+    ],
+};
+
+function argueLine(signA: number, signB: number, a: string, b: string): string {
+    const ea = elementOf(signA);
+    const eb = elementOf(signB);
+    // Same element mix, different signs: the sign pair picks the variant.
+    const v = (signA + signB) % 3;
+    return ea <= eb ? ARGUE[`${ea}|${eb}`][v](a, b) : ARGUE[`${eb}|${ea}`][v](b, a);
+}
+
+const FIELDS: Record<SectionId, string> = {
+    synastry_highlight: '從兩人最順的互動看你們在一起時的優勢（特別是太陽、金星、木星）。',
+    synastry_friction: '從兩人互相拉扯的角度看容易卡住的地方（特別是火星、水星、天王星）。',
+    synastry_intimacy:
+        '從情感與愛的互動，以及落進對方家庭、親密、潛意識領域的行星，看你們怎麼靠近（月亮、金星，第 4／8／12 宮）。',
+    synastry_lesson: '從責任與命運方向的接觸，看這段關係要一起學的事（土星、北交點）。',
+    synastry_daily:
+        '從說話方式的互動與落進對方日常、溝通領域的行星，看生活瑣事與吵架時怎麼說話（水星，第 3／6 宮）。',
+};
+
+// ---------------------------------------------------------------------------
+// Report items
+// ---------------------------------------------------------------------------
+
+interface CardParts {
+    hook: string;
+    paragraphs: [string, string];
+    scene: string;
+    advice: string;
+    /** Honest mode only, 磨合 only. */
+    upfront?: string;
+}
+
+function card(id: SectionId, p: CardParts): MeaningItem {
+    const lines = [
+        ...(p.upfront ? ['【先說在前面】', clampZh(p.upfront, LIMITS.paragraph)] : []),
+        '【解析】',
+        clampZh(p.paragraphs[0], LIMITS.paragraph),
+        clampZh(p.paragraphs[1], LIMITS.paragraph),
+        '【相處場景】',
+        clampZh(p.scene, LIMITS.scene),
+        '【給兩人的建議】',
+        clampZh(p.advice, LIMITS.advice),
+    ];
+    return {
+        term: SECTION_TITLES[id],
+        field: FIELDS[id],
+        hook: clampHook(p.hook),
+        meaning: lines.join('\n'),
+    };
+}
+
+function clampHook(h: string): string {
+    return h.length <= LIMITS.hook ? h : h.slice(0, LIMITS.hook);
+}
+
+interface Ctx {
+    a: AstroPartner;
+    b: AstroPartner;
+    w: SynastryWeighting;
+    fit: AstroFit;
+    /** 互動主軸, strongest first. */
+    axis: ThemeId[];
+    /** Template sentences already written (source + plus/grow), so no section repeats another. */
+    used: Set<string>;
+}
+
+interface Picked {
+    c: WeightedContact;
+    t: ContactText;
+    text: string;
+}
+
+/**
+ * Next unused contact of a section (preferring one of `prefer` theme), taking its strength
+ * (`plus`) or growth (`grow`) sentence. Contacts whose sentence was already written are skipped.
+ */
+function take(
+    ctx: Ctx,
+    id: SectionId,
+    which: 'plus' | 'grow',
+    prefer?: (c: WeightedContact) => boolean,
+    skip?: Picked,
+): Picked | undefined {
+    const list = ctx.w.sections[id]
+        .filter((c) => c !== skip?.c)
+        .map((c) => {
+            const t = contactText(c, ctx.a, ctx.b);
+            return { c, t, text: t[which] };
+        })
+        // Same template as the other paragraph of this card, or already written elsewhere: skip.
+        .filter((x) => x.t.source !== skip?.t.source && !ctx.used.has(`${x.t.source}|${which}`));
+    const hit = (prefer && list.find((x) => prefer(x.c))) || list[0];
+    if (hit) ctx.used.add(`${hit.t.source}|${which}`);
+    return hit;
+}
+
+/** The growth sentence of an already picked contact, if not written yet. */
+function growOf(ctx: Ctx, p: Picked | undefined): string | null {
+    if (!p || ctx.used.has(`${p.t.source}|grow`)) return null;
+    ctx.used.add(`${p.t.source}|grow`);
+    return p.t.grow;
+}
+
+const themeIs = (id: ThemeId | undefined) => (c: WeightedContact) => c.theme === id;
+
+const CORE_KEYS = new Set<SynastryPointKey>(['sun', 'moon', 'venus', 'mars']);
+
+/** A tense aspect between the core relationship points (used to lead 磨合 for a flagged pair). */
+function isCoreTense(c: WeightedContact): boolean {
+    return (
+        c.kind === 'aspect' &&
+        familyOf(c.aspect.type) === 'hard' &&
+        CORE_KEYS.has(c.aspect.a) &&
+        CORE_KEYS.has(c.aspect.b)
+    );
+}
+
+function signOf(p: AstroPartner, key: SynastryPointKey): number {
+    if (key === 'asc') return p.chart.angles?.asc.sign ?? 0;
+    return bodyOf(p, key)?.sign ?? 0;
+}
+
+const ASPECT_INDEX: Record<AspectType, number> = {
+    conjunction: 0,
+    sextile: 1,
+    square: 2,
+    trine: 3,
+    opposition: 4,
+};
+const AXIS_INDEX: Record<AxisKey, number> = { asc: 0, dsc: 1, mc: 2, ic: 3 };
+
+/**
+ * A deterministic number from the data behind a contact: the signs of the planets involved, who
+ * holds them, the aspect type and how tight it is. Used to choose between copy variants, so that
+ * two pairs sharing a contact or a theme do not get the same sentences.
+ */
+function seedOf(ctx: Ctx, c: WeightedContact | undefined, salt: number): number {
+    const { a, b } = ctx;
+    const tier = (orb: number) => (orb < 1 ? 0 : orb < 3 ? 1 : 2);
+    let s: number;
+    if (!c) s = signOf(a, 'sun') * 5 + signOf(b, 'sun') * 3 + signOf(a, 'venus');
+    else if (c.kind === 'aspect')
+        s =
+            signOf(a, c.aspect.a) * 7 +
+            signOf(b, c.aspect.b) * 3 +
+            ASPECT_INDEX[c.aspect.type] * 2 +
+            tier(c.aspect.orb);
+    else {
+        const [src, dst] = holders(c.from, a, b);
+        s =
+            signOf(src, c.body) * 5 +
+            signOf(dst, 'sun') * 2 +
+            (c.kind === 'axis' ? AXIS_INDEX[c.axis] + tier(c.orb) : c.house) +
+            (c.from === 'a' ? 0 : 1);
+    }
+    // Mix in a hash of both charts so pairs sharing a contact still diverge.
+    return (s * 31 + pairHash(a, b, salt)) >>> 0;
+}
+
+/** One variant of a list, mixing the seed differently for each field. */
+function pickBy<T>(list: readonly T[], seed: number, field: number): T {
+    // Integer hash so neighbouring seeds spread evenly over the variants.
+    let h = (seed * 2654435761 + field * 40503) >>> 0;
+    h = ((h ^ (h >>> 15)) * 2246822519) >>> 0;
+    h = (h ^ (h >>> 13)) >>> 0;
+    return list[h % list.length];
+}
+
+function copyFor(copy: ThemeCopy, seed: number) {
+    return {
+        hook: pickBy(copy.hook, seed, 0),
+        scene: pickBy(copy.scene, seed, 1),
+        advice: pickBy(copy.advice, seed, 2),
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Hooks — composed from the elements of the two planets behind the section's lead contact and
+// the section's theme: 「急性子遇上軟心腸，說法要對頻」. Each section has its own vocabulary.
+// ---------------------------------------------------------------------------
+
+type Four = readonly [string, string, string, string];
+
+/** Per section, an image for each element (火 土 風 水). */
+const HOOK_IMAGE: Record<SectionId, Four> = {
+    synastry_highlight: ['火花', '大地', '微風', '流水'],
+    synastry_friction: ['烈火', '岩石', '強風', '暗流'],
+    synastry_intimacy: ['爐火', '老屋', '窗邊的風', '深海'],
+    synastry_lesson: ['火種', '種子', '風向', '潮汐'],
+    synastry_daily: ['急性子', '慢性子', '話匣子', '軟心腸'],
+};
+
+const HOOK_END: Record<SectionId, Record<string, string>> = {
+    synastry_highlight: {
+        spark: '越燒越旺',
+        care: '暖到心裡',
+        admire: '越看越順眼',
+        mirror: '彼此照亮',
+        mind: '話停不下來',
+        bond: '穩穩同行',
+        depth: '一眼看穿',
+        freedom: '世界變大',
+        expand: '一起長高',
+    },
+    synastry_friction: {
+        spark: '容易擦槍走火',
+        care: '在乎變牽掛',
+        admire: '有話不說',
+        mirror: '搶著掌舵',
+        mind: '話會聽岔',
+        bond: '期待變壓力',
+        depth: '抓得太緊',
+        freedom: '來去不定',
+        expand: '腳步跟不上',
+    },
+    synastry_intimacy: {
+        spark: '一碰就心跳',
+        care: '安心靠岸',
+        admire: '被好好珍惜',
+        mirror: '心事有人接',
+        mind: '話裡有溫度',
+        bond: '慢慢交心',
+        depth: '心底相通',
+        freedom: '近而不黏',
+        expand: '愛得大方',
+    },
+    synastry_lesson: {
+        saturn: '學會承擔',
+        northNode: '推著前進',
+        pluto: '脫胎換骨',
+        chiron: '舊傷癒合',
+        none: '自己寫劇本',
+    },
+    synastry_daily: {
+        soft: '三言兩語就定案',
+        hard: '說法要對頻',
+        house: '過日子要磨合',
+        none: '默契慢慢攢',
+    },
+};
+
+/** Elements of the two sides of a contact (A side first), or of the two Suns. */
+function contactElements(ctx: Ctx, c: WeightedContact | undefined): [number, number] {
+    const { a, b } = ctx;
+    if (!c) return [elementOf(signOf(a, 'sun')), elementOf(signOf(b, 'sun'))];
+    if (c.kind === 'aspect')
+        return [elementOf(signOf(a, c.aspect.a)), elementOf(signOf(b, c.aspect.b))];
+    const [src, dst] = holders(c.from, a, b);
+    return [elementOf(signOf(src, c.body)), elementOf(signOf(dst, 'sun'))];
+}
+
+/** Per section, a one-word temperament for each element (火 土 風 水), to set up the scene. */
+const SCENE_TRAIT: Record<SectionId, Four> = {
+    synastry_highlight: ['熱情', '踏實', '機靈', '溫柔'],
+    synastry_friction: ['性急', '固執', '嘴快', '敏感'],
+    synastry_intimacy: ['直接', '慢熱', '愛聊', '細膩'],
+    synastry_lesson: ['敢衝', '求穩', '求新', '念舊'],
+    synastry_daily: ['手腳快', '按部就班', '話多', '心思細'],
+};
+
+/** 「甲性急、乙敏感：」 — who brings which temperament into the scene, from the lead contact. */
+function scenePrefix(ctx: Ctx, id: SectionId, c: WeightedContact | undefined): string {
+    const [ea, eb] = contactElements(ctx, c);
+    const t = SCENE_TRAIT[id];
+    return ea === eb ? `兩人都${t[ea]}：` : `${ctx.a.name}${t[ea]}、${ctx.b.name}${t[eb]}：`;
+}
+
+const ADVICE_VERB: Record<SectionId, string> = {
+    synastry_highlight: '順著',
+    synastry_friction: '顧及',
+    synastry_intimacy: '珍惜',
+    synastry_lesson: '看重',
+    synastry_daily: '配合',
+};
+
+/** 「顧及乙護短的保護欲：」 — the advice is aimed at a personal planet of the lead contact. */
+function advicePrefix(ctx: Ctx, id: SectionId, c: WeightedContact | undefined): string {
+    const { a, b } = ctx;
+    let who: AstroPartner = b;
+    let key: SynastryPointKey = 'sun';
+    if (c?.kind === 'aspect') {
+        // Aim at a personal planet of the contact (B side first); slow planets make poor advice.
+        if (SIGN_DESC[c.aspect.b]) key = c.aspect.b;
+        else if (SIGN_DESC[c.aspect.a]) [who, key] = [a, c.aspect.a];
+    } else if (c) [, who] = holders(c.from, a, b);
+    return `${ADVICE_VERB[id]}${who.name}${descOf(who, key)}：`;
+}
+
+function composeHook(
+    ctx: Ctx,
+    id: SectionId,
+    c: WeightedContact | undefined,
+    endKey: string,
+): string {
+    const [ea, eb] = contactElements(ctx, c);
+    const img = HOOK_IMAGE[id];
+    const head = ea === eb ? `兩份${img[ea]}` : `${img[ea]}遇上${img[eb]}`;
+    return `${head}，${HOOK_END[id][endKey]}`;
+}
+
+function highlightCard(ctx: Ctx): MeaningItem {
+    const main = THEMES[ctx.axis[0]];
+    const lead = take(ctx, 'synastry_highlight', 'plus', themeIs(ctx.axis[0]));
+    const seed = seedOf(ctx, lead?.c, 1);
+    const copy = copyFor(HIGHLIGHT[ctx.axis[0]], seed);
+    const hook = composeHook(ctx, 'synastry_highlight', lead?.c, ctx.axis[0]);
+    const intro = `「${main.light}」：`;
+    const p1 = lead
+        ? withBasis(intro, lead.text, lead.t.basis)
+        : `${intro}兩人之間的順暢多來自日常的累積。`;
+    const secondTheme = ctx.axis[1];
+    const second = take(ctx, 'synastry_highlight', 'plus', themeIs(secondTheme), lead);
+    // Name the second axis theme only when this contact really carries it.
+    const alt =
+        secondTheme && second?.c.theme === secondTheme
+            ? `另一條主線是「${THEMES[secondTheme].light}」：`
+            : '';
+    const p2 = second
+        ? withBasis(alt, second.text, second.t.basis)
+        : (growOf(ctx, lead) ?? '其餘的互動比較溫和，留給兩人慢慢發掘彼此的好。');
+    return card('synastry_highlight', {
+        hook,
+        paragraphs: [p1, p2],
+        scene: `${scenePrefix(ctx, 'synastry_highlight', lead?.c)}${copy.scene}`,
+        advice: `${advicePrefix(ctx, 'synastry_highlight', lead?.c)}${copy.advice}`,
+    });
+}
+
+function frictionCard(ctx: Ctx): MeaningItem {
+    const main = THEMES[ctx.axis[0]];
+    // A flagged pair leads with its core tension; otherwise with the contact behind the 主軸.
+    const lead = take(
+        ctx,
+        'synastry_friction',
+        'grow',
+        ctx.fit.difficult ? isCoreTense : themeIs(ctx.axis[0]),
+    );
+    const seed = seedOf(ctx, lead?.c, 2);
+    const table = FRICTION[ctx.axis[0]];
+    const copy = copyFor(table, seed);
+    const hook = composeHook(ctx, 'synastry_friction', lead?.c, ctx.axis[0]);
+    // No frame: the two drives (Mars signs), the 主軸 word and its flip side, then how it shows up.
+    const drives =
+        bodyOf(ctx.a, 'mars') && bodyOf(ctx.b, 'mars')
+            ? `${ctx.a.name}${descOf(ctx.a, 'mars')}和${ctx.b.name}${descOf(ctx.b, 'mars')}之間，`
+            : '';
+    const p1 = `${drives}「${main.light}」的另一面是「${main.shadow}」：${pickBy(table.turn, seed, 4)}。`;
+    const prefix = ctx.fit.difficult ? '這是比較吃力的一塊：' : '';
+    const p2 = lead
+        ? withBasis(prefix, lead.text, lead.t.basis)
+        : '兩人之間直接的拉扯不多，要留意的反而是順到忘了把需要說出口。';
+    const upfront = ctx.fit.difficult
+        ? `坦白說，兩人的核心互動拉扯偏多（${ctx.fit.coreTense} 組互相拉扯、${ctx.fit.coreSoft} 組順暢），相處會比多數伴侶費力，以下請認真看待。`
+        : undefined;
+    return card('synastry_friction', {
+        hook,
+        paragraphs: [p1, p2],
+        scene: `${scenePrefix(ctx, 'synastry_friction', lead?.c)}${copy.scene}`,
+        advice: `${advicePrefix(ctx, 'synastry_friction', lead?.c)}${copy.advice}`,
+        upfront,
+    });
+}
+
+function intimacyCard(ctx: Ctx): MeaningItem {
+    const lead = take(ctx, 'synastry_intimacy', 'plus');
+    const copy = copyFor(INTIMACY[lead?.c.theme ?? 'care'], seedOf(ctx, lead?.c, 3));
+    const hook = composeHook(ctx, 'synastry_intimacy', lead?.c, lead?.c.theme ?? 'care');
+    const p1 = lead
+        ? withBasis('', lead.text, lead.t.basis)
+        : '兩人在情感上的直接連結不多，親密感要靠一次次真心的交談慢慢養大。';
+    const second = take(ctx, 'synastry_intimacy', 'plus', undefined, lead);
+    const p2 = second
+        ? withBasis('', second.text, second.t.basis)
+        : (growOf(ctx, lead) ?? '願意先開口的那一方，往往就是幫這段關係打開門的人。');
+    return card('synastry_intimacy', {
+        hook,
+        paragraphs: [p1, p2],
+        scene: `${scenePrefix(ctx, 'synastry_intimacy', lead?.c)}${copy.scene}`,
+        advice: `${advicePrefix(ctx, 'synastry_intimacy', lead?.c)}${copy.advice}`,
+    });
+}
+
+function lessonKey(c: WeightedContact | undefined): LessonKey {
+    if (!c) return 'none';
+    const keys: SynastryPointKey[] = c.kind === 'aspect' ? [c.aspect.a, c.aspect.b] : [c.body];
+    for (const k of ['saturn', 'northNode', 'pluto', 'chiron'] as const)
+        if (keys.includes(k)) return k;
+    return 'saturn';
+}
+
+function saturnScene(
+    ctx: Ctx,
+    c: WeightedContact | undefined,
+    seed: number,
+): { scene: string; advice: string } | null {
+    if (!c || c.kind !== 'aspect') return null;
+    const x = c.aspect;
+    const pair: [AstroPartner, AstroPartner, SynastryPointKey] | null =
+        x.a === 'saturn' ? [ctx.a, ctx.b, x.b] : x.b === 'saturn' ? [ctx.b, ctx.a, x.a] : null;
+    if (!pair) return null;
+    const list = SATURN_ON[pair[2]];
+    if (!list) return null;
+    const [scene, advice] = pickBy(list, seed, 1);
+    return { scene: scene(pair[0].name, pair[1].name), advice: advice(pair[0].name, pair[1].name) };
+}
+
+function lessonCard(ctx: Ctx): MeaningItem {
+    const lead = take(ctx, 'synastry_lesson', 'plus');
+    const seed = seedOf(ctx, lead?.c, 4);
+    const hook = composeHook(ctx, 'synastry_lesson', lead?.c, lessonKey(lead?.c));
+    // Saturn on a personal planet: the scene and advice name who brings the weight.
+    const copy = {
+        ...copyFor(LESSON[lessonKey(lead?.c)], seed),
+        ...saturnScene(ctx, lead?.c, seed),
+    };
+    const p1 = lead
+        ? withBasis('', lead.text, lead.t.basis)
+        : '兩人之間沒有明顯的土星或命運軸線接觸，關係少了沉重的考驗，多了自己決定的自由。';
+    const second = take(ctx, 'synastry_lesson', 'grow', undefined, lead);
+    const p2 = second
+        ? withBasis('', second.text, second.t.basis)
+        : (growOf(ctx, lead) ?? '要走多遠，取決於兩人願不願意把喜歡變成每天的選擇。');
+    return card('synastry_lesson', {
+        hook,
+        paragraphs: [p1, p2],
+        scene: `${scenePrefix(ctx, 'synastry_lesson', lead?.c)}${copy.scene}`,
+        advice: `${advicePrefix(ctx, 'synastry_lesson', lead?.c)}${copy.advice}`,
+    });
+}
+
+function dailyKey(c: WeightedContact | undefined): DailyKey {
+    if (!c) return 'none';
+    if (c.kind !== 'aspect') return 'house';
+    return familyOf(c.aspect.type) === 'hard' ? 'hard' : 'soft';
+}
+
+function dailyCard(ctx: Ctx): MeaningItem {
+    const { a, b } = ctx;
+    const lead = take(ctx, 'synastry_daily', 'plus', themeIs('mind'));
+    const copy = copyFor(DAILY[dailyKey(lead?.c)], seedOf(ctx, lead?.c, 5));
+    const hook = composeHook(ctx, 'synastry_daily', lead?.c, dailyKey(lead?.c));
+    const p1 = lead
+        ? withBasis('', lead.text, lead.t.basis)
+        : '兩人的說話方式之間沒有特別強的牽動，溝通的默契要靠日常一點一滴對齊。';
+    const marsA = bodyOf(a, 'mars');
+    const marsB = bodyOf(b, 'mars');
+    const argue = marsA && marsB ? argueLine(marsA.sign, marsB.sign, a.name, b.name) : null;
+    const second = argue ? undefined : take(ctx, 'synastry_daily', 'plus', undefined, lead);
+    const p2 = argue
+        ? withBasis('', argue, `${a.name}與${b.name}的火星星座`)
+        : second
+          ? withBasis('', second.text, second.t.basis)
+          : (growOf(ctx, lead) ?? '吵架時先說自己的感受，再談對方哪裡做錯，話會好聽很多。');
+    return card('synastry_daily', {
+        hook,
+        paragraphs: [p1, p2],
+        scene: `${scenePrefix(ctx, 'synastry_daily', lead?.c)}${copy.scene}`,
+        advice: `${advicePrefix(ctx, 'synastry_daily', lead?.c)}${copy.advice}`,
+    });
+}
+
+function contactLabel(c: WeightedContact, a: AstroPartner, b: AstroPartner): string {
+    if (c.kind === 'aspect') {
+        const x = c.aspect;
+        return `${a.name}的${POINT_NAMES[x.a]} ${x.name} ${b.name}的${POINT_NAMES[x.b]}（容許度 ${x.orb.toFixed(1)}°）`;
+    }
+    const [src, dst] = holders(c.from, a, b);
+    if (c.kind === 'axis')
+        return `${src.name}的${BODY_NAMES[c.body]} 合 ${dst.name}的${AXIS_NAMES[c.axis]}（容許度 ${c.orb.toFixed(1)}°）`;
+    return `${src.name}的${BODY_NAMES[c.body]} → ${dst.name}的第 ${c.house} 宮`;
+}
+
+function axisLine(axis: ThemeScore[]): string {
+    return axis.map((t) => `${THEMES[t.id].label}（${t.score} 分）`).join('、');
+}
+
+function basisItem(ctx: Ctx): MeaningItem {
+    const { a, b, w } = ctx;
+    const lines = [`互動主軸：${axisLine(w.axis)}`];
+    for (const id of SECTION_ORDER) {
+        const list = w.sections[id];
+        lines.push(`【${SECTION_TITLES[id]}】`);
         lines.push(
-            `最緊的和諧相位落在${a.name}的${POINT_NAMES[s.a]}與${b.name}的${POINT_NAMES[s.b]}（${s.name}），在${bothFunctions(s)}上有天生的默契，是兩人隨時可以回去充電的地方；偶爾說聲謝謝，讓對方知道你看見了。`,
-        );
-    const sm = fams('sun', 'moon');
-    if (sm.has('hard'))
-        lines.push('日月有張力，也正因如此兩人不會停在舒適圈裡；一人談目標時，另一人可能在等被關心，重要決定前先問一句「這對你的心情有什麼影響」。');
-    else if (sm.size > 0) lines.push('日月有連結，彼此的核心需求很容易被看見，是很難得的基礎；把這份默契說出口，它會越來越深。');
-    const vm = fams('venus', 'mars');
-    if (vm.has('hard')) lines.push('金火有張力，吸引力強而持久；親密需求用說的，比賭氣或等對方猜更有效。');
-    else if (vm.size > 0) lines.push('金火有連結，吸引力是這段關係的燃料；激情之外，也經營日常的小溫柔。');
-    if (fams('moon', 'moon').has('hard'))
-        lines.push('月亮之間節奏不同，同住前可以聊聊作息、整潔標準與「累的時候需要什麼」，講開的差異比沒講的默契更可靠。');
-    if (fams('mercury', 'mercury').has('hard'))
-        lines.push('水星之間思路不同，正好互相補漏；重要的事用「我聽到的是……對嗎？」確認一次就好。');
-    const sat = syn.aspects.find((s) => s.key && (s.a === 'saturn' || s.b === 'saturn'));
-    if (sat) {
-        const satName = sat.a === 'saturn' ? a.name : b.name;
-        const other = sat.a === 'saturn' ? b.name : a.name;
-        lines.push(
-            `有土星接觸（${satName}是土星的一方）：土星是長期關係的黏著劑，承諾感強、容易走得長久。${satName}多給肯定，${other}把感受說清楚，這份穩定就會變成兩人的靠山。`,
+            ...(list.length > 0
+                ? list.map((c) => `${contactLabel(c, a, b)}・${c.score} 分`)
+                : ['（沒有足夠權重的接觸）']),
         );
     }
-    const tight = syn.aspects.filter((s) => s.type === 'square' || s.type === 'opposition').slice(0, 1);
-    for (const s of tight)
-        lines.push(
-            `${a.name}的${POINT_NAMES[s.a]}與${b.name}的${POINT_NAMES[s.b]}形成${s.name}，是兩人最緊的張力相位，牽動${bothFunctions(s)}；這裡最能刺激彼此成長，碰到相關話題時多給一點耐心，它就會變成你們的優勢。`,
-        );
-    lines.push(
-        fit.difficult
-            ? '合盤描述的是互動傾向，不是緣分的判決；比較不合的盤，代表需要更多有意識的努力，而不是注定走不下去。'
-            : '合盤描述的是互動傾向，不是緣分的判決；你們已經擁有的默契值得珍惜，張力也可以透過理解變成成長。',
-    );
-    return lines;
+    const caveat = caveatLine(a, b);
+    if (caveat) lines.push('【說明】', caveat);
+    return {
+        term: '星盤依據',
+        field: '每個板塊採用的高權重接觸（分數 1–100），給想對照星盤的人參考。',
+        meaning: lines.join('\n'),
+    };
+}
+
+/** Every sign phrase a partner can be described with, with the planet it belongs to. */
+function descPhrases(p: AstroPartner, forGift = false): [SynastryPointKey, string][] {
+    const keys = Object.keys({ ...SIGN_DESC, ...ELEMENT_DESC }) as SynastryPointKey[];
+    return keys.filter((k) => bodyOf(p, k as AstroBodyKey)).map((k) => [k, descOf(p, k, forGift)]);
+}
+
+/**
+ * A later mention of a sign phrase, never naming the sign or planet: the second time the
+ * alternate phrasing (「講求效率的執行力」 → 「一絲不苟的做事方式」), after that a plain refer-back
+ * (「那份執行力」, then 「這份執行力」).
+ */
+function shortDesc(p: AstroPartner, key: SynastryPointKey, desc: string, mention: number): string {
+    const body = bodyOf(p, key as AstroBodyKey);
+    const alt = SIGN_DESC_ALT[key];
+    if (mention === 1 && body && alt) return alt[body.sign];
+    const tail = desc.split(/[的、]/).pop() ?? desc;
+    const measure = tail === '心' || tail === '腦袋' ? '顆' : tail === '性子' ? '股' : '份';
+    return `${mention <= 2 ? '那' : '這'}${measure}${tail}`;
+}
+
+/**
+ * The same sign phrase must not come back in a later card (準則 §4A: no repeated adjectives
+ * across sections): keep the first mention, shorten the rest.
+ */
+function dedupeDescriptors(items: MeaningItem[], partners: AstroPartner[], forGift = false): MeaningItem[] {
+    const mentions = new Map<string, number>();
+    return items.map((it) => {
+        let meaning = it.meaning;
+        for (const p of partners)
+            for (const [key, d] of descPhrases(p, forGift)) {
+                const full = `${p.name}${d}`;
+                let idx = meaning.indexOf(full);
+                while (idx >= 0) {
+                    const n = mentions.get(full) ?? 0;
+                    mentions.set(full, n + 1);
+                    if (n === 0) {
+                        idx = meaning.indexOf(full, idx + full.length);
+                        continue;
+                    }
+                    // The gift has its own vocabulary: a repeat there is just a refer-back.
+                    const short = `${p.name}${shortDesc(p, key, d, forGift ? n + 1 : n)}`;
+                    meaning = meaning.slice(0, idx) + short + meaning.slice(idx + full.length);
+                    idx = meaning.indexOf(full, idx + short.length);
+                }
+            }
+        return { ...it, meaning };
+    });
+}
+
+export function astroSynastryItems(
+    a: AstroPartner,
+    b: AstroPartner,
+    syn: AstroSynastry,
+): MeaningItem[] {
+    const w = weighSynastry(a.chart, b.chart, syn);
+    const ctx: Ctx = {
+        a,
+        b,
+        w,
+        fit: astroFit(syn),
+        axis: w.axis.map((t) => t.id),
+        used: new Set(),
+    };
+    const sections = [highlightCard(ctx), frictionCard(ctx), intimacyCard(ctx), lessonCard(ctx), dailyCard(ctx)];
+    // The 禮物 card speaks with its own sign phrasings, so it is checked on its own.
+    const [gift] = dedupeDescriptors([giftItem(a, b, syn, ctx.fit)], [a, b], true);
+    return [...dedupeDescriptors(sections, [a, b]), gift, basisItem(ctx)];
 }
 
 // ---------------------------------------------------------------------------
 // AI prompt
+// ---------------------------------------------------------------------------
+
 // ---------------------------------------------------------------------------
 
 function pos(p: AstroZodiacPos): string {
@@ -1505,10 +3030,15 @@ function chartBlock(p: AstroPartner): string {
     const c = p.chart;
     const bodies = c.bodies
         .filter((x) => !(c.timeUnknown && x.key === 'moon'))
-        .map((x) => `- ${x.name}：${pos(x)}${x.house !== null ? `，第 ${x.house} 宮` : ''}${x.retrograde ? '（逆行）' : ''}`)
+        .map(
+            (x) =>
+                `- ${x.name}：${pos(x)}${x.house !== null ? `，第 ${x.house} 宮` : ''}${x.retrograde ? '（逆行）' : ''}`,
+        )
         .join('\n');
     const asc =
-        c.angles && !c.timeUnknown ? `- 上升：${pos(c.angles.asc)}；天頂：${pos(c.angles.mc)}` : '- 無上升與宮位資料';
+        c.angles && !c.timeUnknown
+            ? `- 上升：${pos(c.angles.asc)}；天頂：${pos(c.angles.mc)}`
+            : '- 無上升與宮位資料';
     const moon = moonLabel(p);
     const moonNote = c.timeUnknown
         ? `\n- 出生時間不確定：未列入月亮相位${moon ? `；${moon.text.replace(/（[^）]*）$/, '')}，僅供參考` : ''}`
@@ -1519,50 +3049,89 @@ ${asc}
 ${bodies}`;
 }
 
-export function buildAstroSynastryAiPrompt(a: AstroPartner, b: AstroPartner, syn: AstroSynastry): string {
+const SECTION_FOCUS: Record<SectionId, string> = {
+    synastry_highlight:
+        '和諧角度（三分、六分、合相），特別是太陽、木星、金星的互動：兩人共同對外展現的氣場與合作潛力。',
+    synastry_friction:
+        '困難角度（四分、對分），特別是火星（衝突引爆點）、水星（溝通頻率落差）、天王星（突發變數與距離感）。',
+    synastry_intimacy:
+        '月亮與金星的跨盤互動，以及行星落入對方的第 4 宮（安全感）、第 8 宮（深度親密與信任）、第 12 宮（潛意識共鳴）。',
+    synastry_lesson:
+        '土星跨盤接觸（責任、考驗與現實限制）與北交點接觸（靈魂成長方向、彼此推一把的契機）。',
+    synastry_daily:
+        '水星跨盤相位與行星落入對方第 3／6 宮：日常瑣事、生活習慣，以及吵架時的溝通方式。',
+};
+
+export function buildAstroSynastryAiPrompt(
+    a: AstroPartner,
+    b: AstroPartner,
+    syn: AstroSynastry,
+): string {
     const fit = astroFit(syn);
-    const aspects =
-        syn.aspects
-            .map((x) => `- ${a.name}的${POINT_NAMES[x.a]} ${x.name} ${b.name}的${POINT_NAMES[x.b]}（容許度 ${x.orb.toFixed(1)}°）`)
-            .join('\n') || '- 無主要相位';
-    const overlays =
-        syn.overlays
-            .map((o) => {
-                const [src, dst] = o.from === 'a' ? [a.name, b.name] : [b.name, a.name];
-                return `- ${src}的${BODY_NAMES[o.body]} → ${dst}的第 ${o.house} 宮`;
-            })
-            .join('\n') || '- （無宮位資料）';
+    const w = weighSynastry(a.chart, b.chart, syn);
     const unknown = [a, b].filter((p) => p.chart.timeUnknown).map((p) => p.name);
     const timeRule =
         unknown.length > 0
-            ? `\n- ${unknown.join('、')}的出生時間不確定：上升與宮位不可用，月亮星座可能有誤差，涉及月亮的推論請標示為「可能」。`
+            ? `\n- ${unknown.join('、')}的出生時間不確定：上升、四軸點與宮位不可用（已從資料中移除），月亮星座可能有誤差，涉及月亮的推論請標示為「可能」。`
             : '';
+    const tone = fit.difficult
+        ? `- 語氣：這組合盤被判定為明顯偏難（太陽、月亮、金星、火星與上升之間張力 ${fit.coreTense} 組、和諧 ${fit.coreSoft} 組${fit.saturnHard > 0 ? `，土星緊張接觸 ${fit.saturnHard} 組` : ''}，日月、金火、月金之間沒有順向連結）。請誠實、尊重地說明兩人確實比較不合：只在「兩人需磨合的地方」的 core_insight 開頭先坦白說明，挑戰的篇幅可以多於優點，並給具體可行的做法；其他板塊仍要指出兩人之間真實且值得珍惜的部分，不要硬湊正面。`
+        : '- 語氣：以優點為主，優點與挑戰的篇幅大約 2:1；挑戰要寫成成長點，並附上一個可以實際做的小建議。避免嚴厲字眼（例如「衝突的熱點」「爆發」「情緒勒索」）。只有當資料明顯顯示兩人不合時才坦白說明，這組資料沒有被判定為不合。';
+    const axis = w.axis
+        .map(
+            (t) =>
+                `- ${THEMES[t.id].label}（權重合計 ${t.score}）：亮點面是「${THEMES[t.id].light}」，磨合面是「${THEMES[t.id].shadow}」`,
+        )
+        .join('\n');
+    const sections = SECTION_ORDER.map((id, i) => {
+        const list = w.sections[id];
+        const rows =
+            list.length > 0
+                ? list.map((c) => `- ${contactLabel(c, a, b)}｜權重 ${c.score}`).join('\n')
+                : '- （沒有足夠權重的接觸，請依互動主軸與整體盤面推論，並說明依據較少）';
+        return `### ${i + 1}. ${SECTION_TITLES[id]}（section_id: ${id}）\n取材：${SECTION_FOCUS[id]}\n${rows}`;
+    }).join('\n\n');
+    const example = SECTION_ORDER.map(
+        (id) =>
+            `  {"section_id": "${id}", "section_title": "${SECTION_TITLES[id]}", "hook_quote": "…", "core_insight": "第一段\\n第二段", "key_dynamic": "…", "actionable_advice": "…"}`,
+    ).join(',\n');
 
-    return `請依下列兩人的西洋占星本命盤與比對盤（synastry）資料，用繁體中文（台灣用語）解讀兩人的關係。
+    return `請依下列兩人的西洋占星本命盤與比對盤（synastry）資料，用台灣繁體中文寫一份雙人合盤解析。資料已經過權重計算（每個跨盤接觸 1–100 分），每個板塊只列出分配給它的高權重接觸，請以這些為主要依據。
 
-解讀原則：
-- 回歸黃道、地心座標；相位容許度：太陽／月亮 8°、行星 6°、交點／凱龍／上升 3°（取兩者較大者），已略過外行星彼此之間的同世代相位。
-- 以日月、金火、月月、水水、上升與土星接觸為主軸，再看行星落入對方宮位。
-- 每個相位都要依「哪兩顆星、誰的星、合／和諧／張力」具體說明，不要用同一段話套在不同相位上；土星接觸請說明土星一方與另一方各自的感受。${timeRule}
-- 語氣以鼓勵、先講優點為主：每一段先寫兩人相處的優點與彼此給對方的珍貴之處，盡量具體（誰給了誰什麼、一個溫暖的生活畫面）；挑戰也要寫，但篇幅較短、語氣溫和，並當成成長點，附上可以實際做的小建議（例如「可以試試……」「當……時，……就能變成你們的優勢」）。優點與挑戰的篇幅大約 2:1。
-- 避免嚴厲字眼（例如「衝突的熱點」「爆發」「冷處理」「情緒勒索」），在不失真的前提下改用溫和的說法；張力相位與土星接觸也要說出它帶來的吸引力、成長與承諾。${fit.difficult ? `\n- 注意：這組合盤的核心相位明顯偏向張力（太陽、月亮、金星、火星與上升之間張力 ${fit.coreTense} 組、和諧 ${fit.coreSoft} 組${fit.saturnHard > 0 ? `，土星緊張接觸 ${fit.saturnHard} 組` : ''}，日月、金火、月金之間沒有順向連結）。請誠實、尊重地說明兩人確實比較不合，挑戰的篇幅可以多於優點，並給具體可行的做法；仍要指出兩人之間真實且值得珍惜的部分，不要硬湊正面。` : ''}
-- 這是星盤結構說明，不是緣分的判決；請給可對照生活的觀察與建議，避免恐嚇或保證。
+## 寫作規則
+- 聚焦「${a.name}與${b.name}互動產生的化學反應」，嚴禁寫成兩份獨立的個人分析。
+- 禁止條列式拼接：不要寫「${a.name}的太陽在XX，代表…；${b.name}的月亮在OO，代表…」這類句子，要把高權重配置融合成自然流暢的心理剖析。
+- 去術語化：不要直接拋出「刑剋」「入廟」「容許度」「比較盤八宮」這類占星術語；先用白話的心理描述說明效果，只在句末括號內簡短附註星盤依據。
+  - 錯誤示範：「A 的火星刑剋 B 的月亮，且 B 的土星落入 A 的七宮。」
+  - 正確示範：「在情緒表達上，一方直來直往的行動力，有時會無意間刺傷另一方敏感的內心（源自於雙方行動力與安全感能量的碰撞）。」
+- 需要指明是誰時直接用名字（${a.name}、${b.name}），不要用「他」「她」。
+- 先讀「互動主軸」，它是五個板塊共同的脈絡：「一起時的亮點與發揮特色」與「兩人需磨合的地方」要互為表裡（例如吸引彼此的「自由感」，在磨合期往往會變成「缺乏安全感」）。
+- 不重複：同一句話、同一個形容詞或句型不要在不同板塊重複出現；前面提過的特質，後面要轉成該板塊的具體生活場景。
+${tone}
+- 只用台灣繁體中文與台灣慣用語，不要出現簡體字或中國大陸用語，也不要翻譯腔。${timeRule}
+- 這是星盤結構說明，不是緣分的判決；避免恐嚇或保證。
+
+## 互動主軸
+${axis}
+
+## 各板塊的高權重接觸
+${sections}
 
 ## 兩人星盤
 ${chartBlock(a)}
 
 ${chartBlock(b)}
 
-## 比對相位
-${aspects}
-
-## 宮位疊加
-${overlays}
-
-請先總覽兩人的吸引與互補，再依下列四個主題分段，每段都要比較兩人的差異，並各舉 2 個具體的日常場景（例如週末怎麼過、規劃旅行、吵架當下與吵完之後、紀念日怎麼過）。每段先寫兩人在這方面相處順利的優點，再用較短的篇幅寫可以一起成長的地方與小建議（優點約占三分之二）；請用自然的敘述，不要每段都套用「優點是…；缺點是…」的同一句型：
-1. 個性：依兩人的太陽與上升星座（及元素），說明各自的性格與相處時的互補或摩擦。
-2. 兩人思考方式：依水星星座與元素、水星之間及水星與土星／火星的相位，說明各自怎麼想事情、做決定，以及溝通時容易卡住的地方。
-3. 處理矛盾的方法：依火星星座、火星與土星／月亮的相位，說明各自生氣與吵架的樣子；再依月亮星座說明吵完各自需要什麼才能和好。
-4. 感受親密及愛的方式：依金星星座說明各自怎麼表達與接收愛，依月亮星座說明什麼讓各自安心，並參考金火、月金、月月、日月相位。
-接著補充「成長課題」與「長期相處」，再給兩人各 3 條相處提醒；最後用 2–3 句寫「${fit.difficult ? '這段關係的課題與禮物' : '這段關係的禮物'}」：依兩人最緊的和諧相位、日月金星的接觸、元素互補或宮位疊加，說出兩人在一起最珍貴的地方${fit.difficult ? '，並誠實說明要讓這段關係走得好需要付出什麼' : ''}。`;
+## 輸出格式
+只輸出一個 JSON 陣列，依序包含上面五個板塊，不要加任何其他文字或 Markdown。每個物件的欄位：
+- section_id：照上面給的 id。
+- section_title：照上面給的標題。
+- hook_quote：一句點破這兩人關係核心的金句，20 字以內，要專屬這兩人，不要放之四海皆準。
+- core_insight：主體解析，2 個短段落，用 \\n 分隔，每段 80 字以內。
+- key_dynamic：具體相處場景（兩人最容易在什麼時刻感到心靈相通，或何時會築起防備），60 字以內。
+- actionable_advice：一條給兩人的具體相處建議，50 字以內。
+格式範例：
+[
+${example}
+]`;
 }

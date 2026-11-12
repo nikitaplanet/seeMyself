@@ -22,6 +22,8 @@ export interface MeaningItem {
     term: string;
     field: string;
     meaning: string;
+    /** Optional one-line hook shown above the meaning (星盤準則 hook_quote, ≤ 20 字). */
+    hook?: string;
 }
 
 const TYPE_OPERATE: Record<HDType, string> = {

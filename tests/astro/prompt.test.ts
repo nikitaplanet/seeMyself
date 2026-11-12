@@ -10,21 +10,55 @@ const INPUT = {
 };
 
 describe('buildAstroAiPrompt', () => {
-    it('includes planets, angles, houses, aspects, and reading instructions', () => {
-        const text = buildAstroAiPrompt(computeAstro(INPUT));
+    const text = buildAstroAiPrompt(computeAstro(INPUT));
+
+    it('includes the chart data', () => {
         expect(text).toContain('請依下列西洋占星本命盤資料');
         expect(text).toContain('- 太陽：雙子');
         expect(text).toContain('上升 ASC：');
         expect(text).toContain('宮位制：普拉西度制');
         expect(text).toContain('第 12 宮：');
-        expect(text).toContain('容許度');
-        expect(text).toContain('3～5 條務實建議');
+    });
+
+    it('asks for the six sections with weighted configurations', () => {
+        for (const t of [
+            '個性與日常特色',
+            '底層邏輯思考方式',
+            '面對壓力的顯現',
+            '感情模式',
+            '工作與天賦潛能',
+            '核心優缺點',
+        ]) {
+            expect(text).toContain(t);
+        }
+        expect(text).toContain('## 權重最高的配置（依板塊）');
+        expect(text).toMatch(/- \[\d+\] 上升 處女/);
+    });
+
+    it('states chaining, de-jargon, no-concatenation and strict JSON rules', () => {
+        expect(text).toContain('上下文傳遞');
+        expect(text).toContain('禁止條列式拼接');
+        expect(text).toContain('去術語化');
+        for (const k of [
+            'section_id',
+            'section_title',
+            'hook_quote',
+            'core_insight',
+            'key_dynamic',
+            'actionable_advice',
+        ]) {
+            expect(text).toContain(`"${k}"`);
+        }
+        expect(text).toContain('限 20 字內');
+        expect(text).toContain('每段不超過 80 字');
+        expect(text).toContain('限 60 字內');
+        expect(text).toContain('限 50 字內');
     });
 
     it('warns about the unknown birth time and leaves out houses', () => {
-        const text = buildAstroAiPrompt(computeAstro(INPUT, true));
-        expect(text).toContain('出生時間不確定');
-        expect(text).toContain('（無宮位資料）');
-        expect(text).not.toContain('上升 ASC：');
+        const t = buildAstroAiPrompt(computeAstro(INPUT, true));
+        expect(t).toContain('出生時間不確定');
+        expect(t).toContain('（無宮位資料）');
+        expect(t).not.toContain('上升 ASC：');
     });
 });

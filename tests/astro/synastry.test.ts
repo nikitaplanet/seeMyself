@@ -7,10 +7,28 @@ import {
     astroFit,
     astroSynastryItems,
     buildAstroSynastryAiPrompt,
+    clampZh,
     houseIn,
     interAspects,
     isKeyPair,
+    LIMITS,
+    type AstroPartner,
 } from '@/lib/astro/synastry';
+import {
+    allocateSections,
+    axisContactsOf,
+    interactionAxis,
+    MAX_PER_SECTION,
+    orbBase,
+    scoreAspect,
+    scoreAxis,
+    scoreHouse,
+    SECTION_ORDER,
+    SECTION_TITLES,
+    THEMES,
+    weighContacts,
+    weighSynastry,
+} from '@/lib/astro/synastryWeight';
 import type { AstroBody, AstroBodyKey, AstroChart } from '@/lib/astro/types';
 
 function chart(
@@ -38,7 +56,10 @@ function chart(
         houses:
             asc === undefined
                 ? null
-                : Array.from({ length: 12 }, (_, i) => ({ ...zodiacPos(asc + i * 30), house: i + 1 })),
+                : Array.from({ length: 12 }, (_, i) => ({
+                      ...zodiacPos(asc + i * 30),
+                      house: i + 1,
+                  })),
         houseSystem: asc === undefined ? null : 'wholeSign',
         houseSystemLabel: null,
         houseNote: null,
@@ -50,28 +71,44 @@ function chart(
 
 describe('aspectBetween — orbs', () => {
     it('luminaries get 8°', () => {
-        expect(aspectBetween({ key: 'sun', longitude: 0 }, { key: 'moon', longitude: 7.5 })).toEqual({
+        expect(
+            aspectBetween({ key: 'sun', longitude: 0 }, { key: 'moon', longitude: 7.5 }),
+        ).toEqual({
             type: 'conjunction',
             angle: 0,
             orb: 7.5,
         });
-        expect(aspectBetween({ key: 'sun', longitude: 0 }, { key: 'moon', longitude: 8.5 })).toBeNull();
+        expect(
+            aspectBetween({ key: 'sun', longitude: 0 }, { key: 'moon', longitude: 8.5 }),
+        ).toBeNull();
     });
     it('planets get 6°, and a pair uses the larger orb', () => {
-        expect(aspectBetween({ key: 'mars', longitude: 0 }, { key: 'venus', longitude: 7 })).toBeNull();
-        expect(aspectBetween({ key: 'mars', longitude: 10 }, { key: 'venus', longitude: 100.5 })?.type).toBe('square');
-        expect(aspectBetween({ key: 'northNode', longitude: 0 }, { key: 'mars', longitude: 64 })).toMatchObject({
+        expect(
+            aspectBetween({ key: 'mars', longitude: 0 }, { key: 'venus', longitude: 7 }),
+        ).toBeNull();
+        expect(
+            aspectBetween({ key: 'mars', longitude: 10 }, { key: 'venus', longitude: 100.5 })?.type,
+        ).toBe('square');
+        expect(
+            aspectBetween({ key: 'northNode', longitude: 0 }, { key: 'mars', longitude: 64 }),
+        ).toMatchObject({
             type: 'sextile',
             orb: 4,
         });
-        expect(aspectBetween({ key: 'northNode', longitude: 0 }, { key: 'chiron', longitude: 4 })).toBeNull();
+        expect(
+            aspectBetween({ key: 'northNode', longitude: 0 }, { key: 'chiron', longitude: 4 }),
+        ).toBeNull();
     });
     it('wraps around 0° Aries', () => {
-        expect(aspectBetween({ key: 'sun', longitude: 359 }, { key: 'moon', longitude: 1 })).toMatchObject({
+        expect(
+            aspectBetween({ key: 'sun', longitude: 359 }, { key: 'moon', longitude: 1 }),
+        ).toMatchObject({
             type: 'conjunction',
             orb: 2,
         });
-        expect(aspectBetween({ key: 'venus', longitude: 350 }, { key: 'mars', longitude: 172 })).toMatchObject({
+        expect(
+            aspectBetween({ key: 'venus', longitude: 350 }, { key: 'mars', longitude: 172 }),
+        ).toMatchObject({
             type: 'opposition',
             orb: 2,
         });
@@ -129,188 +166,580 @@ describe('house overlays', () => {
     });
 });
 
-describe('report from real charts', () => {
-    const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
-    const a = computeAstro({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE });
-    const b = computeAstro({ date: '1992-11-03', time: '08:15', timezone: 'Asia/Taipei', place: PLACE });
-    const syn = analyzeAstroSynastry(a, b);
+// ---------------------------------------------------------------------------
+// Weighting engine (準則 §3B)
+// ---------------------------------------------------------------------------
 
-    it('is clean and mentions both people', () => {
-        const items = astroSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
-        const all = items.map((i) => `${i.term}${i.field}${i.meaning}`).join('\n');
-        expect(all).not.toMatch(/undefined|null|NaN/);
-        expect(all).toContain('甲的');
-        expect(all).toContain('乙的');
-        expect(items.map((i) => i.term)).toEqual([
-            '重點相位',
-            '其他相位',
-            '和諧與張力',
-            '宮位疊加',
-            '日常相處',
-            '相處建議',
-            '這段關係的禮物',
-        ]);
-        const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
-        expect(prompt).toContain('## 比對相位');
-        expect(prompt).not.toMatch(/undefined|NaN/);
+describe('weight rules', () => {
+    it('base score by orb tier', () => {
+        expect([0.5, 1.5, 2.5, 3.5, 5, 7].map(orbBase)).toEqual([30, 24, 18, 14, 8, 4]);
     });
 
-    it('prompt asks for the four daily-life themes', () => {
-        const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
-        for (const t of ['個性', '兩人思考方式', '處理矛盾的方法', '感受親密及愛的方式']) expect(prompt).toContain(t);
-        expect(prompt).toContain('語氣以鼓勵、先講優點為主');
-        expect(prompt).toContain('2:1');
-        expect(prompt).toContain('這段關係的禮物');
-        expect(prompt).not.toContain('比較不合');
-    });
-});
-
-describe('日常相處 and pair-specific copy', () => {
-    // Pair 1: fire Sun / earth Venus vs water Sun / air Venus. Pair 2: everything earth vs earth.
-    const p1a = chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 100 }, { asc: 0 });
-    const p1b = chart({ sun: 95, mercury: 100, venus: 70, mars: 110, moon: 190 }, { asc: 90 });
-    const p2a = chart({ sun: 35, mercury: 40, venus: 45, mars: 50, moon: 160 }, { asc: 30 });
-    const p2b = chart({ sun: 275, mercury: 280, venus: 285, mars: 290, moon: 150 }, { asc: 270 });
-    const daily = (x: AstroChart, y: AstroChart) =>
-        astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y)).find(
-            (i) => i.term === '日常相處',
-        )!.meaning;
-
-    it('exists, covers the four themes and differs between pairs', () => {
-        const d1 = daily(p1a, p1b);
-        const d2 = daily(p2a, p2b);
-        for (const t of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']) {
-            expect(d1).toContain(t);
-            expect(d2).toContain(t);
-        }
-        // Each heading sits alone on its line and is followed by 2+ separate paragraph lines.
-        for (const d of [d1, d2]) {
-            const lines = d.split('\n');
-            for (const t of ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】']) {
-                const i = lines.indexOf(t);
-                expect(i).toBeGreaterThanOrEqual(0);
-                expect(lines[i + 1]).toBeTruthy();
-                expect(lines[i + 2]).toBeTruthy();
-                expect(lines[i + 1].startsWith('【')).toBe(false);
-                expect(lines[i + 2].startsWith('【')).toBe(false);
-            }
-            const order = ['【個性】', '【思考方式】', '【處理矛盾】', '【感受親密與愛】'].map((t) => lines.indexOf(t));
-            expect([...order].sort((x, y) => x - y)).toEqual(order);
-        }
-        expect(d1).not.toEqual(d2);
-        expect(d1).toContain('甲太陽在牡羊');
-        expect(d2).toContain('乙太陽在摩羯');
-        expect(d2).toContain('兩人的金星都是土象');
-        expect(d1).not.toMatch(/undefined|NaN/);
+    it('+35 for personal × personal under 2°, +10 for other personal contacts', () => {
+        expect(scoreAspect({ a: 'venus', b: 'mars', orb: 1.5 })).toBe(24 + 35);
+        expect(scoreAspect({ a: 'sun', b: 'moon', orb: 0.2 })).toBe(30 + 35);
+        // Personal but not tight: only the small personal bonus.
+        expect(scoreAspect({ a: 'venus', b: 'mars', orb: 2.5 })).toBe(18 + 10);
+        expect(scoreAspect({ a: 'jupiter', b: 'venus', orb: 0.5 })).toBe(30 + 10);
+        expect(scoreAspect({ a: 'jupiter', b: 'neptune', orb: 0.5 })).toBe(30);
     });
 
-    it('hedges the Moon and ASC when a birth time is unknown', () => {
-        const d = daily(chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 92 }, { timeUnknown: true }), p1b);
-        expect(d).toContain('甲的出生時間不確定，上升無法判斷');
-        expect(d).toContain('月亮可能在雙子或巨蟹');
+    it('+30 for Node / Saturn / Pluto tight on a personal planet', () => {
+        expect(scoreAspect({ a: 'saturn', b: 'moon', orb: 2.5 })).toBe(18 + 30);
+        expect(scoreAspect({ a: 'venus', b: 'northNode', orb: 0.5 })).toBe(30 + 30);
+        expect(scoreAspect({ a: 'pluto', b: 'sun', orb: 1 })).toBe(24 + 30);
+        expect(scoreAspect({ a: 'saturn', b: 'moon', orb: 3.5 })).toBe(14 + 10);
+        expect(scoreAspect({ a: 'saturn', b: 'jupiter', orb: 0.5 })).toBe(30);
     });
 
-    it('aspect notes depend on the pair and the aspect family', () => {
-        const items = (x: AstroChart, y: AstroChart) =>
-            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y))[0].meaning;
-        const venusMarsSoft = items(chart({ venus: 0 }), chart({ mars: 120 }));
-        const venusMarsHard = items(chart({ venus: 0 }), chart({ mars: 90 }));
-        const sunMoonSoft = items(chart({ sun: 0 }), chart({ moon: 120 }));
-        const body = (s: string) => s.split('：').slice(1).join('：');
-        expect(body(venusMarsSoft)).not.toEqual(body(venusMarsHard));
-        expect(body(venusMarsSoft)).not.toEqual(body(sunMoonSoft));
-        // Roles follow whose planet it is: 乙 holds Mars, so 乙 is the one who pursues.
-        expect(venusMarsSoft).toContain('乙的主動');
-    });
-
-    it('easy aspects name a cost, tense ones a gift, and daily tags do not repeat', () => {
-        const first = (x: AstroChart, y: AstroChart) =>
-            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y))[0].meaning;
-        const soft = first(chart({ moon: 0 }), chart({ moon: 120 }));
-        expect(soft).toContain('難開口的事');
-        // Strength first: the growth point comes after the warm sentence.
-        expect(soft.indexOf('住在一起舒服')).toBeLessThan(soft.indexOf('難開口的事'));
-        expect(first(chart({ saturn: 0 }), chart({ venus: 90 }))).toContain('經得起考驗');
-        // 甲's Saturn squares 乙's Mars and Moon, 甲's Mars squares 乙's Saturn: three hard tags in 處理矛盾.
-        const d = astroSynastryItems(
-            { name: '甲', chart: chart({ saturn: 0, mars: 200, sun: 40, mercury: 40, venus: 40 }) },
-            { name: '乙', chart: chart({ mars: 90, moon: 270, saturn: 290, sun: 40, mercury: 40, venus: 40 }) },
-            analyzeAstroSynastry(
-                chart({ saturn: 0, mars: 200, sun: 40, mercury: 40, venus: 40 }),
-                chart({ mars: 90, moon: 270, saturn: 290, sun: 40, mercury: 40, venus: 40 }),
-            ),
-        ).find((i) => i.term === '日常相處')!.meaning;
-        const tags = d.split('\n').filter((l) => l.startsWith('・相位加碼')).map((l) => l.split('——')[1]);
-        expect(tags.length).toBeGreaterThan(1);
-        expect(new Set(tags).size).toBe(tags.length);
-    });
-
-    it('closing gift is built from the pair and differs between pairs', () => {
-        const gift = (x: AstroChart, y: AstroChart) =>
-            astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeAstroSynastry(x, y)).at(-1)!;
-        const g1 = gift(p1a, p1b);
-        const g2 = gift(p2a, p2b);
-        expect(g1.term).toBe('這段關係的禮物');
-        expect(g1.meaning).not.toEqual(g2.meaning);
-        expect(g1.meaning).toContain('最珍貴的');
-        expect(g1.meaning).not.toMatch(/undefined|NaN/);
-        expect(g1.meaning.split('\n').length).toBeGreaterThanOrEqual(2);
-        const sentences = g1.meaning.split('。').filter(Boolean).length;
-        expect(sentences).toBeGreaterThanOrEqual(2);
-        expect(sentences).toBeLessThanOrEqual(3);
-        // Only tense contacts: still names something real to treasure.
-        const tense = gift(chart({ sun: 0, venus: 10 }), chart({ moon: 90, mars: 190 }));
-        expect(tense.meaning).toMatch(/最珍貴的|值得珍惜/);
-    });
-});
-
-describe('fit signal', () => {
-    // 甲 and 乙: Sun–Moon square, Venus–Mars opposition, Sun–Sun square, Moon–Moon square, Saturn square Sun.
-    const hardA = chart({ sun: 0, moon: 100, venus: 200, mars: 300, saturn: 180 });
-    const hardB = chart({ sun: 90, moon: 190, venus: 140, mars: 20, saturn: 250 });
-
-    it('flags a clearly difficult pair and says so honestly', () => {
-        const syn = analyzeAstroSynastry(hardA, hardB);
-        const fit = astroFit(syn);
-        expect(fit.difficult).toBe(true);
-        expect(fit.coreTense).toBeGreaterThanOrEqual(3);
-        expect(fit.bond).toBe(false);
-        const items = astroSynastryItems({ name: '甲', chart: hardA }, { name: '乙', chart: hardB }, syn);
-        const daily = items.find((i) => i.term === '日常相處')!.meaning;
-        expect(daily.split('\n')[0]).toBe('【先說在前面】');
-        expect(daily.split('\n')[1]).toContain('比較不合');
-        expect(daily).toContain('比較不合');
-        const last = items.at(-1)!;
-        expect(last.term).toBe('這段關係的課題與禮物');
-        expect(last.meaning).toContain('需要');
-        expect(last.meaning).toContain('值得珍惜');
-        expect(items.find((i) => i.term === '相處建議')!.meaning).toContain('三個實際的做法');
-        const prompt = buildAstroSynastryAiPrompt({ name: '甲', chart: hardA }, { name: '乙', chart: hardB }, syn);
-        expect(prompt).toContain('比較不合');
-    });
-
-    it('does not flag an ordinary pair, even one with some tension', () => {
-        for (const [x, y] of [
-            [
-                chart({ sun: 5, mercury: 10, venus: 40, mars: 0, moon: 100 }, { asc: 0 }),
-                chart({ sun: 95, mercury: 100, venus: 70, mars: 110, moon: 190 }, { asc: 90 }),
-            ],
-            [
-                chart({ sun: 35, mercury: 40, venus: 45, mars: 50, moon: 160 }, { asc: 30 }),
-                chart({ sun: 275, mercury: 280, venus: 285, mars: 290, moon: 150 }, { asc: 270 }),
-            ],
-        ]) {
-            const syn = analyzeAstroSynastry(x, y);
-            expect(astroFit(syn).difficult).toBe(false);
-            const items = astroSynastryItems({ name: '甲', chart: x }, { name: '乙', chart: y }, syn);
-            expect(items.find((i) => i.term === '日常相處')!.meaning).not.toContain('【先說在前面】');
-            expect(items.at(-1)!.term).toBe('這段關係的禮物');
-        }
-        const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
-        const real = analyzeAstroSynastry(
-            computeAstro({ date: '1990-05-12', time: '14:30', timezone: 'Asia/Taipei', place: PLACE }),
-            computeAstro({ date: '1992-11-03', time: '08:15', timezone: 'Asia/Taipei', place: PLACE }),
+    it('+35 for a planet within 3° of the other person’s ASC / DSC / MC / IC', () => {
+        expect(scoreAxis('venus', 1)).toBe(24 + 35 + 10);
+        expect(scoreAxis('saturn', 0.5)).toBe(30 + 35);
+        // ASC 0° → DSC 180°, MC 270°, IC 90°.
+        const b = chart({ sun: 50 }, { asc: 0 });
+        const list = axisContactsOf(
+            'a',
+            chart({ venus: 1, mars: 181.5, jupiter: 268, saturn: 93.5, sun: 45 }),
+            b,
         );
-        expect(astroFit(real)).toMatchObject({ difficult: false, bond: true });
+        expect(list.map((c) => [c.body, c.axis])).toEqual([
+            ['venus', 'asc'],
+            ['mars', 'dsc'],
+            ['jupiter', 'mc'],
+        ]);
+        expect(list[0].score).toBe(scoreAxis('venus', 1));
+    });
+
+    it('house overlays score by planet and house', () => {
+        expect(scoreHouse('moon', 4)).toBe(30);
+        expect(scoreHouse('moon', 3)).toBe(20);
+        expect(scoreHouse('saturn', 7)).toBe(22);
+        expect(scoreHouse('jupiter', 9)).toBe(12);
+    });
+
+    it('scores stay within 1–100 and come sorted', () => {
+        const a = chart(
+            { sun: 0, moon: 100, venus: 200, mars: 300, saturn: 180, northNode: 30 },
+            { asc: 10 },
+        );
+        const b = chart({ sun: 0.5, moon: 220, venus: 301, mars: 199, saturn: 90 }, { asc: 100 });
+        const list = weighContacts(a, b, analyzeAstroSynastry(a, b));
+        expect(list.length).toBeGreaterThan(0);
+        for (const c of list) {
+            expect(c.score).toBeGreaterThanOrEqual(1);
+            expect(c.score).toBeLessThanOrEqual(100);
+        }
+        expect(list.map((c) => c.score)).toEqual(
+            [...list.map((c) => c.score)].sort((x, y) => y - x),
+        );
+        // Aspects to the Ascendant are left to the axis rule.
+        expect(
+            list.some((c) => c.kind === 'aspect' && (c.aspect.a === 'asc' || c.aspect.b === 'asc')),
+        ).toBe(false);
+    });
+
+    it('maps contacts to the five sections: each once, at most 5 per section, by section focus', () => {
+        const a = chart({
+            sun: 0,
+            moon: 100,
+            venus: 200,
+            mars: 300,
+            mercury: 10,
+            saturn: 130,
+            northNode: 40,
+        });
+        const b = chart({
+            sun: 120,
+            moon: 220,
+            venus: 30,
+            mars: 290,
+            mercury: 100,
+            saturn: 90,
+            uranus: 210,
+        });
+        const w = weighSynastry(a, b, analyzeAstroSynastry(a, b));
+        const ids = SECTION_ORDER.flatMap((s) => w.sections[s].map((c) => c.id));
+        expect(new Set(ids).size).toBe(ids.length);
+        for (const s of SECTION_ORDER)
+            expect(w.sections[s].length).toBeLessThanOrEqual(MAX_PER_SECTION);
+        const find = (x: string, y: string) =>
+            SECTION_ORDER.find((s) =>
+                w.sections[s].some(
+                    (c) => c.kind === 'aspect' && c.aspect.a === x && c.aspect.b === y,
+                ),
+            );
+        expect(find('sun', 'sun')).toBe('synastry_highlight'); // trine
+        expect(find('mars', 'uranus')).toBe('synastry_friction'); // square
+        expect(find('moon', 'moon')).toBe('synastry_intimacy'); // trine
+        expect(find('saturn', 'moon')).toBe('synastry_lesson'); // square
+        expect(find('mercury', 'mercury')).toBe('synastry_daily'); // square
+    });
+
+    it('caps a section at 5 and spills to the next fitting one', () => {
+        const contacts = Array.from({ length: 7 }, (_, i) => ({
+            kind: 'house' as const,
+            id: `h${i}`,
+            from: 'a' as const,
+            body: 'sun' as const,
+            house: 7,
+            score: 50 - i,
+            theme: 'admire' as const,
+            prefs: ['synastry_highlight' as const, 'synastry_daily' as const],
+        }));
+        const out = allocateSections(contacts);
+        expect(out.synastry_highlight.map((c) => c.id)).toEqual(['h0', 'h1', 'h2', 'h3', 'h4']);
+        expect(out.synastry_daily.map((c) => c.id)).toEqual(['h5', 'h6']);
+    });
+
+    it('互動主軸 is the one or two heaviest themes', () => {
+        const a = chart({ venus: 0, mars: 200, moon: 100 });
+        const b = chart({ mars: 0.5, venus: 199, moon: 220 });
+        const axis = interactionAxis(weighContacts(a, b, analyzeAstroSynastry(a, b)));
+        expect(axis.length).toBeGreaterThanOrEqual(1);
+        expect(axis.length).toBeLessThanOrEqual(2);
+        expect(axis[0].id).toBe('spark');
+        expect(interactionAxis([])).toEqual([{ id: 'admire', score: 0 }]);
+    });
+
+    it('skips the axes and houses of a person whose birth time is unknown', () => {
+        const known = chart({ sun: 10, venus: 200, mars: 95 }, { asc: 0 });
+        const unknown = chart({ sun: 1, moon: 182, venus: 91 }, { asc: 90, timeUnknown: true });
+        const list = weighContacts(known, unknown, analyzeAstroSynastry(known, unknown));
+        // Nothing lands on the unknown person's angles or houses …
+        expect(list.some((c) => (c.kind === 'axis' || c.kind === 'house') && c.from === 'a')).toBe(
+            false,
+        );
+        // … and the unknown person's Moon is not used anywhere.
+        expect(list.some((c) => c.kind === 'aspect' && c.aspect.b === 'moon')).toBe(false);
+        expect(list.some((c) => c.kind !== 'aspect' && c.from === 'b' && c.body === 'moon')).toBe(
+            false,
+        );
+        // The known person's angles still count: 乙's Sun at 1° sits on 甲's ASC.
+        expect(
+            list.some(
+                (c) => c.kind === 'axis' && c.from === 'b' && c.body === 'sun' && c.axis === 'asc',
+            ),
+        ).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Report (準則 §4)
+// ---------------------------------------------------------------------------
+
+const PLACE = { name: '臺北市', lat: 25.04, lon: 121.53, countryCode: 'TW' };
+const real = (date: string, time: string, timeUnknown = false) =>
+    computeAstro({ date, time, timezone: 'Asia/Taipei', place: PLACE }, timeUnknown);
+
+const NORMAL: [AstroPartner, AstroPartner] = [
+    { name: '小明', chart: real('1990-05-12', '14:30') },
+    { name: '小華', chart: real('1992-11-03', '08:15') },
+];
+const TENSE: [AstroPartner, AstroPartner] = [
+    { name: '阿哲', chart: real('1988-03-21', '09:00') },
+    { name: '雅婷', chart: real('1985-02-10', '20:00') },
+];
+const UNKNOWN: [AstroPartner, AstroPartner] = [
+    { name: '志豪', chart: real('1991-08-08', '00:00', true) },
+    { name: '怡君', chart: real('1993-01-25', '06:40') },
+];
+// 甲 and 乙: Sun–Moon square, Venus–Mars opposition, Sun–Sun square, Moon–Moon square, Saturn square Sun.
+const HARD: [AstroPartner, AstroPartner] = [
+    { name: '甲', chart: chart({ sun: 0, moon: 100, venus: 200, mars: 300, saturn: 180 }) },
+    { name: '乙', chart: chart({ sun: 90, moon: 190, venus: 140, mars: 20, saturn: 250 }) },
+];
+
+const report = ([a, b]: [AstroPartner, AstroPartner]) =>
+    astroSynastryItems(a, b, analyzeAstroSynastry(a.chart, b.chart));
+const prompt = ([a, b]: [AstroPartner, AstroPartner]) =>
+    buildAstroSynastryAiPrompt(a, b, analyzeAstroSynastry(a.chart, b.chart));
+const sections = (p: [AstroPartner, AstroPartner]) => report(p).slice(0, 5);
+
+/** The labelled blocks of a card, e.g. { 解析: [p1, p2], 相處場景: [s], … }. */
+function blocks(meaning: string): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    let cur = '';
+    for (const line of meaning.split('\n')) {
+        const m = /^【([^】]+)】$/.exec(line);
+        if (m) out[(cur = m[1])] = [];
+        else out[cur].push(line);
+    }
+    return out;
+}
+
+const ALL_PAIRS = { NORMAL, TENSE, UNKNOWN, HARD };
+
+describe('report: five sections in card format', () => {
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: sections in order, then gift and 星盤依據',
+        (_, pair) => {
+            const items = report(pair);
+            expect(items.slice(0, 5).map((i) => i.term)).toEqual(
+                SECTION_ORDER.map((s) => SECTION_TITLES[s]),
+            );
+            expect(items.map((i) => i.term).slice(0, 5)).toEqual([
+                '一起時的亮點與發揮特色',
+                '兩人需磨合的地方',
+                '兩人的內心世界與親密度方式',
+                '關係的生命課題',
+                '日常相處與溝通模式',
+            ]);
+            expect(items[5].term).toMatch(/^這段關係的(課題與)?禮物$/);
+            expect(items[6].term).toBe('星盤依據');
+            expect(items).toHaveLength(7);
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: hook ≤ 20 字 and the fixed layout within limits',
+        (_, pair) => {
+            const fit = astroFit(analyzeAstroSynastry(pair[0].chart, pair[1].chart));
+            sections(pair).forEach((item, i) => {
+                expect(item.field.length).toBeGreaterThan(0);
+                expect(item.hook).toBeTruthy();
+                expect(item.hook!.length).toBeLessThanOrEqual(LIMITS.hook);
+                const lines = item.meaning.split('\n');
+                const upfront = i === 1 && fit.difficult;
+                const head = upfront ? lines.slice(2) : lines;
+                if (upfront) expect(lines[0]).toBe('【先說在前面】');
+                expect(head[0]).toBe('【解析】');
+                expect(head[3]).toBe('【相處場景】');
+                expect(head[5]).toBe('【給兩人的建議】');
+                expect(head).toHaveLength(7);
+                const b = blocks(item.meaning);
+                expect(b['解析']).toHaveLength(2);
+                for (const p of b['解析']) {
+                    expect(p.length).toBeGreaterThan(0);
+                    expect(p.length).toBeLessThanOrEqual(LIMITS.paragraph);
+                }
+                expect(b['相處場景'][0].length).toBeLessThanOrEqual(LIMITS.scene);
+                expect(b['給兩人的建議'][0].length).toBeLessThanOrEqual(LIMITS.advice);
+                for (const ls of Object.values(b))
+                    for (const l of ls) expect(l.trim()).not.toBe('');
+            });
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: clean, Taiwan Traditional, names not pronouns',
+        (_, pair) => {
+            const all = report(pair)
+                .map((i) => `${i.term}${i.field}${i.hook ?? ''}${i.meaning}`)
+                .join('\n');
+            expect(all).not.toMatch(/undefined|null|NaN/);
+            expect(all).not.toMatch(/(?<!其)[他她]/);
+            // Common simplified-only characters and mainland terms.
+            expect(all).not.toMatch(/[们这个说关爱时会对发现应该么开过还没让给为与热亲恋]/);
+            expect(all).not.toMatch(/信息|质量|视频|默认|优化|反馈/);
+            // No jargon in the five sections (the 星盤依據 card may name aspects).
+            const body = report(pair)
+                .slice(0, 6)
+                .map((i) => `${i.hook ?? ''}${i.meaning}`)
+                .join('\n');
+            expect(body).not.toMatch(/刑剋|入廟|容許度|比較盤|四分|三分|六分|對分|第 \d+ 宮/);
+            // No mechanical "X的太陽在XX" concatenation.
+            expect(body).not.toMatch(
+                /的(太陽|月亮|水星|金星|火星|上升)在(牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚)/,
+            );
+            expect(all).toContain(pair[0].name);
+            expect(all).toContain(pair[1].name);
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))('%s: sign and planet names only inside （…）', (_, pair) => {
+        // Sign names, planet / point names, and the stiff 「X座式」 form. No plain-language
+        // exceptions are needed: none of these words is used as an everyday word in the copy.
+        const NAMES =
+            /牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚|太陽|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星|北交點|凱龍|上升點|下降點|天頂|天底|座式/;
+        for (const item of report(pair).slice(0, 6)) {
+            let text = `${item.field}\n${item.hook ?? ''}\n${item.meaning}`;
+            // Strip parenthesised chart basis (innermost first).
+            for (let prev = ''; prev !== text; ) {
+                prev = text;
+                text = text.replace(/（[^（）]*）/g, '');
+            }
+            const hit = NAMES.exec(text);
+            expect(hit, `${item.term}: 「${hit?.[0]}」 outside parentheses in\n${text}`).toBeNull();
+        }
+    });
+
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: no sentence or clause repeats across sections',
+        (_, pair) => {
+            const items = report(pair).slice(0, 6);
+            const seen = new Map<string, number>();
+            items.forEach((item, idx) => {
+                const text = `${item.hook ?? ''}\n${item.meaning}`.replace(/【[^】]+】/g, '');
+                const parts = new Set(
+                    text
+                        .split(/[。！？\n]/)
+                        .flatMap((s) => [s, ...s.split(/[，；：]/)])
+                        .map((s) => s.replace(/（[^）]*）/g, '').trim())
+                        // The quoted 互動主軸 words are meant to echo between 亮點 and 磨合.
+                        .filter((s) => s.length >= 8 && !/「[^」]+」/.test(s)),
+                );
+                for (const s of parts) {
+                    const prev = seen.get(s);
+                    expect(
+                        prev === undefined || prev === idx,
+                        `「${s}」 repeats in sections ${prev} and ${idx}`,
+                    ).toBe(true);
+                    seen.set(s, idx);
+                }
+            });
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))('%s: 亮點 and 磨合 mirror the 互動主軸', (_, pair) => {
+        const [a, b] = pair;
+        const w = weighSynastry(a.chart, b.chart, analyzeAstroSynastry(a.chart, b.chart));
+        const main = THEMES[w.axis[0].id];
+        const [hl, fr] = sections(pair);
+        expect(blocks(hl.meaning)['解析'][0]).toContain(`「${main.light}」`);
+        const frFirst = blocks(fr.meaning)['解析'][0];
+        expect(frFirst).toContain(`「${main.light}」`);
+        expect(frFirst).toContain(`「${main.shadow}」`);
+        expect(frFirst.indexOf(main.light)).toBeLessThan(frFirst.indexOf(main.shadow));
+        const ref = report(pair)[6].meaning;
+        expect(ref.split('\n')[0]).toContain(`互動主軸：${main.label}`);
+    });
+
+    it('output differs between pairs', () => {
+        const x = sections(NORMAL);
+        const y = sections(TENSE);
+        const z = sections(UNKNOWN);
+        for (let i = 0; i < 5; i++) {
+            expect(x[i].meaning).not.toEqual(y[i].meaning);
+            expect(x[i].meaning).not.toEqual(z[i].meaning);
+            expect(y[i].meaning).not.toEqual(z[i].meaning);
+        }
+        expect(x[0].hook).not.toEqual(y[0].hook);
+    });
+
+    it('roles follow whose planet it is', () => {
+        // 乙 holds Mars, 甲 holds Venus: each is described by their own planet's sign.
+        const pair: [AstroPartner, AstroPartner] = [
+            { name: '甲', chart: chart({ venus: 0 }) },
+            { name: '乙', chart: chart({ mars: 120 }) },
+        ];
+        const all = sections(pair)
+            .map((i) => i.meaning)
+            .join('\n');
+        // Composed from the signs: 甲's Venus in 牡羊, 乙's Mars in 獅子.
+        expect(all).toContain('乙想贏的好勝心');
+        expect(all).toContain('甲直接熱烈的愛');
+        expect(all).toContain('（甲的金星與乙的火星順向呼應）');
+    });
+
+    it('clampZh trims at a clause break', () => {
+        expect(clampZh('短句。', 10)).toBe('短句。');
+        const long = '第一段很長很長很長，第二段也很長很長很長，第三段還是很長很長很長。';
+        const out = clampZh(long, 20);
+        expect(out.length).toBeLessThanOrEqual(20);
+        expect(out.endsWith('。')).toBe(true);
+    });
+});
+
+describe('unknown birth time', () => {
+    it('skips that person’s axes and houses and says so', () => {
+        const items = report(UNKNOWN);
+        const ref = items[6].meaning;
+        expect(ref).toContain('志豪的出生時間不確定');
+        // Nothing lands on 志豪's angles or houses.
+        expect(ref).not.toMatch(/→ 志豪的第|志豪的(上升點|下降點|天頂|天底)/);
+        expect(ref).not.toMatch(/志豪的月亮/);
+        const body = items
+            .slice(0, 5)
+            .map((i) => i.meaning)
+            .join('\n');
+        expect(body).not.toMatch(/落入志豪的|貼近志豪的/);
+        expect(body).not.toMatch(/志豪的月亮/);
+    });
+
+    it('works when neither time is known', () => {
+        const pair: [AstroPartner, AstroPartner] = [
+            { name: '甲', chart: real('1990-05-12', '12:00', true) },
+            { name: '乙', chart: real('1992-11-03', '12:00', true) },
+        ];
+        const w = weighSynastry(
+            pair[0].chart,
+            pair[1].chart,
+            analyzeAstroSynastry(pair[0].chart, pair[1].chart),
+        );
+        expect(w.contacts.every((c) => c.kind === 'aspect')).toBe(true);
+        expect(sections(pair)).toHaveLength(5);
+    });
+});
+
+describe('honest mode (fit signal)', () => {
+    it('flags a clearly difficult pair and says so only in 磨合', () => {
+        for (const pair of [HARD, TENSE]) {
+            const fit = astroFit(analyzeAstroSynastry(pair[0].chart, pair[1].chart));
+            expect(fit.difficult).toBe(true);
+            const items = report(pair);
+            const fr = items[1].meaning.split('\n');
+            expect(fr[0]).toBe('【先說在前面】');
+            expect(fr[1]).toContain('坦白說');
+            expect(items[1].meaning).toContain('比較吃力');
+            for (const i of [0, 2, 3, 4]) expect(items[i].meaning).not.toContain('【先說在前面】');
+            expect(items[5].term).toBe('這段關係的課題與禮物');
+            expect(items[5].meaning).toMatch(/值得珍惜|真實的好/);
+            expect(prompt(pair)).toContain('比較不合');
+        }
+    });
+
+    it('a flagged pair leads 磨合 with its core tension', () => {
+        const fr = sections(HARD)[1].meaning;
+        expect(fr).toMatch(
+            /（甲的(太陽|月亮|金星|火星)與乙的(太陽|月亮|金星|火星)(互相拉扯|兩端對望)）/,
+        );
+    });
+
+    it('does not flag ordinary pairs', () => {
+        for (const pair of [NORMAL, UNKNOWN]) {
+            const syn = analyzeAstroSynastry(pair[0].chart, pair[1].chart);
+            expect(astroFit(syn).difficult).toBe(false);
+            const items = report(pair);
+            expect(items.some((i) => i.meaning.includes('【先說在前面】'))).toBe(false);
+            expect(items[5].term).toBe('這段關係的禮物');
+            expect(items[5].meaning.split('\n').length).toBeGreaterThanOrEqual(2);
+        }
+        expect(astroFit(analyzeAstroSynastry(NORMAL[0].chart, NORMAL[1].chart))).toMatchObject({
+            bond: true,
+        });
+    });
+});
+
+describe('AI prompt', () => {
+    it('asks for the five sections as strict JSON, with the weighted data and 互動主軸', () => {
+        const p = prompt(NORMAL);
+        expect(p).not.toMatch(/undefined|NaN/);
+        for (const s of SECTION_ORDER) {
+            expect(p).toContain(s);
+            expect(p).toContain(SECTION_TITLES[s]);
+        }
+        const order = SECTION_ORDER.map((s) => p.indexOf(`（section_id: ${s}）`));
+        expect([...order].sort((x, y) => x - y)).toEqual(order);
+        for (const k of [
+            'section_id',
+            'section_title',
+            'hook_quote',
+            'core_insight',
+            'key_dynamic',
+            'actionable_advice',
+        ])
+            expect(p).toContain(k);
+        expect(p).toContain('## 互動主軸');
+        expect(p).toMatch(/權重 \d+/);
+        expect(p).toContain('20 字以內');
+        expect(p).toContain('80 字以內');
+        expect(p).toContain('60 字以內');
+        expect(p).toContain('50 字以內');
+        expect(p).toContain('嚴禁寫成兩份獨立的個人分析');
+        expect(p).toContain('禁止條列式拼接');
+        expect(p).toContain('源自於雙方行動力與安全感能量的碰撞');
+        expect(p).toContain('互為表裡');
+        expect(p).toContain('2:1');
+        expect(p).not.toContain('比較不合');
+    });
+
+    it('flags unknown birth times', () => {
+        expect(prompt(UNKNOWN)).toContain('志豪的出生時間不確定');
+    });
+});
+
+describe('distinctiveness across pairs', () => {
+    // 20 real pairs spread over decades, seasons and times of day; two with an unknown birth time.
+    const PAIRS: [AstroPartner, AstroPartner][] = Array.from({ length: 20 }, (_, i) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const d1 = `${1970 + ((i * 13) % 31)}-${pad(1 + ((i * 7) % 12))}-${pad(1 + ((i * 17) % 28))}`;
+        const d2 = `${1972 + ((i * 11) % 29)}-${pad(1 + ((i * 5 + 4) % 12))}-${pad(1 + ((i * 19 + 9) % 28))}`;
+        const t1 = `${pad((i * 7 + 2) % 24)}:${pad((i * 29) % 60)}`;
+        const t2 = `${pad((i * 11 + 15) % 24)}:${pad((i * 37 + 8) % 60)}`;
+        return [
+            { name: '甲', chart: real(d1, t1, i === 4 || i === 15) },
+            { name: '乙', chart: real(d2, t2) },
+        ];
+    });
+
+    /** Text of the five sections and the gift card, names replaced, heading lines dropped. */
+    function body(items: ReturnType<typeof report>): string {
+        return items
+            .slice(0, 6)
+            .map((it) => `${it.hook ?? ''}\n${it.meaning}`)
+            .join('\n')
+            .split('\n')
+            .filter((l) => !/^【[^】]+】$/.test(l))
+            .join('\n')
+            .replace(/[甲乙]/g, 'X');
+    }
+
+    /** Share of reports containing each piece; returns the most shared one. */
+    function maxShare(split: RegExp, minLen: number): [string, number] {
+        const counts = new Map<string, number>();
+        for (const pair of PAIRS) {
+            const pieces = new Set(
+                body(report(pair))
+                    .split(split)
+                    .map((x) => x.trim())
+                    .filter((x) => x.length >= minLen),
+            );
+            for (const x of pieces) counts.set(x, (counts.get(x) ?? 0) + 1);
+        }
+        const [worst, n] = [...counts.entries()].sort((x, y) => y[1] - x[1])[0];
+        return [worst, n / PAIRS.length];
+    }
+
+    it('no sign or planet name outside （…） in any of the 20 reports', () => {
+        const NAMES =
+            /牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚|太陽|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星|北交點|凱龍|上升點|下降點|天頂|天底|座式/;
+        for (const pair of PAIRS)
+            for (const item of report(pair).slice(0, 6)) {
+                let text = `${item.field}\n${item.hook ?? ''}\n${item.meaning}`;
+                for (let prev = ''; prev !== text; ) {
+                    prev = text;
+                    text = text.replace(/（[^（）]*）/g, '');
+                }
+                const hit = NAMES.exec(text);
+                expect(hit, `${item.term}: 「${hit?.[0]}」 in\n${text}`).toBeNull();
+            }
+    });
+
+    it('no full sentence appears in more than 15% of the reports', () => {
+        const [worst, share] = maxShare(/[。！？\n]/, 6);
+        expect(share, `「${worst}」 in ${Math.round(share * 100)}% of reports`).toBeLessThanOrEqual(0.15);
+    });
+
+    it('no clause of 10+ characters appears in more than 30% of the reports', () => {
+        const [worst, share] = maxShare(/[，；。！？\n]/, 10);
+        expect(share, `「${worst}」 in ${Math.round(share * 100)}% of reports`).toBeLessThanOrEqual(0.3);
+    });
+
+    it('a shared Sun–Moon contact still reads differently in the gift card', () => {
+        const withSunMoon = PAIRS.filter(([a, b]) =>
+            analyzeAstroSynastry(a.chart, b.chart).aspects.some(
+                (x) =>
+                    x.type !== 'square' &&
+                    x.type !== 'opposition' &&
+                    ((x.a === 'sun' && x.b === 'moon') || (x.a === 'moon' && x.b === 'sun')),
+            ),
+        );
+        expect(withSunMoon.length).toBeGreaterThanOrEqual(2);
+        const gifts = withSunMoon.map((p) => report(p)[5].meaning);
+        expect(new Set(gifts).size).toBe(gifts.length);
+        // No line of one gift card reappears in another (names replaced).
+        const lines = gifts.flatMap((g) => [...new Set(g.replace(/[甲乙]/g, 'X').split('\n'))]);
+        expect(lines.filter((l, i) => lines.indexOf(l) !== i)).toEqual([]);
+    });
+
+    it('a shared Moon–Mars contact is worded from the signs involved', () => {
+        const withMoonMars = PAIRS.filter(([a, b]) =>
+            analyzeAstroSynastry(a.chart, b.chart).aspects.some(
+                (x) => (x.a === 'moon' && x.b === 'mars') || (x.a === 'mars' && x.b === 'moon'),
+            ),
+        );
+        expect(withMoonMars.length).toBeGreaterThanOrEqual(2);
+        const texts = withMoonMars.map((p) => body(report(p)));
+        expect(new Set(texts).size).toBe(texts.length);
     });
 });

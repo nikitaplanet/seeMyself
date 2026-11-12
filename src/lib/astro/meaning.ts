@@ -1,168 +1,50 @@
 import type { MeaningItem } from '@/lib/ui/personMeaning';
 import { BODY_NAMES, SIGN_ELEMENTS, SIGN_NAMES } from './labels';
-import type { AspectType, AstroAspect, AstroBody, AstroBodyKey, AstroChart } from './types';
+import {
+    ASC_KB,
+    BODY_VOICE,
+    ELEMENT_STRESS_HOOK,
+    ELEMENT_TONE,
+    HOUSE_KB,
+    JUPITER_KB,
+    MARS_KB,
+    MERCURY_KB,
+    MODE_NAMES,
+    MODE_TONE,
+    MOON_KB,
+    SATURN_KB,
+    SIGN_KB,
+    SUN_KB,
+    VENUS_KB,
+    type PlanetKey,
+} from './natalKb';
+import * as V from './natalKb';
+import {
+    AXIS_NAMES,
+    describeConfig,
+    HARD_ASPECTS,
+    NATAL_SECTIONS,
+    PLANET_KEYS,
+    SOFT_ASPECTS,
+    weighNatal,
+    type AspectConfig,
+    type AxisConfig,
+    type HouseConfig,
+    type NatalConfig,
+    type NatalSectionId,
+    type NatalWeights,
+    type PlacementConfig,
+} from './natalWeight';
+import type { AstroAspect, AstroBodyKey, AstroChart } from './types';
 
-// Rule-based interpretation text for the 星盤說明 card. Every sign table is indexed 0 = 牡羊 …
-// 11 = 雙魚 and must keep all 12 entries. Client-safe: imports labels/types only, never compute.ts.
+// 個人本命盤解析（星盤開發準則 §3A、§4），規則式產生。Six sections, each built only from that
+// section's top-weighted configurations (natalWeight.ts) and the local knowledge base
+// (natalKb.ts). Sections are written in order and share a context: every sentence already used
+// is skipped later, and a planet's adjectives switch to an alternate wording the second time it
+// shows up, so the same sentence never appears twice in a report.
+// Client-safe: imports labels/types/KB only, never compute.ts.
 
-type SignTable = readonly [
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-];
-
-const SUN: SignTable = [
-    '你的核心動力來自「開始」：有想法就想立刻試，勇氣和直接是你最大的本錢。盲點是耐性短，容易衝完就沒了後續。給自己留一個收尾的步驟，衝勁會更有成果。',
-    '你靠穩定與實感活得踏實，做事耐得住，也懂得享受生活裡具體的好東西。盲點是改變來得慢，固執起來不太聽勸。遇到新狀況時，先小規模試一下，比一口回絕更能保住你要的安穩。',
-    '你的生命力在好奇與交流裡，學得快、聊得開，能把不同的資訊串起來。盲點是興趣多、容易分散，事情開了頭不一定收得了。挑一兩件真正在意的事深挖下去，聰明才會累積成實力。',
-    '你重視歸屬與照顧，對身邊的人很有感，也很能營造讓人安心的氛圍。盲點是受傷時容易縮回殼裡，委屈不說出口。試著直接講出自己的需要，被照顧不等於欠人。',
-    '你需要真心地表達自己，熱情、慷慨，有讓場子亮起來的能力。盲點是很在意被肯定，沒被看見時容易受挫或硬撐面子。把舞台感用在你真正相信的事情上，掌聲反而來得自然。',
-    '你擅長把事情整理清楚、做到好用，對細節和品質有敏銳的眼光。盲點是對自己和別人都挑剔，容易陷在「還不夠好」。先完成再修正，允許八十分的版本先上場。',
-    '你在關係與平衡裡找到自己，懂得體貼、協調，對美感與公平很敏銳。盲點是太顧慮別人的感受，遲遲做不了決定。先問自己想要什麼，再去找平衡點，關係會更對等。',
-    '你投入的方式很深，重視真誠與信任，看事情能看到表面底下。盲點是不輕易放下，防備心也重，容易把事情悶著。挑幾個值得的人慢慢打開，深度關係會是你的力量來源。',
-    '你需要意義與遠方，樂觀、坦率，喜歡探索新的想法、地方和信念。盲點是承諾和細節容易被跳過，話也可能說得太直。在大方向之外，替自己訂幾個近期就能完成的小目標。',
-    '你務實、有長遠眼光，願意一步步把目標扛起來，責任感強。盲點是把價值綁在成就上，不太允許自己休息或示弱。把休息也排進計畫裡，走得遠比走得快更重要。',
-    '你重視獨立和自己的想法，看事情常有不同角度，也在意群體與公平。盲點是情感上容易保持距離，被說成難以親近。理念之外，偶爾讓人看見你的在乎，連結會更紮實。',
-    '你敏感、有同理心，想像力豐富，能感受到別人沒說出口的部分。盲點是界線模糊，容易被環境的情緒帶走，或用逃避來處理壓力。給自己固定的獨處與整理時間，把感受化成作品或行動。',
-];
-
-const MOON: SignTable = [
-    '情緒來得快、去得也快，需要能立刻行動、發洩的空間。盲點是一急就衝口而出，事後才後悔。感到煩躁時先動一動身體，再談事情會順很多。',
-    '安全感來自穩定的作息、熟悉的人和身體的舒服。盲點是不安時容易抓緊不放，或用吃、用買來安撫自己。替自己建立幾個可靠的日常儀式，心比較容易定下來。',
-    '用說話和思考來消化情緒，聊一聊、寫下來就會好很多。盲點是習慣把感受理性化，講了很多卻沒碰到真正的情緒。偶爾問自己「我現在是什麼感覺」，而不只是「我怎麼想」。',
-    '情感細膩，需要被照顧、也很會照顧人，家與親近的人是情緒的根。盲點是心情起伏大，受傷時容易退縮或翻舊帳。把需要說清楚，比等對方猜更能被好好接住。',
-    '需要被重視、被欣賞，溫暖大方，喜歡讓身邊的人開心。盲點是被冷落時自尊容易受傷，表面沒事、心裡在意。主動說出「我需要你的肯定」，並不丟臉。',
-    '透過把事情處理好來得到安心，習慣用照顧細節表達關心。盲點是焦慮時會過度檢查、挑剔自己。把擔心列成清單，分出「能做的」和「只能放下的」，心會輕一點。',
-    '需要和諧的關係與舒服的環境，衝突會讓你很不安。盲點是為了維持和平而壓下自己的不滿。小的不舒服早點說，比累積到受不了再爆發好處理得多。',
-    '情感濃烈而深，需要被完全信任，也很在意忠誠。盲點是受傷後不容易放下，可能用沉默或控制來保護自己。替強烈的情緒找一個安全的出口，例如書寫，或一個信得過的人。',
-    '需要自由與希望感，心情好壞常跟眼前有沒有新的可能有關。盲點是遇到沉重的情緒時想逃開，或用玩笑帶過。給自己一點空間，但也練習留下來把難受的事談完。',
-    '情緒內斂，靠掌控感和把事情扛好來得到安全。盲點是習慣自己撐著、不太示弱，壓力會悄悄累積。允許自己在信任的人面前放鬆，那不是軟弱。',
-    '需要情感上的空間與被尊重的獨立，太黏的關係會讓你想退開。盲點是習慣抽離來處理情緒，旁人會覺得你冷。說明你需要空間的原因，對方就比較不會誤會成拒絕。',
-    '情感敏銳、容易共感，很能體會他人的心情。盲點是吸收太多別人的情緒，分不清哪些是自己的。定期獨處，或藉由音樂、散步、親近水邊，幫自己把情緒沉澱下來。',
-];
-
-const ASC: SignTable = [
-    '給人的第一印象直接、有活力，遇到事情習慣先動手再說。這份衝勁能帶動場面，但也可能顯得急躁。重要的場合放慢半拍，讓別人跟得上你。',
-    '給人穩重、親切、不慌不忙的感覺，面對新環境會先觀察，再慢慢進入。可靠是你的名片，只是起步較慢，可能錯過時機。替自己設個期限，避免想太久。',
-    '給人機靈、好聊、反應快的印象，很容易和陌生人搭上話。缺點是可能顯得不夠定性。在重要的人面前把話說到做到，會讓人更信任你。',
-    '給人溫和、可親、帶點保護色的感覺，對環境的氣氛很敏感，熟了之後才會完全打開。不必勉強自己一開始就很外放，但可以主動釋出一點善意。',
-    '給人大方、有自信、存在感強的印象，一出場就容易被注意到。這份光采是資產，只是太在意形象時會累。讓真實的你出場，比完美的樣子更有吸引力。',
-    '給人細心、謹慎、有條理的印象，習慣先看清細節再行動。別人會覺得你可靠，也可能覺得你拘謹。偶爾放下「要先準備好」的標準，直接參與看看。',
-    '給人優雅、好相處、有分寸的印象，很懂得讓互動舒服。代價是容易為了討人喜歡而模糊自己的立場。適時說出不同的意見，反而讓人更尊重你。',
-    '給人沉穩、有點神祕、不容易看透的印象，觀察力很強。你不輕易交出自己，讓人既好奇又覺得有距離。確認對方值得信任後，讓人看見你柔軟的一面。',
-    '給人開朗、坦率、愛冒險的印象，喜歡新鮮的人事物。這份熱情很有感染力，但說話有時太直。多留一點餘地給別人的感受，你的真誠會更好入口。',
-    '給人成熟、穩重、有責任感的印象，年輕時常被當成比實際年齡大。你習慣先確認規則與目標再出手。在熟悉的場合允許自己放鬆，不必永遠當最可靠的那個。',
-    '給人獨特、友善但保有距離的印象，常帶著與眾不同的觀點。在團體裡自在，一對一的親密則較慢熱。想靠近一個人時，可以多一點直接的表示。',
-    '給人溫柔、隨和、帶點夢幻感的印象，很容易讓人放下防備。缺點是界線不清楚，容易被別人的要求推著走。學會溫和地說「不」，是保護自己的第一步。',
-];
-
-const MERCURY: SignTable = [
-    '想得快、說得直，喜歡馬上下結論、立刻討論。要留意的是話還沒聽完就想反駁。重要的對話先多問一個問題，再給意見。',
-    '思考踏實、慢而穩，一旦想通就不容易動搖，學習偏好具體、能動手的內容。被催的時候容易卡住，給自己需要的消化時間。',
-    '腦筋靈活、好奇，擅長收集資訊、換句話說和同時處理多件事。要留意的是想法跳得快，容易淺嘗即止。把想法寫下來整理，你的聰明會更有說服力。',
-    '思考帶著感受與記憶，很能聽出話裡的情緒。要留意的是心情會影響判斷，被批評時容易當成針對自己。重要的決定，等情緒平穩再定。',
-    '說話有自信、有感染力，擅長講故事和帶動氣氛。要留意的是不太喜歡被當眾糾正。把一點舞台讓給別人的意見，你的說服力反而更強。',
-    '分析細膩，擅長找出問題、整理流程，把事情講清楚。要留意的是容易過度思考、鑽牛角尖。設定「夠好就交」的標準，避免卡在細節裡。',
-    '善於從多個角度看事情，說話得體，是很好的協調者。要留意的是看得太周全，反而難下結論。先列出自己的優先順序，做決定會容易得多。',
-    '思考有深度，擅長看出動機和藏在底下的問題，問話常一針見血。要留意的是容易多疑，也不輕易說出自己的想法。分享觀察時，記得先給對方一點溫度。',
-    '想得大、看得遠，喜歡討論理念、哲學與各種可能。要留意的是對細節不耐煩，話容易說太滿。把大方向拆成具體步驟，構想才落得了地。',
-    '思考務實、有條理，重視結論和可行性。要留意的是對不實際的點子容易直接否決。偶爾讓自己天馬行空一下，再用你擅長的方式篩選。',
-    '思考獨立、有創見，常跳出框架提出新角度。要留意的是有時固守自己的邏輯，聽不進感受面的意見。把「這樣合理嗎」和「對方感覺如何」放在一起看。',
-    '思考靠直覺與想像，很能理解抽象、藝術或感性的東西。要留意的是條理和細節容易漏掉。重要的事寫成清單，靈感也隨手記下，才不會流失。',
-];
-
-const VENUS: SignTable = [
-    '喜歡就直接追，感情來得熱烈，欣賞有活力、坦率的人。要小心的是熱度退得也快。在關係裡多給一點時間，讓新鮮感之外的東西長出來。',
-    '重視穩定、忠誠與實際的照顧，對美食、觸感和好物很有品味。要小心的是佔有慾和習慣性強，不太願意改變相處模式。偶爾在關係裡加一點新的嘗試。',
-    '容易被聰明、有趣、聊得來的人吸引，感情需要對話與新鮮感。要小心的是容易三心二意，或停在表面。對真正在乎的人，記得讓對方看到你的認真。',
-    '用照顧與陪伴表達愛，重視家的感覺和安全感。要小心的是太在意對方的反應，或用付出換取被需要。也讓自己被照顧，關係才會對等。',
-    '愛得大方、浪漫，喜歡被寵愛，也喜歡讓對方覺得特別。要小心的是很需要被欣賞，對方一冷淡就很受傷。把期待說出口，比等對方察覺更有效。',
-    '用實際行動和細節表現在乎，記得對方的小需要。要小心的是容易挑剔，或覺得自己不夠好。看見對方的努力就說出來，也練習接受別人對你的肯定。',
-    '重視和諧、公平與美感，懂得經營讓雙方都舒服的關係。要小心的是為了避免衝突而委屈自己。好的關係容得下不同意見，練習把真話溫和地說出來。',
-    '愛得深，要的是全然的信任與連結，不喜歡淺淺的關係。要小心的是佔有慾和猜疑心。把不安直接說出來，而不是用試探去確認。',
-    '需要自由與一起探索，喜歡能同行旅行、學習、看世界的伴。要小心的是怕被承諾綁住。說清楚你需要的空間，也讓對方知道你會回來。',
-    '對感情謹慎認真，重視承諾與長期規劃，愛是用時間證明的。要小心的是不太表達情感，容易顯得冷淡。偶爾把心意說出口，或做點不那麼實用的浪漫小事。',
-    '偏好像朋友一樣的關係，也重視彼此的獨立，欣賞特別、有想法的人。要小心的是表達情感偏理性，容易保持距離。在適合的時候，讓對方看見你也會依賴。',
-    '浪漫、體貼、願意付出，容易被需要照顧或有藝術氣質的人吸引。要小心的是容易把對方理想化，或付出到忽略自己。看清楚真實的對方，也守住自己的界線。',
-];
-
-const MARS: SignTable = [
-    '行動力強、反應快，遇到挑戰會正面迎上去。麻煩常出在脾氣來得急，容易衝動。把能量放在運動或有競爭性的目標上，衝勁會變成成果。',
-    '行動慢而穩，一旦決定就很有持久力，不輕易放棄。麻煩常出在被逼急才爆發，或固執到不肯轉彎。設幾個階段性的檢查點，讓自己適時調整方向。',
-    '靠腦力和話語行動，能同時處理多件事，反應機敏。麻煩常出在精力分散，也容易在口頭上爭輸贏。一次專注在少數任務上，效率會更好。',
-    '為了保護在乎的人與事，會變得很有力量，但行動受情緒影響大。麻煩常出在不直接表達怒氣，容易生悶氣或冷處理。不滿時直接說，比迂迴更能解決問題。',
-    '做事有熱情、有魄力，喜歡帶頭，也喜歡能被看見的挑戰。麻煩常出在自尊心強，面子被挑戰時容易硬碰硬。把重點放在事情本身，而不是誰贏。',
-    '做事精準、有效率，擅長按步驟把事情一件件完成。麻煩常出在壓力大時容易焦慮，對細節過度要求。替自己留一點彈性時間，也練習把事情交給別人。',
-    '傾向用協商與合作推動事情，擅長替雙方找到都能接受的方案。麻煩常出在猶豫不決，或把怒氣壓到最後才爆。練習在當下就說出「我不同意」。',
-    '意志力強、專注而持久，認定的目標會深入到底。麻煩常出在怒氣容易悶在心裡，甚至記很久。替這股力量找健康的出口，例如高強度運動或需要深度投入的工作。',
-    '為了理想與自由而行動，熱情、樂觀，喜歡冒險。麻煩常出在衝得快，後續容易沒耐心。替大目標配上具體的時間表，熱情才能持續。',
-    '行動有紀律、有策略，能為長期目標持續付出。麻煩常出在太看重成果，給自己太大壓力。在努力之外，也記得肯定自己已經走過的路。',
-    '為了理念和改變而行動，喜歡用自己的方式做事。麻煩常出在骨子裡的反叛，被強迫時特別抗拒。把想改變的事變成具體提案，別人比較容易跟上。',
-    '行動受感覺與靈感引導，願意為別人或理想付出。麻煩常出在方向容易模糊，遇到衝突傾向退讓或逃避。設定清楚的小目標，並練習為自己爭取。',
-];
-
-const JUPITER: SignTable = [
-    '成長來自主動開創、勇於嘗試，機會常在你先跨出第一步時出現。留意別因過度自信而貪多。',
-    '透過穩健累積與實際經營得到收穫，對資源與生活品質有好眼光。留意享受與安逸過了頭。',
-    '成長來自學習、交流與人脈，多看多聊常帶來機會。留意涉獵太廣而不夠深入。',
-    '在照顧他人、經營家庭與歸屬感中得到滋養，人情味是你的福氣。留意保護過度。',
-    '透過表現自己、創作與帶領他人而成長，慷慨能為你帶來好人緣。留意排場與面子。',
-    '在服務、技能與把事情做好之中累積信心，細節裡藏著你的機會。留意對完美的要求過高。',
-    '成長來自合作與公平的交流，好的夥伴能放大你的運氣。留意過度依賴別人的意見。',
-    '在深入研究與心理層面的探索中成長，危機常帶來轉機。留意執著過深。',
-    '透過旅行、學習、信念與教學擴展視野，樂觀是你的燃料。留意承諾太多、做不完。',
-    '成長靠紀律與長期耕耘，越踏實越有收穫。留意因為太保守而錯過機會。',
-    '在團體、創新與理想中找到成長，新觀念常為你開門。留意理想與現實之間的落差。',
-    '在同理、藝術與心靈層面得到擴展，善意常以意想不到的方式回來。留意界線模糊而被利用。',
-];
-
-const SATURN: SignTable = [
-    '功課是學習獨立行動、管理衝動，真正的自信來自一次次練習。急不得，但也別因為怕失敗就不動。',
-    '功課在安全感與資源，可能對金錢或穩定特別焦慮。慢慢建立自己的基礎，價值感會跟著站穩。',
-    '功課在溝通與學習，可能曾覺得自己說不好、學不夠。持續練習、建立方法，會讓你成為很可靠的表達者。',
-    '功課在情感與家庭，可能較早就學會自己扛。在安全的關係裡學著示弱，是成熟的一部分。',
-    '功課在自我表現與被肯定，對站上台可能既渴望又害怕。給自己練習的舞台，自信是一點一滴累積的。',
-    '功課在工作方法與健康習慣，容易對自己要求過嚴。規律的作息與合理的標準，比苛責更有幫助。',
-    '功課在關係與承諾，要學會在合作中守住公平與界線。關係越成熟，你越懂得長久經營。',
-    '功課在信任與親密，害怕失控時會想抓緊一切。學著一步步交出信任，力量反而更穩。',
-    '功課在信念與方向，對「什麼才是對的」可能很嚴肅。讓信念經得起經驗檢驗，會更有分量。',
-    '責任感與耐力都很強，適合長期經營重要的目標。留意別把自己只當成工作的機器。',
-    '功課在群體與個人自由之間取得平衡，要學會把理想變成可執行的結構。你常是團體裡穩定的骨架。',
-    '功課在界線與現實感，容易被說不清的不安困擾。替感受和想像找到具體的形式，例如作品或固定的練習。',
-];
-
-const RETROGRADE_NOTE: Partial<Record<AstroBodyKey, string>> = {
-    mercury: '水星逆行，想法常要反覆咀嚼才定案，回顧和修改是你的強項。',
-    venus: '金星逆行，對愛與價值的判斷偏向內省，常要經過一段時間才確定自己真正喜歡什麼。',
-    mars: '火星逆行，行動前習慣先在心裡演練，起步慢，後勁卻足。',
-};
-
-/** Index 0 = 第 1 宮. */
-const HOUSE_THEME = [
-    '自我形象與個人行動',
-    '金錢、資源與自我價值',
-    '溝通、學習與日常往來',
-    '家庭、根源與內在安全感',
-    '創作、戀愛、玩樂與自我表現',
-    '工作日常、健康與服務',
-    '伴侶與一對一的合作關係',
-    '親密、共同資源與深層轉變',
-    '學問、信念、旅行與遠方',
-    '事業、社會角色與公開形象',
-    '朋友、社群與未來願景',
-    '獨處、潛意識與幕後付出',
-] as const;
-
-/** Short noun phrases for what each body is about, used to build aspect sentences. */
+/** Short noun phrases for what each body is about (also used by synastry.ts). */
 export const BODY_FUNCTION: Record<AstroBodyKey, string> = {
     sun: '自我認同',
     moon: '情緒需求',
@@ -177,160 +59,6 @@ export const BODY_FUNCTION: Record<AstroBodyKey, string> = {
     northNode: '人生方向',
     chiron: '內在舊傷',
 };
-
-type Phrase = (a: string, b: string) => string;
-
-/** Two phrasings per aspect type so repeated types in the top three don't read identically. */
-const ASPECT_PHRASES: Record<AspectType, readonly [Phrase, Phrase]> = {
-    conjunction: [
-        (a, b) =>
-            `${a}和${b}緊緊綁在一起，兩股力量互相放大；集中時很有力，只是不容易把兩者分開看。同時被觸發時，留意自己的反應是否過頭。`,
-        (a, b) =>
-            `${a}與${b}融成同一股力量，是這張盤很鮮明的特色；用得好時效果加倍，失衡時兩邊一起卡住。`,
-    ],
-    sextile: [
-        (a, b) => `${a}和${b}之間有順手的合作機會，但需要你主動去用，才會變成真正的能力。`,
-        (a, b) =>
-            `${a}能自然地支援${b}，屬於一練就上手的天賦；給它一個固定的練習場合，會越用越好。`,
-    ],
-    square: [
-        (a, b) =>
-            `${a}和${b}彼此拉扯，常在壓力下才逼出成長；這份摩擦是動力，給它一個具體的出口，比壓下來好。`,
-        (a, b) =>
-            `${a}與${b}的需求常互相衝突，讓你覺得卡卡的；也正是這股張力讓你不甘停在原地，學會兩邊都照顧，就會變成長處。`,
-    ],
-    trine: [
-        (a, b) =>
-            `${a}和${b}天生流暢，是不太費力就會的事；別因為太自然而忽略它，把它刻意用在重要的地方。`,
-        (a, b) =>
-            `${a}與${b}彼此和諧，這方面你常比別人輕鬆；只是舒適區太舒服，偶爾也給自己一點挑戰。`,
-    ],
-    opposition: [
-        (a, b) =>
-            `${a}和${b}站在兩端，常在兩種需求之間、或在與人的關係裡擺盪；練習輪流照顧兩邊，而不是二選一。`,
-        (a, b) =>
-            `${a}與${b}彼此對望，常透過別人看見自己的另一面；找到中間的平衡點，兩股力量就能互補。`,
-    ],
-};
-
-const ELEMENT_STRONG: Record<(typeof SIGN_ELEMENTS)[number], string> = {
-    火: '熱情、行動快、敢衝，能點燃身邊的人，要留意耐性與持續力',
-    土: '務實、穩定、重視實際成果，要留意彈性與冒險心',
-    風: '重思考與交流，擅長看見關聯與不同觀點，要留意落實與感受面',
-    水: '感受力與同理心強，重視情感連結，要留意界線與情緒消化',
-};
-
-const ELEMENT_LACK: Record<(typeof SIGN_ELEMENTS)[number], string> = {
-    火: '缺火，可能較難主動起頭或燃起熱情，可以借助運動、有挑戰的目標或熱情的朋友來點火。',
-    土: '缺土，落實與規律可能比較費力，可以用固定作息、預算和清單幫自己扎根。',
-    風: '缺風，可能不太習慣把想法說清楚，或退一步看全局，多和不同的人聊、多寫下來會有幫助。',
-    水: '缺水，自己的情緒可能不太容易被察覺，可以透過書寫、藝術或親近的關係練習感受。',
-};
-
-const MODALITIES = ['開創', '固定', '變動'] as const;
-type Modality = (typeof MODALITIES)[number];
-
-const MODALITY_STRONG: Record<Modality, string> = {
-    開創: '擅長起頭、推動新局面，記得替開始的事安排收尾',
-    固定: '有定力、能堅持到底，要留意固執與不易轉彎',
-    變動: '適應力強、能隨機應變，要留意方向分散',
-};
-
-const MODALITY_SKILL: Record<Modality, string> = { 開創: '起頭', 固定: '堅持', 變動: '應變' };
-
-const MODALITY_LACK: Record<Modality, string> = {
-    開創: '沒有開創星座，起步時可能需要外力推一把。',
-    固定: '沒有固定星座，持續力可以靠習慣和明確的承諾來補。',
-    變動: '沒有變動星座，遇到變化時給自己多一點調適時間。',
-};
-
-/** The ten classical/modern planets used for element and modality counts. */
-const PLANETS: AstroBodyKey[] = [
-    'sun',
-    'moon',
-    'mercury',
-    'venus',
-    'mars',
-    'jupiter',
-    'saturn',
-    'uranus',
-    'neptune',
-    'pluto',
-];
-
-function item(term: string, field: string, meaning: string): MeaningItem {
-    return { term, field, meaning };
-}
-
-function signName(sign: number): string {
-    return SIGN_NAMES[((sign % 12) + 12) % 12];
-}
-
-function signItem(
-    b: AstroBody,
-    field: string,
-    table: SignTable,
-    prefix = '',
-    withRetro = false,
-): MeaningItem {
-    const retro = withRetro && b.retrograde ? (RETROGRADE_NOTE[b.key] ?? '') : '';
-    return item(`${b.name} · ${b.signName}`, field, `${prefix}${table[b.sign]}${retro}`);
-}
-
-function moonCaveat(moon: AstroBody): string {
-    // The noon-based Moon can be off by about ±7°, so near a sign boundary it may sit in the
-    // neighbouring sign.
-    let neighbour = '';
-    if (moon.degree < 7) neighbour = `，也可能還在${signName(moon.sign - 1)}`;
-    else if (moon.degree >= 23) neighbour = `，也可能已進入${signName(moon.sign + 1)}`;
-    return `出生時間不確定，月亮一天約移動 13°，實際位置可能偏差約 ±7°${neighbour}；以下僅供參考。\n`;
-}
-
-function houseItem(sun: AstroBody, moon: AstroBody): MeaningItem | null {
-    if (sun.house === null || moon.house === null) return null;
-    const field =
-        '宮位是人生的不同領域：太陽所在的宮位看你在哪裡發光，月亮所在的宮位看你在哪裡安心。';
-    if (sun.house === moon.house) {
-        const theme = HOUSE_THEME[sun.house - 1];
-        return item(
-            `太陽、月亮 · 第 ${sun.house} 宮`,
-            field,
-            `太陽和月亮都在第 ${sun.house} 宮（${theme}）：意志與情緒都集中在這個領域，投入時特別有感，這裡也是人生的重心。要留意的是別把全部的重量都壓在這一塊，其他領域也需要一點經營。`,
-        );
-    }
-    return item(
-        `太陽第 ${sun.house} 宮 · 月亮第 ${moon.house} 宮`,
-        field,
-        [
-            `太陽在第 ${sun.house} 宮（${HOUSE_THEME[sun.house - 1]}）：人生的力氣多半往這裡去，在這個領域有所表現，最能感到自己活得有意義。`,
-            `月亮在第 ${moon.house} 宮（${HOUSE_THEME[moon.house - 1]}）：安全感和情緒與這塊緊緊相連，這裡照顧好了，整個人會比較穩。`,
-            '忙著往太陽的方向衝時，別忘了回到月亮的領域補充能量。',
-        ].join('\n'),
-    );
-}
-
-function aspectsItem(chart: AstroChart): MeaningItem {
-    const field =
-        '相位是行星之間的角度，容許度越小影響越明顯；這裡列出最緊密的三組，略過天王星、海王星、冥王星彼此之間的世代相位。' +
-        (chart.timeUnknown ? '出生時間不確定，也略過與月亮有關的相位。' : '');
-    const top = tightestAspects(chart);
-    if (top.length === 0) {
-        return item(
-            '最緊密的相位',
-            field,
-            '這張盤沒有落在容許度內的主要相位，各行星比較獨立運作，可以分別從星座來理解。',
-        );
-    }
-    const used: Partial<Record<AspectType, number>> = {};
-    const lines = top.map((a) => {
-        const n = used[a.type] ?? 0;
-        used[a.type] = n + 1;
-        const phrase = ASPECT_PHRASES[a.type][n % 2];
-        const head = `${BODY_NAMES[a.a]}${a.name}${BODY_NAMES[a.b]}（容許度 ${a.orb.toFixed(1)}°）`;
-        return `${head}：${phrase(BODY_FUNCTION[a.a], BODY_FUNCTION[a.b])}`;
-    });
-    return item('最緊密的相位', field, lines.join('\n'));
-}
 
 /** Outer planets move slowly, so aspects between two of them are shared by a whole generation. */
 const OUTER = new Set<AstroBodyKey>(['uranus', 'neptune', 'pluto']);
@@ -348,110 +76,1149 @@ export function tightestAspects(chart: AstroChart): AstroAspect[] {
         .slice(0, 3);
 }
 
-function balanceItem(planets: AstroBody[]): MeaningItem {
-    const elementCount = SIGN_ELEMENTS.map((el, i) => ({
-        el,
-        n: planets.filter((p) => p.sign % 4 === i).length,
-    }));
-    const modalityCount = MODALITIES.map((m, i) => ({
-        m,
-        n: planets.filter((p) => p.sign % 3 === i).length,
-    }));
+/** Card length budgets (字 = code points, punctuation and the parenthesised basis included). */
+export const NATAL_LIMITS = { hook: 20, paragraph: 80, scene: 60, advice: 50 } as const;
 
-    const elMax = Math.max(...elementCount.map((x) => x.n));
-    const elTop = elementCount.filter((x) => x.n === elMax);
-    const elLack = elementCount.filter((x) => x.n === 0);
-    const moMax = Math.max(...modalityCount.map((x) => x.n));
-    const moTop = modalityCount.filter((x) => x.n === moMax);
-    const moLack = modalityCount.filter((x) => x.n === 0);
+export interface NatalSection {
+    id: NatalSectionId;
+    title: string;
+    /** One plain line: what this section is based on (and what is uncertain). */
+    field: string;
+    hook: string;
+    /** Two paragraphs (core_insight). */
+    insight: [string, string];
+    /** key_dynamic: a concrete everyday scene. */
+    scene: string;
+    /** actionable_advice. */
+    advice: string;
+    configs: NatalConfig[];
+}
 
-    const lines: string[] = [
-        `${elementCount.map((x) => `${x.el} ${x.n}`).join('、')}；${modalityCount
-            .map((x) => `${x.m} ${x.n}`)
-            .join('、')}。`,
-    ];
+export const charLen = (s: string): number => [...s].length;
 
-    if (elTop.length === 1) {
-        lines.push(`${elTop[0].el}元素最多，${ELEMENT_STRONG[elTop[0].el]}。`);
-    } else if (elTop.length === 2) {
-        lines.push(
-            `${elTop[0].el}與${elTop[1].el}並重：一方面${ELEMENT_STRONG[elTop[0].el]}；另一方面${ELEMENT_STRONG[elTop[1].el]}。`,
-        );
+/** Shared state across sections (context chaining / anti-repetition). */
+class Ctx {
+    readonly sentences = new Set<string>();
+    private readonly phrases = new Set<string>();
+
+    /** Primary wording the first time a phrase key is used, the alternate afterwards. */
+    phrase(key: string, primary: string, alt: string): string {
+        if (this.phrases.has(key)) return alt;
+        this.phrases.add(key);
+        return primary;
+    }
+
+    /** Concatenate unused sentences in order while the paragraph stays within `max`. */
+    pack(candidates: Array<string | null | undefined>, max: number): string {
+        let out = '';
+        for (const s of candidates) {
+            if (!s || this.sentences.has(s) || out.includes(s)) continue;
+            if (charLen(out + s) > max) continue;
+            out += s;
+        }
+        // Register right away so the next paragraph of the same section cannot repeat it.
+        for (const t of splitSentences(out)) this.sentences.add(t);
+        return out;
+    }
+
+    /** First unused candidate within `max`. */
+    first(candidates: Array<string | null | undefined>, max: number): string {
+        for (const s of candidates) {
+            if (s && !this.sentences.has(s) && charLen(s) <= max) {
+                this.sentences.add(s);
+                return s;
+            }
+        }
+        return '';
+    }
+
+    commit(section: NatalSection): void {
+        for (const text of [...section.insight, section.scene, section.advice]) {
+            for (const s of splitSentences(text)) this.sentences.add(s);
+        }
+    }
+}
+
+export function splitSentences(text: string): string[] {
+    return text
+        .split(/(?<=[。！？])/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+const N = (k: PlanetKey) => BODY_NAMES[k];
+const S = (sign: number) => SIGN_NAMES[((sign % 12) + 12) % 12];
+const names = (keys: PlanetKey[]) => keys.map(N).join('、');
+
+function aspectBasis(a: AspectConfig['aspect']): string {
+    if (a.type === 'conjunction') return `（${N(a.a)}與${N(a.b)}緊密交會）`;
+    const rel = SOFT_ASPECTS.has(a.type) ? '順暢' : a.type === 'square' ? '拉扯' : '對立';
+    return `（${N(a.a)}與${N(a.b)}的${rel}角度）`;
+}
+
+const other = (a: AspectConfig['aspect'], focus: PlanetKey): PlanetKey =>
+    a.a === focus ? a.b : a.a;
+
+/** Planets whose conjunctions read as a strain rather than a gift. */
+const HEAVY = new Set<PlanetKey>(['saturn', 'pluto', 'mars', 'uranus', 'neptune']);
+
+const GIFT_PRIORITY: PlanetKey[] = [
+    'uranus',
+    'neptune',
+    'pluto',
+    'saturn',
+    'jupiter',
+    'mars',
+    'venus',
+    'moon',
+    'mercury',
+    'sun',
+];
+const CHALLENGE_PRIORITY: PlanetKey[] = [
+    'saturn',
+    'pluto',
+    'mars',
+    'uranus',
+    'neptune',
+    'moon',
+    'jupiter',
+    'sun',
+    'mercury',
+    'venus',
+];
+
+function pickBody(a: AspectConfig['aspect'], order: PlanetKey[]): PlanetKey {
+    return order.indexOf(a.a) <= order.indexOf(a.b) ? a.a : a.b;
+}
+
+const aspects = (cs: NatalConfig[]) => cs.filter((c): c is AspectConfig => c.kind === 'aspect');
+const placement = (cs: NatalConfig[], body: PlanetKey | 'asc') =>
+    cs.find((c): c is PlacementConfig => c.kind === 'placement' && c.body === body);
+const house = (cs: NatalConfig[], h: number) =>
+    cs.find((c): c is HouseConfig => c.kind === 'house' && c.house === h);
+
+/** FNV-1a string hash, for deterministic chart-seeded variant choice. */
+function hashStr(s: string): number {
+    let h = 2166136261;
+    for (const ch of s) {
+        h ^= ch.codePointAt(0)!;
+        h = Math.imul(h, 16777619) >>> 0;
+    }
+    // Final avalanche (murmur3 fmix32) so short, similar seeds spread over the options.
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return h >>> 0;
+}
+
+function pickBy<T>(seed: string, options: readonly T[]): T {
+    return options[hashStr(seed) % options.length];
+}
+
+/** One of a planet's three growth tips / two gift scenes, chosen by seed. */
+const tipOf = (k: PlanetKey, seed: string) => pickBy(`${seed}|tip`, tipsOf(k));
+const tipsOf = (k: PlanetKey) => [
+    BODY_VOICE[k].trapTip,
+    BODY_VOICE[k].trapTip2,
+    BODY_VOICE[k].trapTip3,
+    BODY_VOICE[k].trapTip4,
+    BODY_VOICE[k].trapTip5,
+];
+const sceneOf = (k: PlanetKey, seed: string) =>
+    pickBy(`${seed}|gs`, [BODY_VOICE[k].giftScene, BODY_VOICE[k].giftScene2]);
+
+function houseSentence(env: Env, c: HouseConfig | undefined): string | null {
+    if (!c || c.bodies.length === 0) return null;
+    const h = c.house - 1;
+    const focus = pickBy(`house${c.house}|${c.bodies.join()}|${env.mix}`, [
+        HOUSE_KB[h].focus,
+        ...V.HOUSE_FOCUS_ALT[h],
+    ]);
+    return `${focus}（${names(c.bodies)}在第 ${c.house} 宮）。`;
+}
+
+function moonNeighbour(chart: AstroChart): string {
+    const moon = chart.bodies.find((b) => b.key === 'moon');
+    if (!moon) return '';
+    if (moon.degree < 7) return `（也可能還在${S(moon.sign - 1)}）`;
+    if (moon.degree >= 23) return `（也可能已進入${S(moon.sign + 1)}）`;
+    return '';
+}
+
+function noHouseReason(chart: AstroChart): string {
+    return chart.timeUnknown ? '出生時間不確定' : '缺少可計算宮位的出生地資料';
+}
+
+interface Env {
+    chart: AstroChart;
+    w: NatalWeights;
+    ctx: Ctx;
+    /** Signs of the planets the later sections chain from. */
+    sunSign: number;
+    mercurySign: number;
+    /** Element / mode counts, e.g. 「3241|433」, part of every variant seed. */
+    mix: string;
+}
+
+/**
+ * Seed for one planet's wording: its sign, house, the chart's element/mode mix and its tightest
+ * aspect. Two people with the same sign but a different house, mix or aspect get other wording.
+ */
+function seedOf(env: Env, key: PlanetKey): string {
+    const b = env.chart.bodies.find((x) => x.key === key);
+    const tight = env.w.configs
+        .filter(
+            (c): c is AspectConfig =>
+                c.kind === 'aspect' && (c.aspect.a === key || c.aspect.b === key),
+        )
+        .sort((x, y) => x.aspect.orb - y.aspect.orb)[0];
+    const asp = tight ? `${other(tight.aspect, key)}${tight.aspect.type}` : '-';
+    return `${key}|${b?.sign}|${env.w.housesKnown ? b?.house : '-'}|${env.mix}|${asp}`;
+}
+
+const signOfBody = (env: Env, k: PlanetKey) => env.chart.bodies.find((b) => b.key === k)?.sign ?? 0;
+const houseOfBody = (env: Env, k: PlanetKey) =>
+    env.w.housesKnown ? (env.chart.bodies.find((b) => b.key === k)?.house ?? null) : null;
+
+function section(
+    env: Env,
+    id: NatalSectionId,
+    parts: Omit<NatalSection, 'id' | 'title' | 'configs'>,
+): NatalSection {
+    const title = NATAL_SECTIONS.find((s) => s.id === id)!.title;
+    const out: NatalSection = { id, title, ...parts, configs: env.w.sections[id] };
+    env.ctx.commit(out);
+    return out;
+}
+
+/**
+ * Deterministic variant picker seeded by the section's top configurations, so two charts with the
+ * same placements but a different top combination get different frames.
+ */
+function vary<T>(cs: NatalConfig[], options: readonly T[], salt = 0, depth = 3): T {
+    return pickBy(`${salt}|${cs.slice(0, depth).map(describeConfig).join('|')}`, options);
+}
+
+/** Highest-weight config that is not one of the given anchors. */
+const topOther = (cs: NatalConfig[], skip: (c: NatalConfig) => boolean) => cs.find((c) => !skip(c));
+
+const isAnchor =
+    (...bodies: Array<PlanetKey | 'asc'>) =>
+    (c: NatalConfig) =>
+        c.kind === 'placement' && bodies.includes(c.body);
+
+/** Whether an aspect reads as a strain (hard aspects, or a conjunction with a heavy planet). */
+const strained = (a: AspectConfig['aspect'], x: PlanetKey) =>
+    HARD_ASPECTS.has(a.type) || (a.type === 'conjunction' && HEAVY.has(x));
+
+/** Seed for a shared aspect: both signs, the focus planet's house and the aspect type. */
+function aspectSeed(env: Env, a: AspectConfig['aspect'], focus: PlanetKey): string {
+    const x = other(a, focus);
+    return `${focus}${signOfBody(env, focus)}|${x}${signOfBody(env, x)}|${houseOfBody(env, focus)}|${a.type}`;
+}
+
+/** Keyword of the other planet's sign, e.g. 「務實的責任感」. */
+const xKw = (env: Env, x: PlanetKey) => SIGN_KB[signOfBody(env, x)].keywords[0];
+
+const ANGULAR = new Set([1, 4, 7, 10]);
+
+function personality(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_personality;
+    const sun = env.sunSign;
+    const asc = w.ascSign;
+    const sunCfg = placement(cs, 'sun');
+    const P = NATAL_LIMITS.paragraph;
+    const sunKw = SIGN_KB[sun].keywords;
+    const sunSeed = seedOf(env, 'sun');
+    const core = pickBy(`${sunSeed}|core`, [SUN_KB[sun].core, ...V.SUN_CORE_ALT[sun]]);
+    const ascSeed = `asc|${asc}|${sun}|${w.ruler}|${env.mix}|${sunCfg?.house}`;
+    const basis = asc !== null ? `（上升${S(asc)}、太陽${S(sun)}）` : `（太陽${S(sun)}）`;
+
+    // Opening blend of ASC + Sun, frame and wording seeded by the chart.
+    let blend: string;
+    if (asc !== null) {
+        const persona = pickBy(`${ascSeed}|persona`, [
+            ASC_KB[asc].persona,
+            ...V.ASC_PERSONA_ALT[asc],
+        ]);
+        blend =
+            asc === sun
+                ? `你的外在和內在很一致：${core}，看起來也${persona}${basis}。`
+                : pickBy(`${ascSeed}|frame`, [
+                      `一出場，你就給人${persona}的感覺；真正推著你走的，是骨子裡${core}${basis}。`,
+                      `別人第一眼看到的你${persona}；熟了才發現，你骨子裡${core}${basis}。`,
+                      `初次見面，大家會覺得你${persona}；相處久了，才發現你${core}${basis}。`,
+                      `你給人的第一印象是${persona}，內在卻${core}${basis}。`,
+                      `表面上你${persona}，骨子裡其實${core}${basis}。`,
+                  ]);
     } else {
-        lines.push('元素分布相當平均，沒有特別偏重的一種，性格面向比較多元。');
-    }
-    if (elLack.length > 0) {
-        lines.push(elLack.map((x) => ELEMENT_LACK[x.el]).join(''));
-    } else if (elTop.length < 3) {
-        lines.push('四種元素都有，基本面算是平衡。');
+        blend = pickBy(`${sunSeed}|blend`, [
+            `你骨子裡${core}${basis}。`,
+            `說到本性，你${core}${basis}。`,
+            `你的核心是：${core}${basis}。`,
+        ]);
     }
 
-    if (moTop.length === 1) {
-        lines.push(`${moTop[0].m}星座最多，${MODALITY_STRONG[moTop[0].m]}。`);
-    } else if (moTop.length === 2) {
-        lines.push(
-            `${moTop[0].m}與${moTop[1].m}星座一樣多，兼具${MODALITY_SKILL[moTop[0].m]}與${MODALITY_SKILL[moTop[1].m]}的能力。`,
+    const parts = new Map<string, string>();
+    for (const c of cs) {
+        if (c.kind === 'placement' && c.body === 'sun' && c.house !== null) {
+            const th = HOUSE_KB[c.house - 1].theme;
+            parts.set(
+                c.id,
+                pickBy(`${sunSeed}|house`, [
+                    `你的力氣多半往${th}去，在這裡有所表現最讓你覺得活得有意義（太陽第 ${c.house} 宮）。`,
+                    `人生的重心常落在${th}，這是你最想證明自己的地方（太陽第 ${c.house} 宮）。`,
+                    `${th}是你發光的主場，投入在這裡時你最有活力（太陽第 ${c.house} 宮）。`,
+                ]),
+            );
+        } else if (
+            c.kind === 'placement' &&
+            c.body === w.ruler &&
+            c.body !== 'sun' &&
+            c.house !== null
+        ) {
+            parts.set(
+                c.id,
+                `你做起事來帶著一股${SIGN_KB[c.sign].trait}，人生的重心也常落在${HOUSE_KB[c.house - 1].short}（命主星${N(c.body)}在${S(c.sign)}、第 ${c.house} 宮）。`,
+            );
+        } else if (c.kind === 'aspect') {
+            const x = other(c.aspect, 'sun');
+            const v = BODY_VOICE[x];
+            const b = aspectBasis(c.aspect);
+            const tense = strained(c.aspect, x);
+            const word = tense
+                ? ctx.phrase(`hard:${x}`, v.hard, v.hardAlt)
+                : ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
+            const kw = sunKw[1];
+            const xk = xKw(env, x);
+            const seed = aspectSeed(env, c.aspect, 'sun');
+            const frames = tense
+                ? [
+                      `${v.fn}常和你的${kw}拉扯，讓你有時${word}`,
+                      `你的${kw}裡夾著一股${v.fnShort}的張力，有時會${word}`,
+                      `${v.fn}偶爾會和你的${kw}唱反調，讓你${word}`,
+                      `你的${kw}有時會被${v.fn}拖住，容易${word}`,
+                  ]
+                : [
+                      `${v.fn}替你的${kw}加了分，讓你${word}`,
+                      `你的${kw}有一份${xk}的${v.gift}撐腰，整個人顯得${word}`,
+                      `你的${kw}遇上${xk}的${v.gift}，做起事來${word}`,
+                      `${xk}的${v.gift}和你的${kw}很合拍，讓你${word}`,
+                  ];
+            const body = pickBy(seed, frames);
+            // Life-area clause only when the house supports it: an angular Sun, or both planets
+            // in the same house.
+            const sh = houseOfBody(env, 'sun');
+            const supported = sh !== null && (ANGULAR.has(sh) || houseOfBody(env, x) === sh);
+            const withArena = supported
+                ? `${body}，${pickBy(`${seed}|${env.mix}|arena`, V.HOUSE_ARENA[sh - 1])}${b}。`
+                : null;
+            parts.set(c.id, withArena && charLen(withArena) <= P ? withArena : `${body}${b}。`);
+        } else if (c.kind === 'stellium' && c.scope === 'sign') {
+            const kw = SIGN_KB[c.index].keywords;
+            parts.set(
+                c.id,
+                `你的能量特別集中，${kw[1]}與${kw[2]}的特質在你身上格外鮮明（${c.bodies.length} 顆行星聚在${S(c.index)}）。`,
+            );
+        } else if (c.kind === 'stellium' && c.scope === 'house') {
+            const focus = pickBy(`st${c.index}|${c.bodies.join()}`, [
+                HOUSE_KB[c.index - 1].focus,
+                ...V.HOUSE_FOCUS_ALT[c.index - 1],
+            ]);
+            parts.set(
+                c.id,
+                pickBy(`st${c.index}|${env.mix}`, [
+                    `${focus}，這也是整張盤最熱鬧的地方（${c.bodies.length} 顆行星聚在第 ${c.index} 宮）。`,
+                    `${focus}，整張盤的能量都往這裡聚集（${c.bodies.length} 顆行星同在第 ${c.index} 宮）。`,
+                ]),
+            );
+        } else if (c.kind === 'axis' && c.axis === 'asc') {
+            parts.set(
+                c.id,
+                `${BODY_VOICE[c.body].tone}直接寫在你的第一印象裡（${N(c.body)}緊貼上升點）。`,
+            );
+        } else if (c.kind === 'balance') {
+            const mode = c.mode !== null ? `，也${MODE_TONE[c.mode]}` : '';
+            const mb = c.mode !== null ? `、${MODE_NAMES[c.mode]}星座` : '星座';
+            parts.set(
+                c.id,
+                `${ELEMENT_TONE[c.element]}${mode}（多數行星落在${SIGN_ELEMENTS[c.element]}象${mb}）。`,
+            );
+        }
+    }
+
+    // The highest-weight non-anchor configuration leads when it outweighs the Sun; a strained
+    // Sun aspect never opens the section (strengths first) but still shapes the hook.
+    const top = topOther(cs, isAnchor('asc', 'sun'));
+    const leadFirst =
+        top &&
+        sunCfg &&
+        top.weight > sunCfg.weight &&
+        parts.has(top.id) &&
+        !(top.kind === 'aspect' && strained(top.aspect, other(top.aspect, 'sun')));
+    const ordered = [...parts.entries()].filter(([id]) => id !== 'placement:sun').map(([, t]) => t);
+    const sunHouse = sunCfg ? parts.get(sunCfg.id) : undefined;
+    let p1: string;
+    let p2: string;
+    if (leadFirst) {
+        p1 = ctx.pack([parts.get(top.id)!, ...ordered], P);
+        p2 = ctx.pack([blend, sunHouse], P);
+    } else {
+        p1 = ctx.pack([blend], P);
+        p2 = ctx.pack([...ordered, sunHouse], P);
+    }
+    if (!p2) p2 = ctx.pack([`日常裡，你${SIGN_KB[sun].light_side}`], P);
+
+    let hook: string;
+    if (top && leadFirst && top.kind === 'stellium') {
+        hook =
+            top.scope === 'sign'
+                ? `${SIGN_KB[top.index].keywords[1]}被放大成你的主旋律`
+                : `人生重心都押在${HOUSE_KB[top.index - 1].short}`;
+    } else if (top && leadFirst && top.kind === 'axis') {
+        hook = `一出場就帶著${BODY_VOICE[top.body].tone}`;
+    } else if (top && top.weight > (sunCfg?.weight ?? 0) && top.kind === 'aspect') {
+        const x = other(top.aspect, 'sun');
+        const v = BODY_VOICE[x];
+        const seed = aspectSeed(env, top.aspect, 'sun') + ascSeed;
+        const k0 = pickBy(`${seed}|kw`, [sunKw[0], sunKw[2]]);
+        hook = strained(top.aspect, x)
+            ? pickBy(seed, [
+                  `${k0}與${v.trapKw}的拉鋸`,
+                  `${k0}的你，也在和${v.trapKw}過招`,
+                  `${k0}背後，藏著${v.trapKw}的課題`,
+              ])
+            : pickBy(seed, [
+                  `${v.giftKw}是你${k0}背後的底氣`,
+                  `${k0}裡藏著${v.giftKw}`,
+                  `${v.giftKw}讓你的${k0}更有力`,
+                  `${sunKw[1]}又帶著${v.giftKw}`,
+              ]);
+    } else if (asc !== null && asc !== sun) {
+        const a = SIGN_KB[asc].keywords[0];
+        hook = pickBy(ascSeed, [
+            `看起來${a}，骨子裡${sunKw[0]}`,
+            `${a}的外表，${sunKw[0]}的心`,
+            `外在${a}，內在${sunKw[0]}`,
+        ]);
+    } else {
+        hook = pickBy(sunSeed, [
+            `${sunKw[0]}是本色，${sunKw[1]}是底氣`,
+            `${sunKw[0]}又${sunKw[1]}的你`,
+            `裡外如一的${sunKw[0]}`,
+        ]);
+    }
+
+    const field = w.housesKnown
+        ? '依上升星座、命主星、太陽星座與行星聚集處，看你給人的感覺與日常樣貌。'
+        : `依太陽星座與行星分布推估；${noHouseReason(chart)}，算不出上升星座與宮位，第一印象的部分較不確定。`;
+
+    const dailyPool =
+        asc !== null
+            ? [
+                  ASC_KB[asc].daily,
+                  V.ASC_DAILY_ALT[asc],
+                  ASC_KB[sun].daily,
+                  V.ASC_DAILY_ALT[sun],
+                  ...(w.ruler ? [V.ASC_DAILY_ALT[signOfBody(env, w.ruler)]] : []),
+              ]
+            : [ASC_KB[sun].daily, V.ASC_DAILY_ALT[sun]];
+    const sunAsp = top?.kind === 'aspect' ? top : undefined;
+    const adviceOpts = asc !== null ? [SUN_KB[sun].tip, V.ASC_TIP[asc]] : [SUN_KB[sun].tip];
+    return section(env, 'natal_personality', {
+        field,
+        hook,
+        insight: [p1, p2],
+        scene: ctx.first([pickBy(`${ascSeed}|daily`, dailyPool), ...dailyPool], NATAL_LIMITS.scene),
+        advice: ctx.first(
+            [
+                sunAsp && strained(sunAsp.aspect, other(sunAsp.aspect, 'sun'))
+                    ? tipOf(other(sunAsp.aspect, 'sun'), aspectSeed(env, sunAsp.aspect, 'sun'))
+                    : null,
+                // Sun-sign tip or ASC tip, chosen by the ascendant and the top configuration.
+                pickBy(`${ascSeed}|${top ? describeConfig(top) : '-'}|tip`, adviceOpts),
+                ...adviceOpts,
+            ],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+function logic(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_logic;
+    const m = env.mercurySign;
+    const merc = placement(cs, 'mercury');
+    const h = merc?.house ?? null;
+    const P = NATAL_LIMITS.paragraph;
+    const seed = seedOf(env, 'mercury');
+    const mind = pickBy(`${seed}|mind`, [MERCURY_KB[m].mind, ...V.MERCURY_MIND_ALT[m]]);
+    const mb = `（水星${S(m)}${h ? `、第 ${h} 宮` : ''}）`;
+    const mindLine = pickBy(`${seed}|frame`, [
+        `你${mind}${mb}。`,
+        `動起腦來，你${mind}${mb}。`,
+        `你的思路很有個人特色：${mind}${mb}。`,
+        `想事情的時候，你${mind}${mb}。`,
+        `在思考這件事上，你${mind}${mb}。`,
+    ]);
+    const houseLine = h
+        ? pickBy(`${seed}|houseLine`, [
+              `這股腦力最常用在${HOUSE_KB[h - 1].theme}上。`,
+              `你特別愛把腦力花在${HOUSE_KB[h - 1].theme}。`,
+              `${HOUSE_KB[h - 1].theme}是你最常動腦的地方。`,
+          ])
+        : null;
+
+    const extras: string[] = [];
+    let lead: string | null = null;
+    let softSeen = 0;
+    for (const c of cs) {
+        let t: string | null = null;
+        if (c.kind === 'aspect') {
+            const x = other(c.aspect, 'mercury');
+            const v = BODY_VOICE[x];
+            const b = aspectBasis(c.aspect);
+            const as = aspectSeed(env, c.aspect, 'mercury');
+            const xk = xKw(env, x);
+            if (HARD_ASPECTS.has(c.aspect.type)) {
+                const word = ctx.phrase(`hard:${x}`, v.hard, v.hardAlt);
+                t = pickBy(as, [
+                    `只是${v.fn}偶爾會干擾判斷，讓你${word}${b}。`,
+                    `不過，${v.fn}有時會牽著思緒走，讓你${word}${b}。`,
+                    `要留意的是，${v.fn}一上來，你容易${word}${b}。`,
+                ]);
+            } else if (c.aspect.type === 'conjunction' && HEAVY.has(x)) {
+                t = `${v.fn}和思考緊緊綁在一起，想法${ctx.phrase(`soft:${x}`, v.soft, v.softAlt)}，偶爾也會${ctx.phrase(`hard:${x}`, v.hard, v.hardAlt)}${b}。`;
+            } else {
+                const word = ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
+                t = softSeen++
+                    ? pickBy(as, [
+                          `再加上${v.fn}的幫忙，你的想法也${word}${b}。`,
+                          `${v.fn}也在旁邊推一把，讓判斷${word}${b}。`,
+                      ])
+                    : pickBy(as, [
+                          `想事情時，${v.fn}會自然幫上忙，讓你的想法${word}${b}。`,
+                          `${xk}的${v.gift}替你的思考加了分，想法${word}${b}。`,
+                          `你的腦袋和${v.fn}很合拍，想出來的東西${word}${b}。`,
+                      ]);
+            }
+            // A very tight supportive aspect outweighs the sign and opens the section.
+            if (!lead && merc && c.weight > merc.weight && !strained(c.aspect, x)) {
+                lead = t;
+                continue;
+            }
+        } else if (c.kind === 'house') {
+            t = houseSentence(env, c);
+        } else if (c.kind === 'axis') {
+            t = `你說出口的話很容易被看見，常讓人留下深刻印象（水星緊貼${AXIS_NAMES[c.axis]}）。`;
+        }
+        if (t) extras.push(t);
+    }
+    if (merc?.retrograde)
+        extras.push('你習慣把想法反覆咀嚼才定案，回顧和修改是你的強項（水星逆行）。');
+
+    const p1 = lead ? ctx.pack([lead, mindLine], P) : ctx.pack([mindLine, houseLine], P);
+    const p2 =
+        ctx.pack(lead ? [mindLine, houseLine, ...extras] : extras, P) ||
+        ctx.pack(
+            [
+                houseLine,
+                '你的思考比較獨立運作，不太被其他面向牽動，想法往往很純粹（水星沒有緊密角度）。',
+            ],
+            P,
+        );
+
+    const topAsp = aspects(cs)[0];
+    const topLeads = topAsp && merc && topAsp.weight > merc.weight;
+    let hook = MERCURY_KB[m].hook;
+    if (topLeads) {
+        const x = other(topAsp.aspect, 'mercury');
+        const v = BODY_VOICE[x];
+        hook = pickBy(`${seed}|hook`, [
+            strained(topAsp.aspect, x) ? v.mindHard : v.mindSoft,
+            MERCURY_KB[m].hook,
+        ]);
+    }
+
+    const field = w.housesKnown
+        ? '依水星的星座、落點與它和其他行星的角度，以及學習與信念相關的人生領域。'
+        : `依水星星座與它和其他行星的角度；${noHouseReason(chart)}，學習與信念相關的宮位這次略過。`;
+
+    const scenes = [MERCURY_KB[m].scene, V.MERCURY_SCENE_ALT[m], V.MERCURY_SCENE_ALT2[m]];
+    const tips = [MERCURY_KB[m].tip, V.MERCURY_TIP_ALT[m]];
+    return section(env, 'natal_logic', {
+        field,
+        hook,
+        insight: [p1, p2],
+        scene: ctx.first([pickBy(`${seed}|scene`, scenes), ...scenes], NATAL_LIMITS.scene),
+        advice: ctx.first(
+            [
+                topLeads && strained(topAsp.aspect, other(topAsp.aspect, 'mercury'))
+                    ? tipOf(
+                          other(topAsp.aspect, 'mercury'),
+                          aspectSeed(env, topAsp.aspect, 'mercury'),
+                      )
+                    : null,
+                pickBy(`${seed}|tip`, tips),
+                ...tips,
+            ],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+function stress(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_stress;
+    const P = NATAL_LIMITS.paragraph;
+    const moon = placement(cs, 'moon');
+    const mars = placement(cs, 'mars');
+    const hard = aspects(cs).filter((c) => HARD_ASPECTS.has(c.aspect.type));
+    const moonSeed = seedOf(env, 'moon');
+    const marsSeed = seedOf(env, 'mars');
+
+    const moonS = moon
+        ? pickBy(`${moonSeed}|stress`, [MOON_KB[moon.sign].stress, ...V.MOON_STRESS_ALT[moon.sign]])
+        : null;
+    const marsS = mars
+        ? pickBy(`${marsSeed}|stress`, [MARS_KB[mars.sign].stress, ...V.MARS_STRESS_ALT[mars.sign]])
+        : null;
+    let reaction: string[];
+    const jointBasis = moon && mars ? `（月亮${S(moon.sign)}、火星${S(mars.sign)}）` : '';
+    const joint =
+        moon && mars
+            ? pickBy(`${moonSeed}|${marsSeed}`, [
+                  `壓力一大，你${moonS}；真的被逼急時，${marsS}${jointBasis}。`,
+                  `心裡一亂，你${moonS}；情況再緊一點，${marsS}${jointBasis}。`,
+                  `遇到難關時，你${moonS}；要是被逼到牆角，${marsS}${jointBasis}。`,
+                  `事情一多，你${moonS}；再被推一把，${marsS}${jointBasis}。`,
+              ])
+            : null;
+    if (joint && charLen(joint) <= P) reaction = [joint];
+    else {
+        reaction = [
+            moon ? `壓力一大，你${moonS}（月亮${S(moon.sign)}）。` : null,
+            mars ? `真的被逼急時，${marsS}（火星${S(mars.sign)}）。` : null,
+        ].filter((x): x is string => x !== null);
+    }
+
+    const tension: string[] = hard.map((c, i) => {
+        const a = c.aspect;
+        const b = aspectBasis(a);
+        const wa = BODY_VOICE[a.a].want;
+        const wb = BODY_VOICE[a.b].want;
+        const seed = `${aspectSeed(env, a, a.a)}|${i}`;
+        if (i > 0) {
+            return pickBy(seed, [
+                `另外，${BODY_VOICE[a.a].fnShort}和${BODY_VOICE[a.b].fnShort}的需要也不時互相卡住${b}。`,
+                `${BODY_VOICE[a.a].fnShort}與${BODY_VOICE[a.b].fnShort}之間還有一條暗線，偶爾讓你卡關${b}。`,
+            ]);
+        }
+        return pickBy(seed, [
+            `一邊想${wa}，一邊又想${wb}，壓力下這兩股力量最容易打架${b}。`,
+            `你心裡同時住著想${wa}和想${wb}的兩個自己，壓力越大，拉扯越明顯${b}。`,
+            `想${wa}的你，偏偏又想${wb}，越忙越容易卡在中間${b}。`,
+            `壓力來時，想${wa}與想${wb}的念頭會同時冒出來，讓你左右為難${b}。`,
+        ]);
+    });
+    const sat = placement(cs, 'saturn');
+    const satLine = sat
+        ? `${pickBy(`${seedOf(env, 'saturn')}|lesson`, [SATURN_KB[sat.sign].lesson, ...V.SATURN_LESSON_ALT[sat.sign]])}（土星${S(sat.sign)}）。`
+        : null;
+
+    // Lead with the tense aspect when it outweighs the Moon.
+    const topHard = hard[0];
+    const hardFirst = topHard && moon && topHard.weight > moon.weight;
+    const p1 = ctx.pack(hardFirst ? [tension[0]] : reaction, P);
+    const p2 =
+        ctx.pack(
+            hardFirst ? [...reaction, ...tension.slice(1), satLine] : [...tension, satLine],
+            P,
+        ) ||
+        ctx.pack(
+            [satLine, '你的盤面沒有特別尖銳的拉扯，壓力多半來自外在環境，而不是內心的自我拉鋸。'],
+            P,
+        );
+
+    const hook = topHard
+        ? pickBy(aspectSeed(env, topHard.aspect, topHard.aspect.a) + moonSeed, [
+              BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].stressHook,
+              `${BODY_VOICE[topHard.aspect.a].fnShort}與${BODY_VOICE[topHard.aspect.b].fnShort}的拉鋸戰`,
+              `壓力下，${BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].fnShort}先亮紅燈`,
+              `一緊張，${BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].fnShort}就先失衡`,
+          ])
+        : ELEMENT_STRESS_HOOK[(moon?.sign ?? env.sunSign) % 4];
+
+    let field = '依月亮、火星、土星與行星間較緊繃的角度，看你在壓力下的防衛方式。';
+    if (!w.moonReliable) {
+        field += `出生時間不確定，月亮位置可能偏差${moonNeighbour(chart)}，情緒反應的部分僅供參考。`;
+    }
+
+    const ms = moon?.sign ?? env.sunSign;
+    const scenes = [MOON_KB[ms].scene, V.MOON_SCENE_ALT[ms]];
+    const tips = [MOON_KB[ms].tip, V.MOON_TIP_ALT[ms]];
+    return section(env, 'natal_stress', {
+        field,
+        hook,
+        insight: [p1, p2],
+        scene: ctx.first([pickBy(`${moonSeed}|scene`, scenes), ...scenes], NATAL_LIMITS.scene),
+        advice: ctx.first([pickBy(`${moonSeed}|tip`, tips), ...tips], NATAL_LIMITS.advice),
+    });
+}
+
+function love(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_love;
+    const P = NATAL_LIMITS.paragraph;
+    const venus = placement(cs, 'venus');
+    const vSign = venus?.sign ?? env.sunSign;
+    const vSeed = seedOf(env, 'venus');
+
+    const loveText = pickBy(`${vSeed}|love`, [VENUS_KB[vSign].love, ...V.VENUS_LOVE_ALT[vSign]]);
+    const venusLine = pickBy(`${vSeed}|frame`, [
+        `你${loveText}（金星${S(vSign)}）。`,
+        `談起感情，你${loveText}（金星${S(vSign)}）。`,
+        `在愛裡，你${loveText}（金星${S(vSign)}）。`,
+    ]);
+    const byId = new Map<string, string>();
+    const strainIds = new Set<string>();
+    for (const c of cs) {
+        if (c.kind === 'placement' && c.body === 'moon') {
+            const s = seedOf(env, 'moon');
+            const need = pickBy(`${s}|need`, [MOON_KB[c.sign].need, V.MOON_NEED_ALT[c.sign]]);
+            byId.set(
+                c.id,
+                pickBy(`${s}|needFrame`, [
+                    `你在感情裡需要的是${need}（月亮${S(c.sign)}）。`,
+                    `感情裡最能讓你安心的，是${need}（月亮${S(c.sign)}）。`,
+                ]),
+            );
+        } else if (c.kind === 'placement' && c.body === 'mars') {
+            const s = seedOf(env, 'mars');
+            const pursue = pickBy(`${s}|pursue`, [
+                MARS_KB[c.sign].pursue,
+                V.MARS_PURSUE_ALT[c.sign],
+            ]);
+            byId.set(
+                c.id,
+                pickBy(`${s}|pursueFrame`, [
+                    `喜歡上一個人時，你${pursue}（火星${S(c.sign)}）。`,
+                    `心動的時候，你${pursue}（火星${S(c.sign)}）。`,
+                ]),
+            );
+        } else if (c.kind === 'house' && c.house === 7 && w.ascSign !== null) {
+            const dsc = (w.ascSign + 6) % 12;
+            const occ = houseSentence(env, c);
+            const attract = SIGN_KB[dsc].attract;
+            byId.set(
+                c.id,
+                pickBy(`dsc|${dsc}|${vSeed}`, [
+                    `你容易被${attract}的人吸引（下降點${S(dsc)}）。`,
+                    `${attract}的人特別容易讓你心動（下降點${S(dsc)}）。`,
+                ]) + (occ ?? ''),
+            );
+        } else if (c.kind === 'house') {
+            const s = houseSentence(env, c);
+            if (s) byId.set(c.id, s);
+        } else if (c.kind === 'aspect') {
+            const focus: PlanetKey =
+                c.aspect.a === 'venus' || c.aspect.b === 'venus' ? 'venus' : 'moon';
+            const x = other(c.aspect, focus);
+            const v = BODY_VOICE[x];
+            const b = aspectBasis(c.aspect);
+            const as = aspectSeed(env, c.aspect, focus);
+            if (strained(c.aspect, x)) {
+                strainIds.add(c.id);
+                const word = ctx.phrase(`hard:${x}`, v.hard, v.hardAlt);
+                byId.set(
+                    c.id,
+                    pickBy(as, [
+                        `只是你偶爾會${word}，讓對方摸不透${b}。`,
+                        `不過感情裡的你，有時會${word}${b}。`,
+                    ]),
+                );
+            } else {
+                const word = ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
+                byId.set(
+                    c.id,
+                    pickBy(as, [
+                        `你表達愛意的方式${word}${b}。`,
+                        `${xKw(env, x)}的${v.gift}讓你的愛${word}${b}。`,
+                        `在感情裡，${v.fn}替你加分，讓你${word}${b}。`,
+                    ]),
+                );
+            }
+        } else if (c.kind === 'axis') {
+            byId.set(
+                c.id,
+                `你常在伴侶身上遇見${BODY_VOICE[c.body].tone}，或在關係裡被激發出這一面（${N(c.body)}緊貼下降點）。`,
+            );
+        }
+    }
+    // Weight order, so the chart's top love configuration opens the section; strengths first and
+    // at most one strain named (2:1 tone).
+    const textOf = (c: NatalConfig) =>
+        c.kind === 'placement' && c.body === 'venus' ? venusLine : byId.get(c.id);
+    const positives = cs.filter((c) => !strainIds.has(c.id)).map(textOf);
+    const strains = cs
+        .filter((c) => strainIds.has(c.id))
+        .map(textOf)
+        .slice(0, 1);
+    const sentences = positives.filter((t): t is string => !!t).flatMap(splitSentences);
+    const twist = pickBy(`${seedOf(env, 'sun')}|twist`, [
+        SIGN_KB[env.sunSign].loveTwist,
+        V.LOVE_TWIST_ALT[env.sunSign],
+    ]);
+    const p1 = ctx.pack(sentences.slice(0, 2), P);
+    const p2 = ctx.pack([twist, ...strains, ...sentences.slice(2)], P);
+
+    const top = cs[0];
+    let hook = VENUS_KB[vSign].hook;
+    if (top?.kind === 'aspect') {
+        const focus: PlanetKey =
+            top.aspect.a === 'venus' || top.aspect.b === 'venus' ? 'venus' : 'moon';
+        const x = other(top.aspect, focus);
+        hook = pickBy(`${vSeed}|hook`, [
+            strained(top.aspect, x)
+                ? `愛裡的功課是${BODY_VOICE[x].trapKw}`
+                : `愛裡帶著${BODY_VOICE[x].giftKw}`,
+            VENUS_KB[vSign].hook,
+        ]);
+    } else if (
+        top?.kind === 'placement' &&
+        top.body === 'moon' &&
+        charLen(`你要的是${MOON_KB[top.sign].need}`) <= 20
+    ) {
+        hook = pickBy(`${vSeed}|hook`, [`你要的是${MOON_KB[top.sign].need}`, VENUS_KB[vSign].hook]);
+    }
+
+    let field: string;
+    if (w.housesKnown) field = '依金星、火星、月亮，以及戀愛與伴侶相關的人生領域。';
+    else {
+        field = `依金星、火星、月亮推估；${noHouseReason(chart)}，看不出戀愛與伴侶的宮位`;
+        field += w.moonReliable ? '。' : `，月亮位置也可能偏差${moonNeighbour(chart)}。`;
+    }
+
+    const scenes = [VENUS_KB[vSign].scene, V.VENUS_SCENE_ALT[vSign], V.VENUS_SCENE_ALT2[vSign]];
+    const tips = [VENUS_KB[vSign].tip, V.VENUS_TIP_ALT[vSign]];
+    return section(env, 'natal_love', {
+        field,
+        hook,
+        insight: [p1, p2],
+        scene: ctx.first([pickBy(`${vSeed}|scene`, scenes), ...scenes], NATAL_LIMITS.scene),
+        advice: ctx.first([pickBy(`${vSeed}|tip`, tips), ...tips], NATAL_LIMITS.advice),
+    });
+}
+
+function career(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_career;
+    const P = NATAL_LIMITS.paragraph;
+    const jup = placement(cs, 'jupiter');
+    const jupSign = jup?.sign ?? signOfBody(env, 'jupiter');
+    const mc = w.mcSign;
+    const h10 = house(cs, 10);
+    const sat = placement(cs, 'saturn');
+    const satSign = sat?.sign ?? signOfBody(env, 'saturn');
+    const satFirst =
+        !!sat && (!jup || cs.indexOf(sat) < cs.indexOf(jup) || vary(cs, [false, true], 7));
+    const cSeed = `career|${mc}|${env.mix}|${h10?.bodies.join()}|${seedOf(env, 'jupiter')}`;
+
+    const lead: string[] = [];
+    const rest: string[] = [];
+    if (mc !== null) {
+        const f = SIGN_KB[mc].careerField;
+        const j = SIGN_KB[mc].careerJobs;
+        lead.push(
+            pickBy(cSeed, [
+                `你最能發揮的地方，是${f}，例如${j}（天頂${S(mc)}）。`,
+                `${f}最適合你，像${j}都是可以考慮的方向（天頂${S(mc)}）。`,
+                `把力氣放在${f}，例如${j}，最容易做出成績（天頂${S(mc)}）。`,
+                `你的事業方向偏向${f}，${j}都很能發揮你的長處（天頂${S(mc)}）。`,
+            ]),
         );
     }
-    if (moLack.length > 0) lines.push(moLack.map((x) => MODALITY_LACK[x.m]).join(''));
+    for (const c of cs) {
+        if (c.kind === 'house' && c.house === 10) {
+            const s = houseSentence(env, c);
+            if (s) lead.push(s);
+        } else if (c.kind === 'axis') {
+            lead.push(
+                `在工作場合，你的${BODY_VOICE[c.body].tone}特別顯眼，容易被賦予重任（${N(c.body)}緊貼天頂）。`,
+            );
+        } else if (c.kind === 'placement' && c.body === 'jupiter') {
+            const js = seedOf(env, 'jupiter');
+            const gift = pickBy(`${js}|gift`, [
+                JUPITER_KB[c.sign].gift,
+                ...V.JUPITER_GIFT_ALT[c.sign],
+            ]);
+            lead.push(
+                pickBy(`${js}|giftFrame`, [
+                    `機會常在你${gift}時出現（木星${S(c.sign)}）。`,
+                    `當你${gift}，好機會就跟著來（木星${S(c.sign)}）。`,
+                ]),
+            );
+            if (mc === null) lead.push(`${SIGN_KB[c.sign].careerJobs}這類工作，很能讓你發揮所長。`);
+        } else if (c.kind === 'placement' && c.body === 'saturn') {
+            const work = pickBy(`${seedOf(env, 'saturn')}|work`, [
+                SATURN_KB[c.sign].work,
+                ...V.SATURN_WORK_ALT[c.sign],
+            ]);
+            rest.push(`${work}（土星${S(c.sign)}）。`);
+        } else if (c.kind === 'house') {
+            const s = houseSentence(env, c);
+            if (s) rest.push(s);
+        }
+    }
+    const p1 = ctx.pack(lead, P);
+    const p2 =
+        ctx.pack(rest, P) ||
+        ctx.pack(
+            [
+                `你的韌性在於${SIGN_KB[jupSign].light_side}`,
+                '長期來看，穩穩累積比短期衝刺更能讓你走得遠。',
+            ],
+            P,
+        );
 
-    return item(
-        '元素與模式',
-        '十顆行星落在火、土、風、水四元素與開創、固定、變動三種模式的分布，看整體性格的傾向。',
-        lines.join('\n'),
+    // Context chaining: the thinking style from 底層邏輯 turned into a workplace scene.
+    const ms = env.mercurySign;
+    const mSeed = seedOf(env, 'mercury');
+    const twist = pickBy(`${mSeed}|work`, [SIGN_KB[ms].workTwist, V.WORK_TWIST_ALT[ms]]);
+    const scene = ctx.first(
+        [
+            pickBy(`${mSeed}|workFrame`, [
+                `這樣的思考方式放到職場上，你${twist}。`,
+                `換到工作現場，你${twist}。`,
+                `帶著這種腦袋上班，你${twist}。`,
+                `在職場上，這樣的你${twist}。`,
+                `把這份思考力帶進工作，你${twist}。`,
+                `上班時，你的腦袋讓你${twist}。`,
+                `工作上，你${twist}。`,
+            ]),
+        ],
+        NATAL_LIMITS.scene,
     );
+
+    const lead10 = h10?.bodies
+        .slice()
+        .sort((a, b) => GIFT_PRIORITY.indexOf(a) - GIFT_PRIORITY.indexOf(b))[0];
+    const hookSign = SIGN_KB[mc ?? jupSign];
+    const hook = lead10
+        ? pickBy(cSeed, [`在工作裡，${BODY_VOICE[lead10].giftKw}就是你的武器`, hookSign.careerHook])
+        : pickBy(cSeed, [
+              hookSign.careerHook,
+              `把${hookSign.keywords[1]}變成你的專業`,
+              `${hookSign.keywords[2]}是你在職場的招牌`,
+              `在職場上，${hookSign.keywords[0]}會替你加分`,
+          ]);
+
+    const field = w.housesKnown
+        ? '依天頂（事業方向）、日常工作與金錢相關的人生領域，以及木星、土星。'
+        : `依木星與土星推估；${noHouseReason(chart)}，算不出代表事業方向的天頂與宮位，這段參考性較低。`;
+
+    return section(env, 'natal_career', {
+        field,
+        hook,
+        insight: [p1, p2],
+        scene,
+        // Saturn's tip when Saturn outranks Jupiter in this section, Jupiter's otherwise.
+        advice: ctx.first(
+            satFirst
+                ? [SATURN_KB[satSign].tip, JUPITER_KB[jupSign].tip]
+                : [JUPITER_KB[jupSign].tip, SATURN_KB[satSign].tip],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+const AXIS_DOMAIN: Record<AxisConfig['axis'], string> = {
+    asc: '給人的第一印象',
+    mc: '工作場合',
+    dsc: '親密關係',
+    ic: '家庭生活',
+};
+
+function core(env: Env): NatalSection {
+    const { w, ctx } = env;
+    const cs = w.sections.natal_core;
+    const P = NATAL_LIMITS.paragraph;
+    const soft = aspects(cs).filter((c) => SOFT_ASPECTS.has(c.aspect.type));
+    const hard = cs.filter(
+        (c): c is AspectConfig | AxisConfig =>
+            (c.kind === 'aspect' && HARD_ASPECTS.has(c.aspect.type)) || c.kind === 'axis',
+    );
+
+    const strengths: string[] = soft.map((c, i) => {
+        const a = c.aspect;
+        const b = aspectBasis(a);
+        const ga = BODY_VOICE[a.a].gift;
+        const gb = BODY_VOICE[a.b].gift;
+        const seed = `${aspectSeed(env, a, a.a)}|core${i}`;
+        if (i > 0) {
+            return pickBy(seed, [
+                `${ga}與${gb}之間也很有默契，關鍵時刻常幫你一把${b}。`,
+                `另外，${ga}和${gb}也常聯手替你解圍${b}。`,
+                `${ga}和${gb}互相補位，是你的另一張王牌${b}。`,
+            ]);
+        }
+        return pickBy(seed, [
+            `你最大的本錢，是${ga}和${gb}能互相成全${b}。`,
+            `${ga}加上${gb}，是你最拿得出手的組合${b}。`,
+            `你身上最順的一條線，是${ga}和${gb}彼此撐腰${b}。`,
+            `${ga}和${gb}在你身上配合得天衣無縫${b}。`,
+            `一旦同時用上${ga}和${gb}，你幾乎無往不利${b}。`,
+        ]);
+    });
+    if (strengths.length === 0) strengths.push(`你的優勢在於${SIGN_KB[env.sunSign].light_side}`);
+
+    const blind: string[] = [];
+    hard.forEach((c, i) => {
+        if (c.kind === 'axis') {
+            blind.push(
+                `在${AXIS_DOMAIN[c.axis]}裡，你的${BODY_VOICE[c.body].tone}有時會用力過頭，需要拿捏分寸（${N(c.body)}緊貼${AXIS_NAMES[c.axis]}）。`,
+            );
+            return;
+        }
+        const a = c.aspect;
+        const ch = pickBody(a, CHALLENGE_PRIORITY);
+        const v = BODY_VOICE[ch];
+        const trait = ctx.phrase(`hard:${ch}`, v.hard, v.hardAlt);
+        const fa = BODY_VOICE[a.a].fnShort;
+        const fb = BODY_VOICE[a.b].fnShort;
+        const b = aspectBasis(a);
+        const seed = `${aspectSeed(env, a, a.a)}|blind${i}`;
+        blind.push(
+            i === 0
+                ? pickBy(seed, [
+                      `最需要留意的盲點，是${fa}和${fb}互不相讓時，你容易${trait}${b}。`,
+                      `你的罩門在於：${fa}和${fb}一卡住，你就容易${trait}${b}。`,
+                      `當${fa}和${fb}打架，你最容易${trait}，這是值得練習的地方${b}。`,
+                      `${fa}與${fb}較勁的時候，你常不自覺地${trait}${b}。`,
+                  ])
+                : pickBy(seed, [
+                      `另一個要注意的地方，是你偶爾會${trait}${b}。`,
+                      `還有一個小盲點：你有時會${trait}${b}。`,
+                  ]),
+        );
+    });
+    if (blind.length === 0) blind.push(`最需要留意的盲點是：${SIGN_KB[env.sunSign].shadow_side}`);
+
+    const topSoft = soft[0];
+    const giftFirst = topSoft ? pickBody(topSoft.aspect, GIFT_PRIORITY) : 'sun';
+    const strengthBody: PlanetKey = topSoft
+        ? pickBy(aspectSeed(env, topSoft.aspect, giftFirst), [
+              giftFirst,
+              other(topSoft.aspect, giftFirst),
+          ])
+        : 'sun';
+    const topHard = hard[0];
+    const challengeBody: PlanetKey | null = !topHard
+        ? null
+        : topHard.kind === 'axis'
+          ? topHard.body
+          : pickBody(topHard.aspect, CHALLENGE_PRIORITY);
+    const giftKw = BODY_VOICE[strengthBody].giftKw;
+    const hook = challengeBody
+        ? vary(cs, [
+              `${giftKw}是天賦，${BODY_VOICE[challengeBody].trapKw}是功課`,
+              `靠${giftKw}發光，因${BODY_VOICE[challengeBody].trapKw}卡關`,
+              `${giftKw}是武器，${BODY_VOICE[challengeBody].trapKw}是罩門`,
+          ])
+        : `${giftKw}是你最可靠的天賦`;
+
+    let field = '從整張盤最順暢與最緊繃的行星角度，整理你最大的優勢與盲點。';
+    if (!w.moonReliable) field += '月亮的角度受出生時間影響，這次略過。';
+
+    const secondHard = hard.find((c) => c !== topHard);
+    const secondBody =
+        secondHard &&
+        (secondHard.kind === 'axis'
+            ? secondHard.body
+            : pickBody(secondHard.aspect, CHALLENGE_PRIORITY));
+    return section(env, 'natal_core', {
+        field,
+        hook,
+        insight: [ctx.pack(strengths, P), ctx.pack(blind, P)],
+        scene: ctx.first(
+            [
+                sceneOf(
+                    strengthBody,
+                    topSoft ? aspectSeed(env, topSoft.aspect, strengthBody) : env.mix,
+                ),
+                ...soft
+                    .slice(1)
+                    .map((c) =>
+                        sceneOf(
+                            pickBody(c.aspect, GIFT_PRIORITY),
+                            aspectSeed(env, c.aspect, c.aspect.a),
+                        ),
+                    ),
+                BODY_VOICE.sun.giftScene2,
+                BODY_VOICE.sun.giftScene,
+            ],
+            NATAL_LIMITS.scene,
+        ),
+        advice: ctx.first(
+            [
+                challengeBody && topHard
+                    ? pickBy(`${describeConfig(topHard)}|${env.mix}`, [
+                          ...tipsOf(challengeBody),
+                          ...(secondBody ? tipsOf(secondBody).slice(2) : []),
+                      ])
+                    : null,
+                secondBody && secondHard
+                    ? tipOf(secondBody, `${describeConfig(secondHard)}|${env.mix}`)
+                    : null,
+                challengeBody ? BODY_VOICE[challengeBody].trapTip3 : null,
+                SUN_KB[env.sunSign].tip,
+                '每週回顧一次做得好與卡住的事，優點會更穩，盲點也更早被看見。',
+            ],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+/**
+ * The six natal sections in guideline order. 個性 and 底層邏輯 are written first and the later
+ * sections read their context (the Sun / Mercury traits, every sentence already used).
+ */
+export function natalReport(chart: AstroChart): NatalSection[] {
+    const w = weighNatal(chart);
+    const signOf = (k: AstroBodyKey) => chart.bodies.find((b) => b.key === k)?.sign ?? 0;
+    const planets = chart.bodies.filter((b) => (PLANET_KEYS as readonly string[]).includes(b.key));
+    const el = [0, 1, 2, 3].map((i) => planets.filter((b) => b.sign % 4 === i).length).join('');
+    const md = [0, 1, 2].map((i) => planets.filter((b) => b.sign % 3 === i).length).join('');
+    const env: Env = {
+        chart,
+        w,
+        ctx: new Ctx(),
+        sunSign: signOf('sun'),
+        mercurySign: signOf('mercury'),
+        mix: `${el}|${md}`,
+    };
+    return [personality(env), logic(env), stress(env), love(env), career(env), core(env)];
+}
+
+export function formatNatalMeaning(s: NatalSection): string {
+    return [
+        '【解析】',
+        ...s.insight.filter(Boolean),
+        '【生活場景】',
+        s.scene,
+        '【給你的建議】',
+        s.advice,
+    ].join('\n');
 }
 
 export function astroMeaningItems(chart: AstroChart): MeaningItem[] {
-    const byKey = new Map(chart.bodies.map((b) => [b.key, b]));
-    const get = (k: AstroBodyKey) => byKey.get(k);
-    const items: MeaningItem[] = [];
-
-    const sun = get('sun');
-    const moon = get('moon');
-    if (sun) items.push(signItem(sun, '太陽星座代表核心自我與生命動力，是你想成為的樣子。', SUN));
-    if (moon) {
-        items.push(
-            signItem(
-                moon,
-                '月亮星座代表情緒需求與安全感，是放鬆時最真實的你。',
-                MOON,
-                chart.timeUnknown ? moonCaveat(moon) : '',
-            ),
-        );
-    }
-    if (chart.angles && !chart.timeUnknown) {
-        const asc = chart.angles.asc;
-        items.push(
-            item(
-                `上升 · ${asc.signName}`,
-                '上升星座是給人的第一印象，也是你面對新環境的方式。',
-                ASC[asc.sign],
-            ),
-        );
-    }
-
-    const planetRows: Array<[AstroBodyKey, string, SignTable]> = [
-        ['mercury', '水星代表思考、學習與溝通的方式。', MERCURY],
-        ['venus', '金星代表愛的方式、價值觀與審美。', VENUS],
-        ['mars', '火星代表行動力、慾望與處理衝突的方式。', MARS],
-        ['jupiter', '木星代表成長、信心，以及容易遇到機會的方向。', JUPITER],
-        ['saturn', '土星代表責任、限制，以及需要長期練習的功課。', SATURN],
-    ];
-    for (const [key, field, table] of planetRows) {
-        const b = get(key);
-        if (b) items.push(signItem(b, field, table, '', true));
-    }
-
-    if (sun && moon && chart.houses && !chart.timeUnknown) {
-        const h = houseItem(sun, moon);
-        if (h) items.push(h);
-    }
-
-    items.push(aspectsItem(chart));
-
-    const planets = PLANETS.map(get).filter((b): b is AstroBody => b !== undefined);
-    if (planets.length > 0) items.push(balanceItem(planets));
-
-    return items;
+    return natalReport(chart).map((s) => ({
+        term: s.title,
+        field: s.field,
+        hook: s.hook,
+        meaning: formatNatalMeaning(s),
+    }));
 }

@@ -77,6 +77,11 @@ export function ChartMeaningCard({
                                 {entry.field}
                             </p>
                         </div>
+                        {entry.hook && (
+                            <p className="border-l-2 border-accent pl-3 font-serif text-base text-fg">
+                                「{entry.hook}」
+                            </p>
+                        )}
                         <dd className="grid grid-cols-[4.5rem_1fr] gap-x-3 rounded-md bg-surface-2 px-3 py-2 text-sm sm:grid-cols-[5.5rem_1fr]">
                             <span className="pt-0.5 text-xs tracking-wide text-muted">
                                 意思說明
