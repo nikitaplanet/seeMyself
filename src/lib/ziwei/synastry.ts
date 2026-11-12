@@ -1,6 +1,8 @@
 import type { PartnerKey } from '@/lib/hd/synastry';
-import { STAR_TRAIT, type MeaningItem } from '@/lib/ui/personMeaning';
+import type { MeaningItem } from '@/lib/ui/personMeaning';
 import { displayPalaceName, MUTAGEN_ORDER, PALACE_ORDER } from './labels';
+import { STAR_ALSO, STAR_PLAIN } from './meaning';
+import { ziweiPairCards } from './synastryCards';
 import type { ZiweiChart, ZiweiPalace } from './types';
 
 // 紫微雙人合盤 — pure logic, no React. Built only from data the single chart already has:
@@ -254,7 +256,7 @@ const FLIGHT_TEXT: Record<string, Record<string, FlightText>> = {
     祿: (f, t) => `${f}在${t}的朋友圈很吃得開，兩人有共同朋友、一起聚會很自在，${t}的社交生活因為${f}更熱鬧。熱鬧之外，也留一些只屬於兩人的時間。`,
     權: (f, t) => `${f}看人很準，常能幫${t}分辨誰值得深交，是${t}社交圈裡的好參謀。給意見時點到為止，${t}會更願意聽。`,
     科: (f, t) => `${f}在${t}的朋友眼中評價很好，是會被朋友說「你們很配」的那種，有${f}在${t}很有面子。私下有小不滿時也輕輕說出來，好評就會表裡如一。`,
-    忌: (f, t, th) => `${f}很想被放進${t}的生活圈，所以特別留意${t}的朋友和社交，${t}和誰出去、聊到多晚，都牽動著${f}的${th}。${t}主動分享行程，這份在意就會變成安全感。`,
+    忌: (f, t, th) => `${f}很想被放進${t}的生活圈，所以特別留意${t}的朋友和社交，${t}和誰出去、聊到多晚，${f}都放在心上，和${th}有關的事尤其在意。${t}主動分享行程，這份在意就會變成安全感。`,
   },
   官祿: {
     祿: (f, t) => `${f}能帶給${t}工作上的好運與實際幫助，兩人很適合一起做事，常能互相成就。合作順利時，也記得留時間聊聊工作以外的心事。`,
@@ -361,26 +363,8 @@ const STAR_PERSONA: Record<string, string> = {
   破軍: '敢從零開始，總能替生活帶來新局面和驚喜；喜歡變化，重大改變前先和身邊的人商量會更順',
 };
 
-/** 福德宮主星：放鬆、充電的方式。 */
-const STAR_RELAX: Record<string, string> = {
-  紫微: '想要有品味、有質感的休息，不喜歡隨便將就',
-  天機: '喜歡看書、追劇、研究新東西，腦袋動著才放鬆',
-  太陽: '想出門、見朋友，或做點有意義的事',
-  武曲: '喜歡做點實際的事，運動、整理房間、看看帳戶都能讓心定下來',
-  天同: '最愛吃好吃的、睡到自然醒、什麼都不做',
-  廉貞: '需要有情感濃度的活動，看展、聽音樂，或和親近的人深聊',
-  天府: '喜歡待在熟悉的地方，吃頓好的、把家裡打理好',
-  太陰: '需要一個人的安靜時間，夜晚、音樂或泡澡最療癒',
-  貪狼: '喜歡熱鬧和嘗鮮，聚會、旅行、新開的餐廳都很加分',
-  巨門: '喜歡聊天、看有深度的內容，把心裡的疑問想通才舒服',
-  天相: '喜歡整齊舒適的環境，和好朋友吃頓飯、好好打扮一下',
-  天梁: '喜歡清靜又有意義的休息，像散步、讀書或陪家人',
-  七殺: '要動起來才放鬆，運動或說走就走的小旅行',
-  破軍: '喜歡換個新環境，旅行、改造房間或嘗試沒做過的事',
-};
-
 type ThinkStyle = 'fast' | 'analyze' | 'steady' | 'feel';
-type ConflictStyle = 'direct' | 'reason' | 'withdraw' | 'soothe';
+export type ConflictStyle = 'direct' | 'reason' | 'withdraw' | 'soothe';
 
 /** 思考與做決定的方式。 */
 const STAR_THINK: Record<string, { text: string; style: ThinkStyle }> = {
@@ -598,7 +582,6 @@ const LOVE_FEEL_BY_MUTAGEN: Record<string, { feel: string; tip: ((from: string, 
 
 function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: ZiweiFit): string[] {
   const soul = { a: palaceStars(a.chart, syn.soulA), b: palaceStars(b.chart, syn.soulB) };
-  const fude = { a: palaceStars(a.chart, byName(a.chart, '福德')), b: palaceStars(b.chart, byName(b.chart, '福德')) };
   const spouse = { a: palaceStars(a.chart, byName(a.chart, '夫妻')), b: palaceStars(b.chart, byName(b.chart, '夫妻')) };
   const A = a.name;
   const B = b.name;
@@ -614,7 +597,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
     const lines = bondJi.map((f) => `${name(f.from)}的化忌在${other(f.from)}的${displayPalaceName(f.palace)}`).join('、');
     upfront.push(
       '【先說在前面】',
-      `坦白說，從紫微合盤來看，這是一組需要比一般組合多花力氣的關係：${lines}，牽掛集中在最核心的位置；化祿沒有落在對方的命、夫妻、交友、福德這幾宮，少了自然的甜頭來緩衝；五行局又是相剋，兩人的基本節奏容易互相壓制。這不代表不能在一起，而是代表很多事不會「自然就好」，需要兩人都有意識地經營。下面先寫兩人相處的好，再寫最需要留意的地方。`,
+      `坦白說，從紫微合盤來看，這是一組需要比一般組合多花力氣的關係：兩人最放不下的牽掛，都壓在對方最核心的位置；彼此給的甜頭沒有落在同樣核心的地方，少了自然的緩衝；兩人的基本節奏又容易互相壓制。這不代表不能在一起，而是很多事不會「自然就好」，需要兩人都有意識地經營。下面先寫兩人相處的好，再寫最需要留意的地方（${lines}；化祿沒有落在對方的命、夫妻、交友、福德宮；五行局相剋）。`,
     );
   }
 
@@ -622,7 +605,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   const persona = (ps: PalaceStars) => {
     const main = lead(ps, STAR_PERSONA) ?? FALLBACK_PERSONA;
     const second = ps.names[1];
-    const extra = second && STAR_TRAIT[second] ? `，也帶著${second}${STAR_TRAIT[second]}的一面` : '';
+    const extra = second && STAR_ALSO[second] ? `；${STAR_ALSO[second]}` : '';
     return `${main}${extra}`;
   };
   const sameLead = !!soul.a.names[0] && soul.a.names[0] === soul.b.names[0];
@@ -630,7 +613,7 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   const both = (x: string, y: string, same: string): string[] => (x === y ? [`${same}${x}。`] : [`${A}${x}。`, `${B}${y}。`]);
   const extraOf = (ps: PalaceStars) => {
     const second = ps.names[1];
-    return second && STAR_TRAIT[second] ? `${second}${STAR_TRAIT[second]}的一面` : '';
+    return second && STAR_PLAIN[second] ? `${second}${STAR_PLAIN[second]}的一面` : '';
   };
   const personality: string[] = [];
   if (sameLead) {
@@ -650,26 +633,16 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
     personality.push(`${A}（命宮${starsLabel(soul.a)}）${persona(soul.a)}。`);
     personality.push(`${B}（命宮${starsLabel(soul.b)}）${persona(soul.b)}。`);
   }
-  const relaxA = lead(fude.a, STAR_RELAX);
-  const relaxB = lead(fude.b, STAR_RELAX);
-  if (relaxA && relaxB) {
-    personality.push(
-      fude.a.names[0] === fude.b.names[0]
-        ? `兩人福德宮都是${fude.a.names[0]}，放鬆方式很像：都${relaxA}，排假日行程幾乎不用討論，一起充電特別合拍。偶爾輪流帶對方試一件新事情，舒適圈會越來越大。`
-        : `放假時，${A}${relaxA}；${B}則${relaxB}。正因為不一樣，兩人能替彼此打開另一種充電方式，輪流照對方的方式過一天，生活會變得更豐富。`,
-    );
-  }
-
   // 思考方式
   const tA = lead(soul.a, STAR_THINK) ?? FALLBACK_THINK;
   const tB = lead(soul.b, STAR_THINK) ?? FALLBACK_THINK;
   const thinking = [...both(tA.text, tB.text, `${A}和${B}在這點上一模一樣：`), pairNote(THINK_PAIR, THINK_ORDER, tA.style, tB.style, A, B)];
   for (const f of flights) {
     if (f.mutagen === '權' && (f.palace === '命宮' || f.palace === '官祿')) {
-      thinking.push(`${name(f.from)}的${f.star}化權落在${other(f.from)}的${displayPalaceName(f.palace)}，${other(f.from)}拿不定主意時，有${name(f.from)}幫忙拍板會安心很多；重要的決定由${other(f.from)}說最後一句，這份支持會更有力量。`);
+      thinking.push(`${other(f.from)}拿不定主意時，有${name(f.from)}幫忙拍板會安心很多；重要的決定由${other(f.from)}說最後一句，這份支持會更有力量（${name(f.from)}的${f.star}化權落在${other(f.from)}的${displayPalaceName(f.palace)}）。`);
     }
     if (f.mutagen === '科' && (f.palace === '官祿' || f.palace === '父母')) {
-      thinking.push(`${name(f.from)}的${f.star}化科落在${other(f.from)}的${displayPalaceName(f.palace)}，${other(f.from)}想法卡住時，${name(f.from)}常能幫忙把思路理清，是很好的討論對象；${other(f.from)}把心裡真正的顧慮也說出來，${name(f.from)}就能幫得更到位。`);
+      thinking.push(`${other(f.from)}想法卡住時，${name(f.from)}常能幫忙把思路理清，是很好的討論對象；${other(f.from)}把心裡真正的顧慮也說出來，${name(f.from)}就能幫得更到位（${name(f.from)}的${f.star}化科落在${other(f.from)}的${displayPalaceName(f.palace)}）。`);
     }
   }
 
@@ -681,31 +654,32 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
   const jiKey = flights.filter((f) => f.mutagen === '忌' && f.key);
   if (jiKey.length === 2 && jiKey[0].palace === jiKey[1].palace && jiKey[0].from !== jiKey[1].from) {
     const [x, y] = jiKey;
+    const jiBasis = `（兩人的化忌都落在對方的${displayPalaceName(x.palace)}：${name(x.from)}的${x.star}、${name(y.from)}的${y.star}）`;
     conflict.push(
       fit.difficult
-        ? `兩人的化忌都落在對方的${displayPalaceName(x.palace)}（${name(x.from)}的${x.star}、${name(y.from)}的${y.star}），${name(x.from)}在意的是「${theme(x.star)}」，${name(y.from)}在意的是「${theme(y.star)}」，兩人在意的不是同一件事，又都放在心上，很容易各說各的、都覺得對方不懂。這也正說明誰都放不下誰；把各自最在意的那件事明白說出來，比猜對方在氣什麼有用得多。`
-        : `兩人的化忌都落在對方的${displayPalaceName(x.palace)}（${name(x.from)}的${x.star}、${name(y.from)}的${y.star}），${name(x.from)}在意的是「${theme(x.star)}」，${name(y.from)}在意的是「${theme(y.star)}」。兩人都把對方放在心上，這是很深的緣分；聊到這兩件事時先說一句「我是因為在乎你」，在意就會變成靠近的理由。`,
+        ? `${name(x.from)}最在意的是「${theme(x.star)}」，${name(y.from)}最在意的是「${theme(y.star)}」，兩人在意的不是同一件事，又都放在心上，很容易各說各的、都覺得對方不懂。這也正說明誰都放不下誰；把各自最在意的那件事明白說出來，比猜對方在氣什麼有用得多${jiBasis}。`
+        : `${name(x.from)}最在意的是「${theme(x.star)}」，${name(y.from)}最在意的是「${theme(y.star)}」。兩人都把對方放在心上，這是很深的緣分；聊到這兩件事時先說一句「我是因為在乎你」，在意就會變成靠近的理由${jiBasis}。`,
     );
   } else {
     jiKey.forEach((f, i) => {
-      const at = `${name(f.from)}的${f.star}化忌落在${other(f.from)}的${displayPalaceName(f.palace)}`;
+      const at = `（${name(f.from)}的${f.star}化忌落在${other(f.from)}的${displayPalaceName(f.palace)}）`;
       conflict.push(
         i === 0
           ? fit.difficult
-            ? `${at}，「${theme(f.star)}」是兩人最容易起摩擦的地方，${name(f.from)}越在乎越容易把話說重；摩擦底下是在乎，但在乎需要被好好說出來，才不會變成互相傷害。`
-            : `${at}，${name(f.from)}對${other(f.from)}特別在乎，這份在乎最常表現在「${theme(f.star)}」上；聊到這件事時多一點耐心，就是兩人最好的練習。`
-          : `另外，${at}，「${theme(f.star)}」也是${name(f.from)}很放在心上的事；這份重量，正說明${other(f.from)}在${name(f.from)}心裡占了多大的位置。`,
+            ? `「${theme(f.star)}」是兩人最容易起摩擦的地方，${name(f.from)}越在乎越容易把話說重；摩擦底下是在乎，但在乎需要被好好說出來，才不會變成互相傷害${at}。`
+            : `${name(f.from)}對${other(f.from)}特別在乎，這份在乎最常表現在「${theme(f.star)}」上；聊到這件事時多一點耐心，就是兩人最好的練習${at}。`
+          : `另外，「${theme(f.star)}」也是${name(f.from)}很放在心上的事；這份重量，正說明${other(f.from)}在${name(f.from)}心裡占了多大的位置${at}。`,
       );
     });
   }
   const quanHome = flights.filter((f) => f.mutagen === '權' && (f.palace === '夫妻' || f.palace === '田宅'));
   if (quanHome.length === 2 && quanHome[0].from !== quanHome[1].from) {
     conflict.push(
-      `兩人的化權都落在對方的${quanHome.map((f) => displayPalaceName(f.palace)).filter((v, i, arr) => arr.indexOf(v) === i).join('、')}，兩個人都肯出力、都有主見，生活上的事推得特別快；事先分好誰管哪一塊，兩股力量就能往同一個方向使。`,
+      `兩個人都肯出力、都有主見，生活上的事推得特別快；事先分好誰管哪一塊，兩股力量就能往同一個方向使（兩人的化權都落在對方的${quanHome.map((f) => displayPalaceName(f.palace)).filter((v, i, arr) => arr.indexOf(v) === i).join('、')}）。`,
     );
   } else {
     for (const f of quanHome) {
-      conflict.push(`${name(f.from)}的化權落在${other(f.from)}的${displayPalaceName(f.palace)}，${name(f.from)}願意扛起生活上的決定，${other(f.from)}因此省心不少；事先說好哪些事由誰作主，合作會更順。`);
+      conflict.push(`${name(f.from)}願意扛起生活上的決定，${other(f.from)}因此省心不少；事先說好哪些事由誰作主，合作會更順（${name(f.from)}的化權落在${other(f.from)}的${displayPalaceName(f.palace)}）。`);
     }
   }
 
@@ -737,40 +711,40 @@ function dailyLifeLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fi
     const wish = lead(sp, STAR_SPOUSE_WISH);
     if (!wish) return [];
     const match = mateSoul.names.find((n) => sp.names.includes(n));
-    return [{ self, mate, wish, match, label: `${self}的夫妻宮${sp.borrowed ? '' : '是'}${starsLabel(sp)}` }];
+    return [{ self, mate, wish, match, label: `${self}心裡期待的伴侶，是${wish}（夫妻宮${starsLabel(sp)}）` }];
   });
   const unmatched = wishes.filter((w) => !w.match);
   for (const w of wishes) {
     if (w.match) {
-      love.push(`${w.label}，心裡期待${w.wish}；${w.mate}的命宮正好也有${w.match}，很符合${w.self}心中的伴侶樣子，是很容易心動的組合。相處久了看到真實的一面，${w.self}也會發現${w.mate}比想像中更可愛。`);
+      love.push(`${w.label}；${w.mate}的命宮正好也有${w.match}，很符合${w.self}心中的伴侶樣子，是很容易心動的組合。相處久了看到真實的一面，${w.self}也會發現${w.mate}比想像中更可愛。`);
     } else if (unmatched.length === 1) {
-      love.push(`${w.label}，心裡期待${w.wish}；${w.mate}也許不完全是這個樣子，卻帶著自己獨特的好，不拿心中的範本去比，${w.self}會發現更多驚喜。`);
+      love.push(`${w.label}；${w.mate}也許不完全是這個樣子，卻帶著自己獨特的好，不拿心中的範本去比，${w.self}會發現更多驚喜。`);
     }
   }
   if (unmatched.length === 2) {
     const [x, y] = unmatched;
-    love.push(`${x.label}，心裡期待${x.wish}；${y.label}，期待的是${y.wish}。兩人都不是照著範本挑的對象，也正因為如此，才更看得到對方本來的好，這份「意料之外」本身就很珍貴。`);
+    love.push(`${x.label}；${y.label}。兩人都不是照著範本挑的對象，也正因為如此，才更看得到對方本來的好，這份「意料之外」本身就很珍貴。`);
   }
   const usedTip: Record<string, number> = {};
   for (const f of flights) {
     if (!LOVE_PALACES.includes(f.palace)) continue;
-    const where = `${name(f.from)}的${f.star}化${f.mutagen}落在${other(f.from)}的${displayPalaceName(f.palace)}`;
+    const where = `（${name(f.from)}的${f.star}化${f.mutagen}落在${other(f.from)}的${displayPalaceName(f.palace)}）`;
     const m = LOVE_FEEL_BY_MUTAGEN[f.mutagen];
     if (m) {
       const n = usedTip[f.mutagen] ?? 0;
       usedTip[f.mutagen] = n + 1;
-      love.push(`${where}，${other(f.from)}特別容易從${name(f.from)}身上感到${m.feel}${m.tip[n % m.tip.length](name(f.from), other(f.from))}。`);
+      love.push(`${other(f.from)}特別容易從${name(f.from)}身上感到${m.feel}${m.tip[n % m.tip.length](name(f.from), other(f.from))}${where}。`);
     } else if (f.mutagen === '忌') {
       const n = usedTip['忌'] ?? 0;
       usedTip['忌'] = n + 1;
       love.push(
         fit.difficult
           ? n === 0
-            ? `${where}，${other(f.from)}是${name(f.from)}感情裡最放不下的人，這份在乎很真，但也很重；${name(f.from)}不安時容易用要求代替表達，${other(f.from)}則可能覺得怎麼做都不夠。把「我需要什麼」具體說出來，是這段關係最重要的功課。`
-            : `${where}，${name(f.from)}對${other(f.from)}的牽掛同樣很深；兩個人都把對方放得很重，不安也最容易互相傳染，一個人慌的時候，另一個人要先穩住，而不是跟著慌。`
+            ? `${other(f.from)}是${name(f.from)}感情裡最放不下的人，這份在乎很真，但也很重；${name(f.from)}不安時容易用要求代替表達，${other(f.from)}則可能覺得怎麼做都不夠。把「我需要什麼」具體說出來，是這段關係最重要的功課${where}。`
+            : `${name(f.from)}對${other(f.from)}的牽掛同樣很深；兩個人都把對方放得很重，不安也最容易互相傳染，一個人慌的時候，另一個人要先穩住，而不是跟著慌${where}。`
           : n === 0
-            ? `${where}，${other(f.from)}是${name(f.from)}感情裡最放不下的人，這份在乎很真也很深，是兩人最牢的牽繫；${name(f.from)}不安時，${other(f.from)}一句確定的話就能讓一切安穩。`
-            : `${where}，${name(f.from)}對${other(f.from)}的牽掛同樣很深；兩個人都把對方放在心上，這段關係很有分量，一個人慌的時候，另一個人先穩住就好。`,
+            ? `${other(f.from)}是${name(f.from)}感情裡最放不下的人，這份在乎很真也很深，是兩人最牢的牽繫；${name(f.from)}不安時，${other(f.from)}一句確定的話就能讓一切安穩${where}。`
+            : `${name(f.from)}對${other(f.from)}的牽掛同樣很深；兩個人都把對方放在心上，這段關係很有分量，一個人慌的時候，另一個人先穩住就好${where}。`,
       );
     }
   }
@@ -809,9 +783,9 @@ const GIFT_ROLE: Record<string, (x: string, y: string) => string> = {
 };
 
 const GIFT_FLIGHT: Record<string, (f: string, t: string, where: string, theme: string) => string> = {
-  祿: (f, t, where, th) => `${where}，${f}在${th}上給的好，是${t}最能感受到的溫柔`,
-  權: (f, t, where, th) => `${where}，在${th}上，${f}是${t}最有力的支持`,
-  科: (f, t, where) => `${where}，${f}的欣賞讓${t}更相信自己`,
+  祿: (f, t, where, th) => `${f}在${th}上給的好，是${t}最能感受到的溫柔（${where}）`,
+  權: (f, t, where, th) => `在${th}上，${f}是${t}最有力的支持（${where}）`,
+  科: (f, t, where) => `${f}的欣賞讓${t}更相信自己（${where}）`,
 };
 
 const SAME_GIFT: Record<Element, string> = {
@@ -866,12 +840,12 @@ function giftLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: Zi
   // 3. 五行局
   const { elementA: ea, elementB: eb, relation: rel } = syn;
   if (!fit.difficult && ea && eb && rel) {
-    if (rel === 'same') sentences.push(`同屬${ea}的兩人節奏相近，是能${SAME_GIFT[ea]}的伴。`);
-    else if (rel === 'aGeneratesB') sentences.push(`五行上${a.name}的${ea}生${b.name}的${eb}，${GENERATE_GIFT[ea](a.name, b.name)}。`);
-    else if (rel === 'bGeneratesA') sentences.push(`五行上${b.name}的${eb}生${a.name}的${ea}，${GENERATE_GIFT[eb](b.name, a.name)}。`);
+    if (rel === 'same') sentences.push(`兩人的節奏相近，是能${SAME_GIFT[ea]}的伴（五行局同屬${ea}）。`);
+    else if (rel === 'aGeneratesB') sentences.push(`${GENERATE_GIFT[ea](a.name, b.name)}（五行局${ea}生${eb}）。`);
+    else if (rel === 'bGeneratesA') sentences.push(`${GENERATE_GIFT[eb](b.name, a.name)}（五行局${eb}生${ea}）。`);
     else {
       const [c, t] = rel === 'aControlsB' ? [a.name, b.name] : [b.name, a.name];
-      sentences.push(`五行雖是相剋，${c}和${t}卻能互相磨出更好的樣子，這份磨合本身就是成長。`);
+      sentences.push(`${c}和${t}的節奏不太一樣，卻能互相磨出更好的樣子，這份磨合本身就是成長（五行局相剋）。`);
     }
   }
 
@@ -886,7 +860,7 @@ function giftLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: Zi
     return [
       first ? `真實而珍貴的部分是：${first}` : '',
       ...rest,
-      `要讓這段關係走得下去，需要的是：兩人都願意把${cares || '心裡最在意的事'}說清楚，而不是等對方猜；有一方慌的時候，另一方先穩住；五行相剋的節奏差異，靠事先約好的規則來承接，而不是靠感覺硬撐。做得到，兩人的在乎會變成很深的牽繫；做不到也不必勉強，看清楚這一點本身就是一種成熟。`,
+      `要讓這段關係走得下去，需要的是：兩人都願意把${cares || '心裡最在意的事'}說清楚，而不是等對方猜；有一方慌的時候，另一方先穩住；兩人基本節奏的差異，靠事先約好的規則來承接，而不是靠感覺硬撐。做得到，兩人的在乎會變成很深的牽繫；做不到也不必勉強，看清楚這一點本身就是一種成熟。`,
     ].filter(Boolean);
   }
   return sentences;
@@ -899,21 +873,22 @@ function item(term: string, field: string, meaning: string): MeaningItem {
 function soulStarsText(chart: ZiweiChart, soul: ZiweiPalace | null): string {
   if (!soul) return '（無資料）';
   if (soul.majorStars.length > 0) {
-    return soul.majorStars
-      .map((s) => {
-        const trait = STAR_TRAIT[s.name];
-        return `${s.name}${s.mutagen ? `化${s.mutagen}` : ''}${trait ? `（${trait}）` : ''}`;
-      })
-      .join('、');
+    const names = soul.majorStars.map((s) => `${s.name}${s.mutagen ? `化${s.mutagen}` : ''}`).join('、');
+    const plain = soul.majorStars
+      .map((s) => STAR_PLAIN[s.name])
+      .filter(Boolean)
+      .join('；');
+    return plain ? `${names}。${plain}。` : names;
   }
   const opp = chart.palaces.find((p) => p.index === (soul.index + 6) % 12);
   const borrowed = opp?.majorStars.map((s) => s.name) ?? [];
-  return borrowed.length > 0 ? `空宮，借對宮${borrowed.join('、')}` : '空宮';
+  const plain = borrowed.map((n) => STAR_PLAIN[n]).filter(Boolean).join('；');
+  return borrowed.length > 0 ? `沒有主星，借對面遷移宮的${borrowed.join('、')}來看。${plain ? `${plain}，個性也比較有彈性。` : ''}` : '沒有主星';
 }
 
 /** 結構辛苦的組合：落在核心宮位的化忌，補一句坦白的提醒（第二條換一種說法）。 */
 const HARD_JI_NOTE: ((from: string, to: string) => string)[] = [
-  (f, t) => `不過在這組盤裡，這份在乎少了化祿的甜頭來緩衝，容易從關心變成要求、從牽掛變成不安；${f}要練習把需要說清楚，${t}也不必為了讓${f}安心而勉強自己配合每一個期待。`,
+  (f, t) => `不過在這組盤裡，這份在乎少了自然的甜頭來緩衝，容易從關心變成要求、從牽掛變成不安；${f}要練習把需要說清楚，${t}也不必為了讓${f}安心而勉強自己配合每一個期待。`,
   (f, t) => `只是這條線同樣缺少甜頭的緩衝，${f}的心情起伏很容易直接落到${t}身上；${t}可以溫柔地接住，但不必替${f}的每一次不安負責。`,
 ];
 
@@ -936,6 +911,10 @@ export function ziweiSynastryItems(
 ): MeaningItem[] {
   const fit = ziweiFit(syn);
   const items: MeaningItem[] = [];
+  const styleOf = (chart: ZiweiChart, soul: ZiweiPalace | null) =>
+    (lead(palaceStars(chart, soul), STAR_CONFLICT) ?? FALLBACK_CONFLICT).style;
+  const cards = ziweiPairCards(a, b, syn, fit, [styleOf(a.chart, syn.soulA), styleOf(b.chart, syn.soulB)]);
+  items.push(cards.highlight);
   const caveat =
     a.timeUnknown || b.timeUnknown
       ? `\n${[a, b]
@@ -1020,10 +999,12 @@ export function ziweiSynastryItems(
   items.push(
     item(
       '日常相處',
-      '依兩人命宮、夫妻宮、福德宮的主星（空宮借對宮）與四化互飛，整理生活裡常見的相處畫面。',
+      '依兩人命宮、夫妻宮的主星（沒有主星的宮位借對面那一宮）與四化互飛，整理生活裡常見的相處畫面。',
       dailyLifeLines(a, b, syn, fit).join('\n'),
     ),
   );
+
+  items.push(...cards.themes);
 
   items.push(
     fit.difficult
@@ -1055,7 +1036,7 @@ function adviceLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: 
   const sharedJi = ji.length === 2 && ji[0].palace === ji[1].palace && ji[0].from !== ji[1].from ? ji[0].palace : null;
   if (sharedJi) {
     const act = JI_ACTION[sharedJi]?.('兩人', '對方');
-    if (act) lines.push(`兩人的化忌都在對方的${displayPalaceName(sharedJi)}：${act}`);
+    if (act) lines.push(`${act.replace(/。$/, '')}（兩人的化忌都在對方的${displayPalaceName(sharedJi)}）。`);
   }
   for (const f of syn.flights) {
     if (!f.palace) continue;
@@ -1064,13 +1045,13 @@ function adviceLines(a: ZiweiPartner, b: ZiweiPartner, syn: ZiweiSynastry, fit: 
     const where = `${from}的化${f.mutagen}在${to}的${displayPalaceName(f.palace)}`;
     if (f.mutagen === '忌') {
       const act = sharedJi ? undefined : JI_ACTION[f.palace]?.(from, to);
-      if (act) lines.push(`${where}：${act}`);
+      if (act) lines.push(`${act.replace(/。$/, '')}（${where}）。`);
       continue;
     }
     if (!f.key) continue;
-    if (f.mutagen === '祿') lines.push(`${where}：${to}記得回一句「我有感受到」，讓${from}知道這份好被看見，甜頭就會一直在。`);
-    if (f.mutagen === '權') lines.push(`${where}：${from}出主意前先問「你想聽建議嗎」，${to}會比較願意接受。`);
-    if (f.mutagen === '科') lines.push(`${where}：${from}的肯定對${to}很有力量，多在別人面前說出來；私下也真誠交流，欣賞會更深。`);
+    if (f.mutagen === '祿') lines.push(`${to}記得回一句「我有感受到」，讓${from}知道這份好被看見，甜頭就會一直在（${where}）。`);
+    if (f.mutagen === '權') lines.push(`${from}出主意前先問「你想聽建議嗎」，${to}會比較願意接受（${where}）。`);
+    if (f.mutagen === '科') lines.push(`${from}的肯定對${to}很有力量，多在別人面前說出來；私下也真誠交流，欣賞會更深（${where}）。`);
   }
   lines.push(
     fit.difficult
@@ -1151,6 +1132,7 @@ export function buildZiweiSynastryAiPrompt(
 - 除了命宮，也請參考雙方的夫妻宮（期待的伴侶樣子、感情裡的姿態）與福德宮（放鬆方式、內心需求）。
 ${tone}
 - 不要每段都套固定句型，請自然地寫，句子之間不要重複。
+- 內文用白話，不要直接丟術語；星曜與宮位的依據放在句尾的全形括號裡，例如（${a.name}的武曲化祿落在${b.name}的財帛宮）。
 - 這是命盤結構說明，不是關係好壞的判決；請給可實踐的相處建議，避免恐嚇或保證。
 
 ## 兩人命盤
@@ -1176,7 +1158,13 @@ ${focus}
    - 處理矛盾的方法：意見不合時各自的反應、容易怎麼卡住、怎麼收尾比較好。
    - 感受親密與愛的方式：各自怎麼表達愛、在什麼時候最能感到被愛，以及怎麼更接住對方的心意。
 4. 互相成就與成長點：各指出具體是哪一條四化或哪一組主星，先寫它帶來的好，再寫可以怎麼經營。
-5. 合作（感情、朋友、工作）。
+5. 再依下列主題各寫一張卡片，每張都要有：一句 20 字內的金句、兩小段解析（每段 80 字內）、一個相處場景（60 字內）、一條給兩人的建議（50 字內）。每張寫的是兩人的互動，不是各自的個性介紹；前面說過的特質不要換句話再說一次：
+   - 一起時的亮點（兩人命宮主星的組合；亮點與磨合點要互為表裡）。
+   - 吵架與冷戰：各自的地雷（生年化忌的星）與破冰方式（福德宮）。
+   - 兩人內耗與充電（兩人的福德宮：怎麼一起休息、快沒電時的訊號）。
+   - 權力與主導權（命宮主星的決策習慣、化權落在對方的哪一宮）。
+   - 財運與共事（兩人的財帛宮、化祿是否落在對方的財帛／事業／田宅宮）。
+   - 初見與深交（遷移宮是第一印象，命宮是熟了之後的樣子）。
 6. ${fit.difficult ? '這段關係的課題與禮物：誠實寫出要讓這段關係走下去需要什麼，也寫出兩人之間真實而珍貴的部分（2–4 句）。' : '這段關係的禮物：用 2–3 句話，依這組盤的實際資料寫出兩人在一起最珍貴的地方。'}
 最後給兩人各 3 條具體可做的相處提醒（寫成行動，例如「鬧彆扭的隔天主動約吃早餐」，而不是「多溝通」）。`;
 }

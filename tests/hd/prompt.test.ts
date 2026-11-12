@@ -56,5 +56,7 @@ describe('buildHdAiPrompt', () => {
     expect(text).toContain('5-15');
     expect(text).toContain('太陽 15.2');
     expect(text).toContain('1993-06-21 11:18');
+    for (const k of ['個性與日常特色', '面對壓力', '面具與真實的反差', '內耗與充電', '金錢觀與安全感', '天賦盲區'])
+      expect(text).toContain(k);
   });
 });

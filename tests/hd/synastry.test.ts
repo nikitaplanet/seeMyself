@@ -10,6 +10,7 @@ import {
   compositeGraphData,
   hdFitIsDifficult,
   hdSynastryItems,
+  hdSynastryThemeCards,
 } from '@/lib/hd/synastry';
 
 // Hand-built pair (gate lists, not real charts):
@@ -157,6 +158,51 @@ describe('composite graph data and report', () => {
     }
   });
 
+  it('adds the four theme cards before the gift item, in card layout', () => {
+    const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
+    const terms = items.map((i) => i.term);
+    const themes = ['兩人內耗與充電說明書', '關係中的權力與主導權', '一起財運與共事潛力', '初見印象與深交後的反轉'];
+    const at = terms.indexOf('日常相處');
+    expect(terms.slice(at + 1, at + 5)).toEqual(themes);
+    expect(terms[at + 5]).toBe('這段關係的禮物');
+    const len = (s: string) => Array.from(s).length;
+    for (const card of items.slice(at + 1, at + 5)) {
+      expect(card.hook).toBeTruthy();
+      expect(len(card.hook ?? '')).toBeLessThanOrEqual(20);
+      const lines = card.meaning.split('\n');
+      expect(lines.filter((l) => l.startsWith('【'))).toEqual(['【解析】', '【相處場景】', '【給兩人的建議】']);
+      expect(lines).toHaveLength(8);
+      for (const p of [lines[1], lines[2]]) expect(len(p), p).toBeLessThanOrEqual(80);
+      expect(len(lines[4]), lines[4]).toBeLessThanOrEqual(60);
+      expect(len(lines[6]), lines[6]).toBeLessThanOrEqual(50);
+      expect(lines[7]).toMatch(/^（依據：.+）$/);
+      expect(card.meaning).not.toMatch(/undefined|null|NaN/);
+    }
+    expect(items[0].hook).toBeTruthy();
+  });
+
+  it('theme cards change with the pair and with who holds what', () => {
+    const c = computeChart({ date: '1985-01-20', time: '23:10', timezone: 'Asia/Taipei' }, swephProvider);
+    const d = computeChart({ date: '1979-08-02', time: '05:40', timezone: 'Asia/Taipei' }, swephProvider);
+    const cards = (x: typeof a, y: typeof a) =>
+      hdSynastryThemeCards({ name: '甲', chart: x }, { name: '乙', chart: y }, analyzeHdSynastry(chartGates(x), chartGates(y)));
+    const one = cards(a, b);
+    const two = cards(c, d);
+    for (let i = 0; i < one.length; i++) expect(one[i].meaning).not.toBe(two[i].meaning);
+
+    // Power: three channels held by 甲 alone → 甲 leads; none held → nobody leads.
+    const led = hdSynastryThemeCards({ name: '甲', chart: a }, { name: '乙', chart: b }, analyzeHdSynastry([5, 15, 2, 14, 29, 46], [1]));
+    expect(led[1].hook).toBe('一個常拿主意，一個負責踩煞車');
+    expect(led[1].meaning).toContain('甲握著 3 條');
+    const flat = hdSynastryThemeCards({ name: '甲', chart: a }, { name: '乙', chart: b }, analyzeHdSynastry([1], [8]));
+    expect(flat[1].hook).toBe('沒有誰帶誰，你們並肩走');
+    // Work: the money channel 21-45 formed together drives the card.
+    const money = hdSynastryThemeCards({ name: '甲', chart: a }, { name: '乙', chart: b }, analyzeHdSynastry([21], [45]));
+    expect(money[2].meaning).toContain('21-45');
+    // First impression: electromagnetic channels are the early spark.
+    expect(flat[3].hook).toBe('有一個點，讓你們一開始就對上');
+  });
+
   it('per-channel lines do not repeat the same sentence', () => {
     const items = hdSynastryItems({ name: '甲', chart: a }, { name: '乙', chart: b }, syn);
     const sentences = items
@@ -182,6 +228,7 @@ describe('composite graph data and report', () => {
     expect(text).toContain('以優點為先');
     expect(text).toContain('2:1');
     expect(text).toContain('這段關係的禮物');
+    for (const k of ['兩人內耗與充電', '關係中的權力與主導權', '一起財運與共事潛力', '初見印象與深交後的反轉']) expect(text).toContain(k);
   });
 
   it('companionship lines name the shared blind spot, compromise names the upside', () => {

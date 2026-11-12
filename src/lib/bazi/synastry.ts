@@ -1,5 +1,6 @@
 import type { MeaningItem } from '@/lib/ui/personMeaning';
 import { STEM_HE, STEM_WX, tenGodOf, WX_GOD_GROUP } from './labels';
+import { baziPairCards } from './synastryCards';
 import type { BaziChart, BaziPillar, WuXing } from './types';
 
 // 八字合婚／合盤 — pure logic, no React. Compares two computed BaziCharts:
@@ -8,6 +9,9 @@ import type { BaziChart, BaziPillar, WuXing } from './types';
 //     兩盤合起來才湊齊的三合局另外列出；
 //   - 五行互補：一方的喜用五行是另一方的旺五行，或一方極弱的五行另一方很旺。
 // A time pillar computed from an unknown birth time is left out of every comparison.
+// Report order follows .claude/星盤開發準則.md §3B: 日主關係 → 亮點／磨合／內心與親密／生命課題（卡片）→
+// 日常相處 → 吵架與冷戰／內耗與充電／權力／財運與共事／初見 vs 深交（卡片，見 synastryCards.ts）→
+// 地支與五行的依據 → 禮物 → 相處建議。
 
 const WX_ORDER: readonly WuXing[] = ['木', '火', '土', '金', '水'];
 
@@ -687,7 +691,7 @@ function stemText(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string {
     case 'bControlsA': {
       const [c, d, cg, dg] = syn.stem.kind === 'aControlsB' ? [a.name, b.name, ga, gb] : [b.name, a.name, gb, ga];
       const note = fill(CTRL_NOTE[`${STEM_WX[cg]}${STEM_WX[dg]}`] ?? '', { C: c, D: d });
-      return `${c}的${cg}${STEM_WX[cg]}剋${d}的${dg}${STEM_WX[dg]}，${note}。剋在八字裡也代表吸引（男命以所剋為財、為妻，女命以剋我者為官、為夫），這股張力常是心動的來源；${c}的要求留點餘地，就是最好的平衡。`;
+      return `${c}的${cg}${STEM_WX[cg]}剋${d}的${dg}${STEM_WX[dg]}，${note}。剋在八字裡也代表吸引，這股張力常是心動的來源；${c}的要求留點餘地，就是最好的平衡。`;
     }
   }
 }
@@ -724,7 +728,10 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
     ),
   );
 
+  const cards = baziPairCards(a, b, syn);
+  items.push(...cards.before);
   items.push(item('日常相處', '依兩人的日主個性、彼此的十神、夫妻宮與五行，描繪生活裡的具體畫面。', dailyLines(a, b, syn).join('\n')));
+  items.push(...cards.after);
 
   const keyLines: string[] = [];
   const seen = new Set<string>();
@@ -762,10 +769,10 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
     );
   }
   const unknown = [a, b].filter((p) => p.chart.timeUnknown).map((p) => p.name);
-  items.push(
-    item(
+  items.push({
+    ...item(
       '其他地支互動',
-      '兩盤其餘各柱地支之間的六合、六沖、半合、刑、害；年柱看家庭與社交、月柱看工作與做事方式、時柱看未來與子女。',
+      '兩盤其餘各柱地支之間的六合、六沖、半合、刑、害（逐組列出的依據）；年柱看家庭與社交、月柱看工作與做事方式、時柱看未來與子女。',
       [
         otherLines.length > 0 ? otherLines.join('\n') : '其餘各柱地支之間沒有明顯的合沖刑害。',
         unknown.length > 0 ? `${unknown.join('、')}的出生時間不確定，時柱不列入比對。` : '',
@@ -773,7 +780,8 @@ export function baziSynastryItems(a: BaziPartner, b: BaziPartner, syn: BaziSynas
         .filter(Boolean)
         .join('\n'),
     ),
-  );
+    collapsed: true,
+  });
 
   const wxLines: string[] = [
     `${a.name}：${a.chart.wuXing.map((s) => `${s.wx}${s.percent}%`).join('、')}（${a.chart.strength}）`,
@@ -826,12 +834,12 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
   const yangB = YANG_STEMS.has(gb);
   const polarity: string[] =
     yangA && yangB
-      ? ['兩人都是陽干，個性外放、主動，生活很少冷場，說走就走的事特別多，是很會一起玩的一對；安排行程時輪流當主揪，就更順。']
+      ? ['兩人個性都外放、主動，生活很少冷場，說走就走的事特別多，是很會一起玩的一對；安排行程時輪流當主揪，就更順。（日主同為陽干）']
       : !yangA && !yangB
-        ? ['兩人都是陰干，內斂細膩，很能察覺對方沒說出口的情緒，待在一起安靜也舒服；兩人都說「隨便」時，試試各自先說一個想法。']
+        ? ['兩人都內斂細膩，很能察覺對方沒說出口的情緒，待在一起安靜也舒服；兩人都說「隨便」時，試試各自先說一個想法。（日主同為陰干）']
         : [
-            `${yangA ? a.name : b.name}是陽干，比較主動外放；${yangA ? b.name : a.name}是陰干，比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走：${yangA ? a.name : b.name}帶${yangA ? b.name : a.name}見識新地方，${yangA ? b.name : a.name}幫${yangA ? a.name : b.name}把步調放慢、看見沿路的風景。`,
-            '步調不同時，互相說一聲「等等」或「走吧」就好。',
+            `${yangA ? a.name : b.name}比較主動外放，${yangA ? b.name : a.name}比較內斂細膩，一推一收，出門時多半是${yangA ? a.name : b.name}拉著${yangA ? b.name : a.name}走：${yangA ? a.name : b.name}帶${yangA ? b.name : a.name}見識新地方，${yangA ? b.name : a.name}幫${yangA ? a.name : b.name}把步調放慢、看見沿路的風景。`,
+            '步調不同時，互相說一聲「等等」或「走吧」就好。（日主一陽干、一陰干）',
           ];
   const twin = ga === gb;
   lines.push('【個性】');
@@ -863,11 +871,11 @@ function dailyLines(a: BaziPartner, b: BaziPartner, syn: BaziSynastry): string[]
   const sa = a.chart.strength;
   const sb = b.chart.strength;
   const strongWeak = (w: string, k: string) =>
-    `${w}身旺、${k}身弱：亂的時候${w}拿得定主意、讓事情往前走，${k}的細膩與配合讓事情更周全，是很好的搭檔；${w}多留一點時間聽${k}說完，${k}也大方說出想法，兩人就更有默契。`;
+    `亂的時候${w}拿得定主意、讓事情往前走，${k}的細膩與配合讓事情更周全，是很好的搭檔；${w}多留一點時間聽${k}說完，${k}也大方說出想法，兩人就更有默契。（${w}身旺、${k}身弱）`;
   if (sa === '身旺' && sb === '身旺')
-    conflict.push('兩人都身旺，有話直說，問題不會被冷戰埋起來，很有一起解決事情的魄力；意見僵住時，可以先約好一個「暫停」的暗號。');
+    conflict.push('兩人底氣都足，有話直說，問題不會被冷戰埋起來，很有一起解決事情的魄力；意見僵住時，可以先約好一個「暫停」的暗號。（兩人皆身旺）');
   else if (sa === '身弱' && sb === '身弱' && !syn.fit.difficult)
-    conflict.push('兩人都身弱，溫和體貼，很少正面起衝突；誰先說一句「我們談談」，就能把體貼化成親近。');
+    conflict.push('兩人都溫和體貼，很少正面起衝突；誰先說一句「我們談談」，就能把體貼化成親近。（兩人皆身弱）');
   else if (sa === '身旺' && sb === '身弱') conflict.push(strongWeak(a.name, b.name));
   else if (sa === '身弱' && sb === '身旺') conflict.push(strongWeak(b.name, a.name));
   lines.push(...conflict.filter(Boolean));
@@ -1146,12 +1154,23 @@ ${pairs}
 
 ## 請依序回答
 1. 總覽：兩人日主組合的特色（用天干意象說明，例如大樹與燭火）。
-2. 日常相處，分四個主題，每個主題先寫這兩人相處順、彼此欣賞的地方，再帶出一個成長點與具體小技巧，並至少給 2 個具體的生活場景（例如週末怎麼安排、一起決定要不要買房、對方晚回訊息時、吵架後隔天早上）：
+2. 一起時的亮點：兩人五行合起來最旺的氣場、最合拍的一組干支，在一起時最能發揮什麼。
+3. 需要磨合的地方：亮點的另一面（例如吸引彼此的自由感，磨合期會變成缺乏安全感），以及最容易卡住的一組地支落在哪個生活面向。
+4. 內心世界與親密：兩人日支（夫妻宮）各自藏著的需求、兩個日支之間的關係，怎麼讓彼此覺得被接住。
+5. 關係的生命課題：用彼此的十神說明這段關係要各自學會的事。
+6. 日常相處與溝通，分四個主題，每個主題先寫這兩人相處順、彼此欣賞的地方，再帶出一個成長點與具體小技巧，並至少給 2 個具體的生活場景（例如週末怎麼安排、一起決定要不要買房、對方晚回訊息時、吵架後隔天早上）：
    - 個性：兩人各自的個性底色，以及放在一起時的化學反應。
    - 兩人思考方式：各自怎麼想事情、做決定，用十神說明誰影響誰（例如「${b.name}是${a.name}的${syn.tenGodBForA}」在決策上的表現）。
    - 處理矛盾的方法：各自吵架時的反應、夫妻宮的合沖刑害如何放大或緩和衝突、怎麼和好最有效。
    - 感受親密及愛的方式：各自怎麼表達愛、怎麼感受到被愛，以及怎麼更準確地接住對方的心意。
-3. 五行互補與生活建議：互補帶來什麼，以及怎麼讓這份補位雙向、長久。
-4. ${syn.fit.difficult ? '這段關係的課題與禮物：坦白說出兩人要走下去需要付出什麼，再說出兩人之間真實可貴的部分' : '這段關係的禮物：用 2～3 句話，扣回這兩人的實際干支，說出兩人在一起最珍貴的地方'}。
-5. 最後給兩人各 3 條相處提醒，具體到可以今天就做。`;
+7. 吵架與冷戰：各自的地雷、吵起來是熱吵還是冷戰、兩人各自的破冰方式。
+8. 兩人內耗與充電：一方的旺五行是另一方的忌神（耗電）或喜用（充電）時的具體表現，以及兩人一起回血的方法。
+9. 權力與主導權：依日主生剋、強弱與陰陽，說明誰比較常拿主意、有沒有隱性的失衡，怎麼保持對等。
+10. 一起財運與共事：兩人的金錢觀（財星份量）、月柱的做事節奏，當室友、旅伴或合夥人時怎麼分工。
+11. 初見印象與深交後的反轉：年柱看第一印象、日柱看熟了以後的真實相處，兩者的落差在哪裡。
+12. 五行互補與生活建議：互補帶來什麼，以及怎麼讓這份補位雙向、長久。
+13. ${syn.fit.difficult ? '這段關係的課題與禮物：坦白說出兩人要走下去需要付出什麼，再說出兩人之間真實可貴的部分' : '這段關係的禮物：用 2～3 句話，扣回這兩人的實際干支，說出兩人在一起最珍貴的地方'}。
+14. 最後給兩人各 3 條相處提醒，具體到可以今天就做。
+
+第 2～5、7～11 項請各用「一句 20 字內的金句、兩段各 80 字內的解析、一個 60 字內的相處場景、一條 50 字內做得到的建議」來寫；白話為主，術語只放在句尾括號當依據；前面主題說過的特質，後面要換成該主題的具體場景，不要重複同樣的形容詞。`;
 }

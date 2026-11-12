@@ -382,7 +382,7 @@ function WuXingPanel({ chart }: { chart: BaziChart }) {
                     幫輔：{chart.helpers}
                 </span>
                 <span className="rounded-md px-2 py-0.5" style={{ background: BAZI_NOTE }}>
-                    克洩耗：{chart.drainers}
+                    剋洩耗：{chart.drainers}
                 </span>
             </p>
         </Section>

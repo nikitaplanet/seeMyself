@@ -396,23 +396,31 @@ const KIND_MEANING: Record<SynastryChannelKind, string> = {
 
 const COMPOSITE_TYPE_NOTE: Record<HDType, string> = {
   generator:
-    '兩人合起來薦骨被定義，關係本身就有源源不絕的動力：一起投入有感覺的事，會越做越有精神，很能把生活經營得有聲有色。挑選兩人都真心想做的事，這份能量就不會被沒感覺的瑣事分走。',
+    '兩人合起來，身體的動力來源（薦骨中心）被接通，關係本身就有源源不絕的動力：一起投入有感覺的事，會越做越有精神，很能把生活經營得有聲有色。挑選兩人都真心想做的事，這份能量就不會被沒感覺的瑣事分走。',
   manifestingGenerator:
-    '兩人合起來是顯示生產者的能量：有持續力、也有把事情快速推出去的行動力，一起做事節奏明快、點子很快就能落地。換方向時記得跟身邊的人說一聲，速度就會變成大家都跟得上的優勢。',
+    '兩人合起來，既有持續力、也有把事情快速推出去的行動力（合盤為顯示生產者），一起做事節奏明快、點子很快就能落地。換方向時記得跟身邊的人說一聲，速度就會變成大家都跟得上的優勢。',
   manifestor:
-    '兩人合起來有動力接到喉嚨：關係很擅長發起與開局，常一起把想法變成新的開始。開了頭的事可以事先規劃分工與休息，衝勁就能細水長流。',
+    '兩人合起來，行動的動力直接接上了表達（動力中心連到喉嚨中心），關係很擅長發起與開局，常一起把想法變成新的開始。開了頭的事可以事先規劃分工與休息，衝勁就能細水長流。',
   projector:
     '兩人合起來的強項在彼此理解、看清方向：你們很懂得看人、看局勢，一起討論時常能找到最有效率的做法。重大的事等被邀請再投入，也替兩人安排足夠的休息，智慧就能發揮得最好。',
   reflector:
     '兩人合起來仍沒有任何定義中心，非常罕見：關係像一面清澈的鏡子，對環境與彼此的狀態極度敏銳，在好的地方會一起發光。替兩人挑選舒服的居住與相處環境，就是對這段關係最好的照顧。',
 };
 
+const COMPOSITE_HOOK: Record<HDType, string> = {
+  generator: '在一起，就有做不完的勁',
+  manifestingGenerator: '你們合體後，又快又停不下來',
+  manifestor: '你們湊在一起，就想開新局',
+  projector: '你們最強的，是看懂彼此',
+  reflector: '你們像一面鏡子，映出所在之處',
+};
+
 const DEFINITION_COMPOSITE_NOTE: Record<Definition, string> = {
-  none: '合盤沒有定義，關係彈性很大、能適應各種場合與人；替兩人找一個固定讓你們安心的地方，就能在變化裡保有穩定。',
-  single: '合盤是一分人：兩人在一起時能量連成一片，常有「在一起很完整」的感覺，不太需要外人來接通。偶爾也敞開門接受朋友的邀約，這份完整會更有活力。',
-  split: '合盤是二分人：兩人在一起還有兩塊能量等著被串起來，朋友、家人或喜歡的地方常能替你們搭橋；這讓關係保持流動，生活圈也更豐富。',
-  tripleSplit: '合盤是三分人：關係裡有三塊各自獨立的能量，多元的生活圈會讓兩人更順；好處是兩人都保有不少各自的空間，相處起來不會黏得喘不過氣。',
-  quadrupleSplit: '合盤是四分人：能量分散在好幾處，兩人很少被困在同一種模式裡，關係有很大的成長空間；多給彼此一點時間與外部的支持，步調就會慢慢對上。',
+  none: '兩人合起來沒有固定接通的部分，關係彈性很大、能適應各種場合與人；替兩人找一個固定讓你們安心的地方，就能在變化裡保有穩定。',
+  single: '兩人在一起時能量連成一片，常有「在一起很完整」的感覺，不太需要外人來接通（合盤為一分人）。偶爾也敞開門接受朋友的邀約，這份完整會更有活力。',
+  split: '兩人在一起時，還有兩塊能量等著被串起來（合盤為二分人），朋友、家人或喜歡的地方常能替你們搭橋；這讓關係保持流動，生活圈也更豐富。',
+  tripleSplit: '關係裡有三塊各自獨立的能量（合盤為三分人），多元的生活圈會讓兩人更順；好處是兩人都保有不少各自的空間，相處起來不會黏得喘不過氣。',
+  quadrupleSplit: '兩人的能量分散在好幾處（合盤為四分人），很少被困在同一種模式裡，關係有很大的成長空間；多給彼此一點時間與外部的支持，步調就會慢慢對上。',
 };
 
 const TYPE_ORDER: readonly HDType[] = [
@@ -997,24 +1005,496 @@ function giftLines(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult: boole
   return sentences.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Theme cards (星盤開發準則 §3B) — the pair themes the items above do not cover yet:
+// 內耗與充電、權力與主導權、財運與共事、初見 vs 深交. Card layout: hook + 解析 ×2 + 相處場景 + 建議.
+// ---------------------------------------------------------------------------
+
+function pairCard(
+  term: string,
+  field: string,
+  hook: string,
+  insight: [string, string],
+  scene: string,
+  advice: string,
+  basis: string,
+): MeaningItem {
+  return {
+    term,
+    field,
+    hook,
+    meaning: ['【解析】', ...insight, '【相處場景】', scene, '【給兩人的建議】', advice, `（依據：${basis}）`].join('\n'),
+  };
+}
+
+/** What each channel is about between two people, as a short noun phrase. */
+const CHANNEL_DOMAIN: Record<string, string> = {
+  '1-8': '品味與創作風格',
+  '2-14': '大方向與資源運用',
+  '3-60': '什麼時候該改變',
+  '4-63': '事情合不合邏輯',
+  '5-15': '作息與生活節奏',
+  '6-59': '親密與距離的拿捏',
+  '7-31': '由誰帶頭、往哪走',
+  '9-52': '該專心做哪件事',
+  '10-20': '照自己的樣子表達',
+  '10-34': '堅持做自己想做的事',
+  '10-57': '日子怎麼過才對味',
+  '11-56': '聊什麼、怎麼說故事',
+  '12-22': '氣氛與說話的時機',
+  '13-33': '怎麼看待往事與回憶',
+  '16-48': '事情要做到多精',
+  '17-62': '意見與細節的安排',
+  '18-58': '怎麼把事情改得更好',
+  '19-49': '需求與公平',
+  '20-34': '行程與做事速度',
+  '20-57': '當下的直覺判斷',
+  '21-45': '錢與資源誰來管',
+  '23-43': '新點子與獨到見解',
+  '24-61': '人生道理的思索',
+  '25-51': '冒險與突發狀況',
+  '26-44': '買賣與說服',
+  '27-50': '照顧家人與家裡的規矩',
+  '28-38': '什麼事值得堅持',
+  '29-46': '要不要答應、投入多少',
+  '30-41': '對未來的期待與想像',
+  '32-54': '事業企圖與長期規劃',
+  '34-57': '緊急狀況的臨場反應',
+  '35-36': '嘗試新鮮事',
+  '37-40': '家務分工與付出回報',
+  '39-55': '情緒與氣氛的起伏',
+  '42-53': '事情的開始與收尾',
+  '47-64': '過往經驗的意義',
+};
+
+function domain(sc: SynastryChannel): string {
+  return CHANNEL_DOMAIN[sc.channel.id] ?? channelShortMeaning(sc.channel.id).replace('。', '');
+}
+
+// --- 兩人內耗與充電 ---------------------------------------------------------
+
+/**
+ * A center one person has defined and the other open: the defined side keeps conditioning the open
+ * side. The sacral belongs to the recharge paragraph; the solar plexus comes last because
+ * 【處理矛盾】 already speaks about it.
+ */
+const PAIR_DRAIN_ORDER: readonly CenterId[] = ['root', 'heart', 'throat', 'ajna', 'g', 'spleen', 'head', 'solarPlexus'];
+
+type DrainKey = CenterId | 'same';
+
+const PAIR_DRAIN_HOOK: Record<DrainKey, string> = {
+  root: '一個人的急，別變成兩個人的趕',
+  heart: '不必比誰付出多，你們都夠好',
+  throat: '話多的那個，記得留白給對方',
+  ajna: '一個很確定，一個需要再想想',
+  g: '一個有方向，一個別跟到迷路',
+  spleen: '一個天生安心，一個需要多點確認',
+  head: '問題丟出來，不必當晚想完',
+  solarPlexus: '一個人的心情，是兩個人的天氣',
+  sacral: '一個還有電，一個早就該休息',
+  same: '你們耗電的方式，像得出奇',
+};
+
+/** d = the person with the center defined, o = the person with it open. */
+const PAIR_DRAIN: Record<DrainKey, (d: string, o: string) => string> = {
+  root: (d, o) =>
+    `${d}面對壓力有自己的節奏，${o}卻容易把那股「快一點」的氣氛放大，在${d}身邊不知不覺跟著趕。${d}其實沒在催，${o}的累多半來自自己加上去的急。`,
+  heart: (d, o) =>
+    `${d}說到就會做到，${o}在旁邊容易覺得自己也該撐到同樣的程度，於是多扛、多答應。這份較勁沒人要求，卻是${o}在關係裡最悄悄流失力氣的地方。`,
+  throat: (d, o) =>
+    `${d}表達很穩定，想說的話隨時說得出口；${o}則會被帶得話越來越多，或覺得一定要回應些什麼。聊完天${d}很滿足，${o}有時反而需要安靜一下。`,
+  ajna: (d, o) =>
+    `${d}想事情有固定的一套，講起來很篤定；${o}聽多了會開始懷疑自己的想法，或逼自己也要有個確定的答案。討論越久，${o}的腦袋越累。`,
+  g: (d, o) =>
+    `${d}對自己要什麼很清楚，${o}在身邊很自然就跟著那個方向走，省力也安心。久了${o}可能分不清哪些是自己真正想要的，這種模糊感會慢慢耗掉心力。`,
+  spleen: (d, o) =>
+    `${d}身上有種「沒事的」的安定感，${o}待在旁邊特別放鬆，也因此容易依賴。${d}不在時，${o}的各種擔心會一下子冒出來，耗掉不少心神。`,
+  head: (d, o) =>
+    `${d}腦中的問題與靈感源源不絕，隨口一提，${o}就接過去想個不停。${d}講完就放下了，${o}卻可能帶著那個問題翻來覆去到半夜。`,
+  solarPlexus: (d, o) =>
+    `${d}的心情有高有低，${o}像收音機一樣全部接收，還會放大。${d}低潮過了就沒事，${o}卻可能已經替那幾天的氣氛耗掉大半的力氣。`,
+  sacral: (d, o) =>
+    `${d}的體力源源不絕，${o}在旁邊會被帶得以為自己也還能繼續。${d}做完剛好，${o}卻常是硬撐到底，隔天才發現早就超過自己的份量。`,
+  same: () =>
+    '兩人有定義與開放的中心幾乎一樣，誰也不太會單方面影響誰。累的原因通常來自外面：同一種場合、同一種人會讓你們一起沒電，也很懂對方為什麼累。',
+};
+
+const PAIR_DRAIN_ADVICE: Record<DrainKey, (d: string, o: string) => string> = {
+  root: (d, o) => `${o}覺得被追趕時，直接問${d}「這件事真的急嗎？」，多半會得到「不急」。`,
+  heart: () => '約定一句通關密語，例如「我這次不逞強」，說出口就不必再多解釋。',
+  throat: (_d, o) => `每天留十分鐘不說話的共處時間，各做各的，讓${o}的耳朵與嘴巴休息。`,
+  ajna: (d, o) => `討論到一半${o}可以說「我先不下結論」，${d}就先停，隔天再接著談。`,
+  g: (_d, o) => `每個月各自安排一天分開行動，${o}去做一件完全由自己決定的事。`,
+  spleen: (d, o) => `${d}出差或晚歸前先說好聯絡時間，${o}的擔心就有地方放。`,
+  head: () => '晚上十點後不丟新問題給對方，想到的先記在手機裡，隔天再聊。',
+  solarPlexus: (d, o) => `${d}心情低落時先說一聲「我今天比較悶，跟你無關」，${o}就能安心做自己的事。`,
+  sacral: (d, o) => `一起做事前先說好收工時間，時間一到${o}就先休息，${d}想繼續也沒關係。`,
+  same: () => '參加完同一場耗電的聚會後，回家先各自安靜半小時，再聊今天的事。',
+};
+
+type SacralCombo = 'both' | 'one' | 'together' | 'neither';
+
+/** s = the person with the sacral defined, n = the person without (only used for `one`). */
+const PAIR_RECHARGE: Record<SacralCombo, (s: string, n: string) => string> = {
+  both: () =>
+    '充電方面，兩人都有持續的體力，光休息不動反而悶。一起做點喜歡的事，像運動、下廚、整理家裡，把力氣用在開心的地方，兩人都會睡得更好。',
+  one: (s, n) =>
+    `充電的節奏不同：${s}有持續的體力，要把電用完才睡得著；${n}的電量比較有限，需要早點收工。${s}的精神很有感染力，${n}跟著撐完全程後常會累垮。`,
+  together: () =>
+    '兩人單獨時都不是持久型，在一起卻會互相撐出一股幹勁，常不小心玩過頭、做過頭。這股活力是你們合起來才有的，用完了記得各自好好休息。',
+  neither: () =>
+    '兩人都不是靠體力取勝的類型，很懂對方說「我今天不行了」是真的不行。你們的充電方式是一起慢下來：早點回家、各做各的事，不必招呼對方。',
+};
+
+const PAIR_RECHARGE_SCENE: Record<SacralCombo, (s: string, n: string) => string> = {
+  both: () => '假日兩人在家躺了一整天，晚上反而都悶悶的；隔週改去爬山，回來累歸累，心情卻特別好。',
+  one: (s, n) => `出遊第三天，${s}還想再逛一個景點，${n}已經只想回旅館，說不出口就一路沉默。`,
+  together: () => '兩人一起大掃除越做越起勁，一路弄到半夜，隔天各自上班時才發現全身痠痛。',
+  neither: () => '晚飯後兩人各佔沙發一邊滑手機、看書，兩小時沒說幾句話，卻都覺得這樣很舒服。',
+};
+
+function batteryCard(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem {
+  const has = (p: HdPartner, c: CenterId) => p.chart.definedCenters.includes(c);
+  const sA = has(a, 'sacral');
+  const sB = has(b, 'sacral');
+  const combo: SacralCombo =
+    sA && sB ? 'both' : sA || sB ? 'one' : syn.composite.definedCenters.includes('sacral') ? 'together' : 'neither';
+  const [sacralYes, sacralNo] = sA ? [a.name, b.name] : [b.name, a.name];
+
+  // With no other difference the sacral itself is the leak (one keeps going, one should stop).
+  const center = PAIR_DRAIN_ORDER.find((c) => has(a, c) !== has(b, c)) ?? (combo === 'one' ? 'sacral' : undefined);
+  const key: DrainKey = center ?? 'same';
+  const [d, o] = center && has(a, center) ? [a.name, b.name] : [b.name, a.name];
+  const sacralBasis: Record<SacralCombo, string> = {
+    both: '薦骨中心兩人都有定義',
+    one: `薦骨中心${sacralYes}有定義、${sacralNo}開放`,
+    together: '薦骨中心兩人各自開放、合盤才接通',
+    neither: '薦骨中心兩人都開放',
+  };
+  return pairCard(
+    '兩人內耗與充電說明書',
+    '一方有定義、另一方開放的中心，開放的那方會不斷接收並放大對方的能量；薦骨中心則決定兩人各自怎麼把電補回來。',
+    PAIR_DRAIN_HOOK[key],
+    [PAIR_DRAIN[key](d, o), PAIR_RECHARGE[combo](sacralYes, sacralNo)],
+    PAIR_RECHARGE_SCENE[combo](sacralYes, sacralNo),
+    PAIR_DRAIN_ADVICE[key](d, o),
+    `${center ? `${CENTER_NAMES_ZH[center]}${d}有定義、${o}開放` : '兩人有定義的中心相同'}；${sacralBasis[combo]}`,
+  );
+}
+
+// --- 關係中的權力與主導權 ---------------------------------------------------
+
+type ThroatCombo = 'both' | 'one' | 'neither';
+
+/** t = the person with the throat defined, u = the person with it open (only used for `one`). */
+const POWER_VOICE: Record<ThroatCombo, (t: string, u: string) => string> = {
+  both: () =>
+    '兩人的表達都很穩定，想法都說得出口、也都想推動事情。好處是誰都不會悶著；要留意的是同時開口時，變成各說各的、看誰講得久。',
+  one: (t, u) =>
+    `開口定調的常是${t}：${t}的表達方式固定，話一出口就像結論；${u}則要等氣氛對了才說得好。所以${u}的意見常慢半拍出現，卻往往補上關鍵的一塊。`,
+  neither: () =>
+    '兩人都不是搶著發言的類型，說話要看時機與氣氛。這讓你們很少爭奪發言權，但重要的事也可能因為「沒人先講」而一直擱著。',
+};
+
+function powerCard(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult: boolean): MeaningItem {
+  const held = syn.channels.filter((c) => c.kind === 'dominance' || c.kind === 'compromise');
+  const nA = held.filter((c) => c.holder === 'a').length;
+  const nB = held.filter((c) => c.holder === 'b').length;
+  const lead: 'one' | 'balanced' | 'none' = held.length === 0 ? 'none' : Math.abs(nA - nB) >= 2 ? 'one' : 'balanced';
+  const [leader, follower, nL, nF] = nA >= nB ? [a.name, b.name, nA, nB] : [b.name, a.name, nB, nA];
+
+  const tA = a.chart.definedCenters.includes('throat');
+  const tB = b.chart.definedCenters.includes('throat');
+  const throat: ThroatCombo = tA && tB ? 'both' : tA || tB ? 'one' : 'neither';
+  const [voice, quiet] = tA ? [a.name, b.name] : [b.name, a.name];
+
+  const hook =
+    lead === 'one'
+      ? difficult
+        ? '別讓配合的人，永遠是同一個'
+        : '一個常拿主意，一個負責踩煞車'
+      : lead === 'balanced'
+        ? '主導權在你們之間輪流坐'
+        : '沒有誰帶誰，你們並肩走';
+
+  const structure =
+    lead === 'one'
+      ? `一方完整、另一方沒有或只有一半的通道，${leader}握著 ${nL} 條、${follower} ${nF} 條。許多事上${leader}的做法比較固定，很自然成了定調的人；這不是強勢，而是${leader}在這些主題上本來就穩。`
+      : lead === 'balanced'
+        ? `你們各自握著對方沒有或只有一半的完整通道（${a.name} ${nA} 條、${b.name} ${nB} 條），所以主導權是分領域的：有些事聽${a.name}的，有些事聽${b.name}的，各有拿手的地盤。`
+        : '你們之間沒有哪條通道是一方完整、另一方缺一塊的，結構上沒有誰天生帶著誰走。大小事多半靠商量，關係很平等，只是偶爾兩個人都在等對方決定。';
+
+  // The scene names one concrete topic: the leader's first held channel, dominance before compromise.
+  const top =
+    held.find((c) => c.kind === 'dominance' && (lead !== 'one' || names(a, b, c.holder ?? 'a')[0] === leader)) ??
+    held.find((c) => lead !== 'one' || names(a, b, c.holder ?? 'a')[0] === leader) ??
+    held[0];
+  const scene = top
+    ? (() => {
+        const [holder, other] = names(a, b, top.holder ?? 'a');
+        return `碰到「${domain(top)}」這類事，通常是${holder}先有定見，${other}再表示意見；換成${other}拿手的事，角色就反過來。`;
+      })()
+    : '選餐廳時兩人互相說「都可以」，推了半天沒結果，最後只好猜拳決定。';
+
+  const advice =
+    lead === 'one'
+      ? difficult
+        ? `列出最常由${leader}決定的三件事，把其中一件固定交給${follower}，三個月後再一起檢討。`
+        : `挑一件平常由${leader}決定的事，這個月交給${follower}全權作主，${leader}只負責配合。`
+      : lead === 'balanced'
+        ? `把家裡的事分成「${a.name}說了算」和「${b.name}說了算」兩張清單，貼在冰箱上。`
+        : '約定輪流當「今天的決定者」，輪到的人直接決定晚餐與行程。';
+
+  const throatBasis =
+    throat === 'both' ? '喉嚨中心兩人都有定義' : throat === 'one' ? `喉嚨中心${voice}有定義、${quiet}開放` : '喉嚨中心兩人都開放';
+  return pairCard(
+    '關係中的權力與主導權',
+    '主導與妥協通道由誰握著完整的那一條，誰在那個主題上就比較有定見；喉嚨中心則看誰習慣先開口定調。',
+    hook,
+    [structure, POWER_VOICE[throat](voice, quiet)],
+    scene,
+    advice,
+    `${held.length > 0 ? `主導／妥協通道 ${a.name}握 ${nA} 條、${b.name}握 ${nB} 條${top ? `（如 ${channelLabel(top.channel)}）` : ''}` : '沒有主導或妥協通道'}；${throatBasis}`,
+  );
+}
+
+// --- 一起財運與共事潛力 -----------------------------------------------------
+
+/** Channels about resources, agreements and getting things done together, in priority order. */
+const WORK_CHANNELS = ['21-45', '2-14', '32-54', '26-44', '37-40', '19-49', '27-50', '42-53', '9-52', '16-48', '17-62', '7-31'] as const;
+
+type WorkChannel = (typeof WORK_CHANNELS)[number];
+
+const WORK_CHANNEL_HOOK: Record<WorkChannel, string> = {
+  '21-45': '錢交給對的人管，你們就很穩',
+  '2-14': '方向一致時，資源會自己靠過來',
+  '32-54': '你們是一起往上爬的隊友',
+  '26-44': '一起談生意，你們很難吃虧',
+  '37-40': '說好的分工，就是你們的合約',
+  '19-49': '分得公平，你們就走得久',
+  '27-50': '你們把彼此的家人也算進帳裡',
+  '42-53': '一起開始的事，你們會一起做完',
+  '9-52': '兩人一起，再瑣碎的事也磨得完',
+  '16-48': '一起練功，你們會越做越專業',
+  '17-62': '你們的計畫表，細到讓人放心',
+  '7-31': '你們一起出面，別人就願意跟',
+};
+
+const WORK_CHANNEL_NOTE: Record<WorkChannel, string> = {
+  '21-45':
+    '金錢與資源怎麼分配，在你們之間是個很有力氣的主題：誰管帳、誰決定大筆開銷，講清楚之後，家裡或事業的財務會被打理得很有條理。',
+  '2-14':
+    '你們之間有一股「知道往哪走、也有資源走下去」的動力：只要兩人認同同一個方向，錢和機會比較容易聚過來，適合一起規劃長期的目標。',
+  '32-54':
+    '你們湊在一起，會激出往上走的企圖心：存錢、升遷、買房這類需要長期累積的目標，兩人談起來特別有勁，也看得出哪條路值得投入。',
+  '26-44':
+    '你們一起時很有生意頭腦：什麼東西值多少、怎麼談比較划算，兩人一搭一唱就能談出好條件，也很記得過去的教訓，不容易重複吃虧。',
+  '37-40':
+    '你們的合作建立在「互相」上：誰出錢、誰出力、誰做哪些家事，約定好了就會遵守。這種說到做到的默契，讓你們很適合當室友或一起經營家庭。',
+  '19-49':
+    '資源分得公不公平，是你們共事的關鍵：彼此的需要有沒有被顧到、付出對不對等，兩人都很有感。這讓你們很會照顧自己人，向心力很強。',
+  '27-50':
+    '你們在一起時，會自然擔起照顧人的責任：家人的開銷、家裡的規矩，都會被認真看待。你們的錢常花在讓身邊的人過得好，這也是兩人的成就感來源。',
+  '42-53':
+    '你們一起做事有頭有尾：開始一個計畫，就會陪它走過每個階段直到完成。這讓你們很適合合作長期的專案，像裝修、創業或一起存一筆錢。',
+  '9-52':
+    '你們一起時特別坐得住：需要耐心處理的細節，像記帳、整理文件、規劃行程，兩人能安靜地各自專心，把繁瑣的事一點一點做完。',
+  '16-48':
+    '你們湊在一起會互相切磋，把一件事越做越精。一起學一項技能、經營一份副業時，一個提供深度、一個反覆練習，成果會很專業。',
+  '17-62':
+    '你們討論事情時很有條理：一個提出看法，一個補上細節，計畫會被安排得清清楚楚。這讓你們很適合一起規劃預算、行程與分工。',
+  '7-31':
+    '你們一起出現時有種帶頭的氣場：朋友出遊、團隊合作，大家容易請你們拿主意。一個指方向、一個出面號召，是很好的領隊搭檔。',
+};
+
+/** No such channel: how the pair works as one unit, by composite type. */
+const WORK_TYPE_HOOK: Record<HDType, string> = {
+  generator: '一起動手做，是你們最好的投資',
+  manifestingGenerator: '你們合作的速度，常讓旁人跟不上',
+  manifestor: '你們最會的，是一起開新局',
+  projector: '你們的合作，贏在看得準',
+  reflector: '選對地方，你們的合作才會順',
+};
+
+const WORK_TYPE_NOTE: Record<HDType, string> = {
+  generator:
+    '你們合起來有很穩的做事動力，適合一起經營需要持續投入的事：一間店、一個家、一份長期的副業。兩人都有興趣的項目，會越做越順手。',
+  manifestingGenerator:
+    '你們合起來又快又能持續，很適合一起接案、跑活動這類節奏明快的合作。點子一出來馬上就能試，只是要有人負責回頭檢查漏掉的細節。',
+  manifestor:
+    '你們合起來很有開創力，適合一起發起新計畫：辦活動、開新路線、提案。你們的強項在啟動，後續的維持可以找別人一起分擔。',
+  projector:
+    '你們合起來的優勢是眼光：很會看出一件事該怎麼安排最有效率，適合當顧問型、規劃型的搭檔。體力活不是你們的強項，外包出去更划算。',
+  reflector:
+    '你們的合作成果跟環境高度相關：在好的空間、跟好的人一起，事情就順。合作前多花時間挑對場地與夥伴，比急著開工更重要。',
+};
+
+type HeartCombo = 'both' | 'one' | 'together' | 'neither';
+
+/** f = the person with the heart center defined, p = the person with it open (only used for `one`). */
+const WORK_MONEY: Record<HeartCombo, (f: string, p: string) => string> = {
+  both: () =>
+    '談到錢，兩人對承諾都很認真，說好的金額與期限都會守住，也都有自己的堅持。直接攤開講最有效率，只要先說清楚各自的底線，就不容易僵住。',
+  one: (f, p) =>
+    `談到錢，${f}適合負責需要長期守住的部分，像房租、儲蓄與固定支出；${p}比較有彈性，適合處理臨時的採買與變動。別讓${p}為了跟上${f}而硬撐預算。`,
+  together: () =>
+    '談到錢，兩人單獨時都不太逼自己，在一起卻多了一股敢承諾、敢訂目標的底氣，適合一起存錢。只是這股衝勁合起來才有，目標要訂得務實些。',
+  neither: () =>
+    '談到錢，兩人都不是靠意志力硬撐的類型，態度比較隨和，很少為了誰賺得多而較勁。訂財務目標時別太嚴苛，用自動轉帳取代互相監督會輕鬆很多。',
+};
+
+const WORK_MONEY_ADVICE: Record<HeartCombo, (f: string, p: string) => string> = {
+  both: () => '開一個共同帳戶，寫下各自每月存入的金額，其餘各管各的。',
+  one: (f, p) => `固定支出交給${f}設定自動扣款，日常採買的預算交給${p}彈性運用。`,
+  together: () => '一起訂一個三個月內做得到的小目標，達成後再往上加。',
+  neither: () => '把每月要存的錢設成發薪日自動轉出，剩下的兩人自在地花。',
+};
+
+/** 旅伴測試, by composite type. */
+const WORK_TRIP_SCENE: Record<HDType, string> = {
+  generator: '一起旅行時，你們可以從早玩到晚，行程排得滿也不喊累，回程還在討論下次去哪。',
+  manifestingGenerator: '出門前才訂好的行程，到了當地又臨時改了一半，兩人卻都覺得這樣更好玩。',
+  manifestor: '某個晚上聊到想去哪裡，隔天就訂了機票；說走就走是你們的旅行方式。',
+  projector: '你們的旅行一天只排一兩個重點，其他時間坐在咖啡店看人、聊天，覺得這樣才叫度假。',
+  reflector: '同一趟旅行，住到舒服的民宿你們心情大好，換到吵雜的旅館，兩人就都提不起勁。',
+};
+
+function workCard(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem {
+  const id = WORK_CHANNELS.find((x) => syn.channels.some((c) => c.channel.id === x));
+  const sc = id ? syn.channels.find((c) => c.channel.id === id) : undefined;
+  const hA = a.chart.definedCenters.includes('heart');
+  const hB = b.chart.definedCenters.includes('heart');
+  const heart: HeartCombo =
+    hA && hB ? 'both' : hA || hB ? 'one' : syn.composite.definedCenters.includes('heart') ? 'together' : 'neither';
+  const [firm, flexible] = hA ? [a.name, b.name] : [b.name, a.name];
+  const type = syn.composite.type;
+  const heartBasis: Record<HeartCombo, string> = {
+    both: '意志力中心兩人都有定義',
+    one: `意志力中心${firm}有定義、${flexible}開放`,
+    together: '意志力中心兩人各自開放、合盤才接通',
+    neither: '意志力中心兩人都開放',
+  };
+  return pairCard(
+    '一起財運與共事潛力',
+    '從合盤裡與資源、分工有關的通道，以及兩人的意志力中心（管承諾與物質），看你們當室友、旅伴或合夥人時怎麼配合。',
+    id ? WORK_CHANNEL_HOOK[id] : WORK_TYPE_HOOK[type],
+    [id ? WORK_CHANNEL_NOTE[id] : WORK_TYPE_NOTE[type], WORK_MONEY[heart](firm, flexible)],
+    WORK_TRIP_SCENE[type],
+    WORK_MONEY_ADVICE[heart](firm, flexible),
+    `${sc ? `${channelLabel(sc.channel)}（${SYNASTRY_CHANNEL_KIND_NAMES_ZH[sc.kind]}）` : '沒有資源類的合盤通道'}；${heartBasis[heart]}；合盤類型${TYPE_NAMES_ZH[type]}`,
+  );
+}
+
+// --- 初見印象 vs 深交後的反轉 -----------------------------------------------
+
+/** Unconscious (design) line: the nature that only shows after living or working together. */
+const LINE_DEEP: Record<number, string> = {
+  1: '沒弄清楚就不安的一面',
+  2: '需要獨處、不想被打擾的一面',
+  3: '邊做邊改、計畫常變的一面',
+  4: '事事先想到自己人的一面',
+  5: '習慣扛起期待、怕讓人失望的一面',
+  6: '退一步觀察、標準很高的一面',
+};
+
+function firstImpressionCard(a: HdPartner, b: HdPartner, syn: HdSynastry, difficult: boolean): MeaningItem {
+  const of = (k: SynastryChannelKind) => syn.channels.filter((c) => c.kind === k);
+  const em = of('electromagnetic');
+  const companions = of('companionship');
+  const mode: 'sparks' | 'spark' | 'familiar' | 'slow' =
+    em.length >= 2 ? 'sparks' : em.length === 1 ? 'spark' : companions.length > 0 ? 'familiar' : 'slow';
+
+  const hook = difficult
+    ? '新鮮感過後，才是真正的開始'
+    : {
+        sparks: '一見面就來電，熟了才看見全貌',
+        spark: '有一個點，讓你們一開始就對上',
+        familiar: '初見像老朋友，深交才有新發現',
+        slow: '你們是越熟越有味道的組合',
+      }[mode];
+
+  const first =
+    mode === 'sparks'
+      ? `剛認識時，你們之間的吸引來得很快：在「${domain(em[0])}」和「${domain(em[1])}」上，兩人各有一半，一碰面就接上，會有「怎麼這麼合」的驚喜。`
+      : mode === 'spark'
+        ? `你們一開始最對上的地方在「${domain(em[0])}」：兩人各帶一半，湊在一起才完整，所以初見時會覺得對方身上有自己缺的那一塊，特別容易被吸引。`
+        : mode === 'familiar'
+          ? `你們初見時少了觸電般的火花，卻有一種「好像認識很久」的熟悉：在「${domain(companions[0])}」上兩人的做法本來就很像，不用磨合就聊得來。`
+          : '你們不是一見面就黏在一起的類型，初見的印象可能平平淡淡。兩人的連結要靠時間累積，認識越久，越看得見對方身上那些自己沒有的本事。';
+
+  const dA = LINE_DEEP[a.chart.profile.design] ?? LINE_DEEP[1];
+  const dB = LINE_DEEP[b.chart.profile.design] ?? LINE_DEEP[1];
+  const tail = difficult
+    ? '你們熟了之後的落差會比多數組合明顯，這需要耐心，不代表看錯人。'
+    : '這不是誰變了，而是相處夠久，才看到完整的對方。';
+  const later =
+    dA === dB
+      ? `相處久了，兩人都會露出${dA}。因為底層很像，你們對這一點特別能互相理解，也可能同時卡在同一個地方。`
+      : `相處久了，${a.name}會露出${dA}，${b.name}則露出${dB}。${tail}`;
+
+  const compromise = of('compromise')[0];
+  const dominance = of('dominance')[0];
+  const scene = compromise
+    ? (() => {
+        const [holder, other] = names(a, b, compromise.holder ?? 'a');
+        return `交往初期沒感覺，住在一起後才發現，在「${domain(compromise)}」上${holder}很有自己的一套，${other}得花時間適應。`;
+      })()
+    : dominance
+      ? (() => {
+          const [holder, other] = names(a, b, dominance.holder ?? 'a');
+          return `剛認識時${other}覺得${holder}在「${domain(dominance)}」上很迷人，熟了以後，那成了${other}最習慣依賴${holder}的地方。`;
+        })()
+      : '認識半年後的某天，你們發現彼此相處的方式跟第一個月差不多，沒有驚嚇，也沒有幻滅。';
+
+  const advice = difficult
+    ? '把熟了之後才發現的差異各寫三條，一條一條談怎麼配合，不求一次解決。'
+    : {
+        sparks: '來電感淡下來時，一起重做一次當初最合拍的那件事，想起為什麼在一起。',
+        spark: '把最初吸引彼此的那件事排進每個月的行程，別讓它只留在回憶裡。',
+        familiar: '每隔一陣子一起嘗試一件兩人都沒做過的事，替熟悉感加一點新鮮。',
+        slow: '多安排一起完成一件事的機會，像下廚或短程旅行，你們的感情是做出來的。',
+      }[mode];
+
+  return pairCard(
+    '初見印象與深交後的反轉',
+    '電磁通道（兩人各有一半、一碰就接上）是初見的吸引力；人生角色的潛意識面，則是相處久了才浮現的本性。',
+    hook,
+    [first, later],
+    scene,
+    advice,
+    `電磁通道 ${em.length} 條${em.length > 0 ? `（${em.slice(0, 2).map((c) => channelLabel(c.channel)).join('、')}）` : ''}；人生角色${a.name} ${a.chart.profile.personality}/${a.chart.profile.design}、${b.name} ${b.chart.profile.personality}/${b.chart.profile.design}`,
+  );
+}
+
+/** The four added theme cards, in guideline order. */
+export function hdSynastryThemeCards(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem[] {
+  const difficult = hdFitIsDifficult(a, b, syn);
+  return [
+    batteryCard(a, b, syn),
+    powerCard(a, b, syn, difficult),
+    workCard(a, b, syn),
+    firstImpressionCard(a, b, syn, difficult),
+  ];
+}
+
 export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): MeaningItem[] {
   const comp = syn.composite;
   const byKind = (k: SynastryChannelKind) => syn.channels.filter((c) => c.kind === k);
   const difficult = hdFitIsDifficult(a, b, syn);
   const items: MeaningItem[] = [];
 
-  items.push(
-    item(
+  items.push({
+    ...item(
       '合盤總覽',
       '把兩人啟動的閘門合在一起看，這段關係「兩個人在一起時」的整體能量。',
       [
-        `${a.name}是${TYPE_NAMES_ZH[a.chart.type]}（${AUTHORITY_NAMES_ZH[a.chart.authority]}），${b.name}是${TYPE_NAMES_ZH[b.chart.type]}（${AUTHORITY_NAMES_ZH[b.chart.authority]}）。`,
-        `合盤：${TYPE_NAMES_ZH[comp.type]}、${DEFINITION_NAMES_ZH[comp.definition]}，已定義 ${comp.definedCenters.length} 個中心、${comp.channels.length} 條通道。`,
         COMPOSITE_TYPE_NOTE[comp.type],
         DEFINITION_COMPOSITE_NOTE[comp.definition],
+        `（依據：${a.name}是${TYPE_NAMES_ZH[a.chart.type]}・${AUTHORITY_NAMES_ZH[a.chart.authority]}，${b.name}是${TYPE_NAMES_ZH[b.chart.type]}・${AUTHORITY_NAMES_ZH[b.chart.authority]}；合盤為${TYPE_NAMES_ZH[comp.type]}、${DEFINITION_NAMES_ZH[comp.definition]}，接通 ${comp.definedCenters.length} 個中心、${comp.channels.length} 條通道）`,
       ].join('\n'),
     ),
-  );
+    hook: COMPOSITE_HOOK[comp.type],
+  });
 
   for (const kind of SYNASTRY_CHANNEL_KINDS) {
     const list = byKind(kind);
@@ -1091,6 +1571,8 @@ export function hdSynastryItems(a: HdPartner, b: HdPartner, syn: HdSynastry): Me
       dailyLines(a, b, syn, difficult).join('\n'),
     ),
   );
+
+  items.push(...hdSynastryThemeCards(a, b, syn));
 
   items.push(
     difficult
@@ -1253,6 +1735,11 @@ ${dailyHints(a, b)}
 2. 兩人思考方式：各自怎麼想事情、怎麼做決定，步調不同時怎麼配合（參考內在權威、頭腦與邏輯中心）。
 3. 處理矛盾的方法：意見不同前的訊號、誰容易先退讓、怎麼和好（參考情緒中心、意志力中心、非自己主題與妥協通道）。
 4. 感受親密及愛的方式：各自怎樣會覺得被愛、親密的節奏（參考與親密有關的通道，如 6-59、19-49、37-40、39-55、12-22）。
+接著再寫四個主題，每個主題先用一句話點出核心，再寫解析、一個具體的相處場景與一條兩人做得到的建議；前面寫過的特質不要換句話重複，要轉成該主題自己的場景：
+5. 兩人內耗與充電：誰容易被對方的能量帶著走、各自怎麼恢復（參考一方有定義、另一方開放的中心，以及薦骨中心）。
+6. 關係中的權力與主導權：哪些事誰比較有定見、怎麼讓主導權流動（參考主導與妥協通道由誰擁有、喉嚨與意志力中心）。
+7. 一起財運與共事潛力：當室友、旅伴或合夥人時怎麼分工、怎麼談錢（參考合盤類型、意志力中心，以及與資源有關的通道，如 21-45、2-14、32-54、26-44、37-40）。
+8. 初見印象與深交後的反轉：剛認識時的吸引，與熟了之後才浮現的本性（參考電磁通道、兩人人生角色的潛意識爻）。
 然後用 2–3 句寫「這段關係的禮物」：根據這兩人最強的連結（例如電磁通道、共同的定義、互補的類型），說出兩人在一起最珍貴的地方，必須扣回這兩人的資料${fitGift}。
 最後給兩人各 3 條相處提醒，其中至少兩條是發揮兩人既有的優點，而不只是避開問題。`;
 }
