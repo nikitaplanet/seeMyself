@@ -12,6 +12,8 @@ import {
     interAspects,
     isKeyPair,
     LIMITS,
+    PERSONA_ID,
+    PERSONA_TITLE,
     type AstroPartner,
 } from '@/lib/astro/synastry';
 import {
@@ -353,7 +355,9 @@ const report = ([a, b]: [AstroPartner, AstroPartner]) =>
     astroSynastryItems(a, b, analyzeAstroSynastry(a.chart, b.chart));
 const prompt = ([a, b]: [AstroPartner, AstroPartner]) =>
     buildAstroSynastryAiPrompt(a, b, analyzeAstroSynastry(a.chart, b.chart));
-const sections = (p: [AstroPartner, AstroPartner]) => report(p).slice(0, 5);
+/** The five guideline sections (after 個性互動, before the gift). */
+const sections = (p: [AstroPartner, AstroPartner]) => report(p).slice(1, 6);
+const persona = (p: [AstroPartner, AstroPartner]) => report(p)[0];
 
 /** The labelled blocks of a card, e.g. { 解析: [p1, p2], 相處場景: [s], … }. */
 function blocks(meaning: string): Record<string, string[]> {
@@ -369,26 +373,92 @@ function blocks(meaning: string): Record<string, string[]> {
 
 const ALL_PAIRS = { NORMAL, TENSE, UNKNOWN, HARD };
 
-describe('report: five sections in card format', () => {
+describe('report: 個性互動 and five sections in card format', () => {
     it.each(Object.entries(ALL_PAIRS))(
-        '%s: sections in order, then gift and 星盤依據',
+        '%s: 個性互動, sections in order, then gift and 星盤依據',
         (_, pair) => {
             const items = report(pair);
-            expect(items.slice(0, 5).map((i) => i.term)).toEqual(
+            expect(items[0].term).toBe(PERSONA_TITLE);
+            expect(items[0].term).toBe('個性互動');
+            expect(items.slice(1, 6).map((i) => i.term)).toEqual(
                 SECTION_ORDER.map((s) => SECTION_TITLES[s]),
             );
-            expect(items.map((i) => i.term).slice(0, 5)).toEqual([
+            expect(items.map((i) => i.term).slice(1, 6)).toEqual([
                 '一起時的亮點與發揮特色',
                 '兩人需磨合的地方',
                 '兩人的內心世界與親密度方式',
                 '關係的生命課題',
                 '日常相處與溝通模式',
             ]);
-            expect(items[5].term).toMatch(/^這段關係的(課題與)?禮物$/);
-            expect(items[6].term).toBe('星盤依據');
-            expect(items).toHaveLength(7);
+            expect(items[6].term).toMatch(/^這段關係的(課題與)?禮物$/);
+            expect(items[7].term).toBe('星盤依據');
+            expect(items[7].collapsed).toBe(true);
+            expect(items).toHaveLength(8);
         },
     );
+
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: 個性互動 has 3 paragraphs, 2 scenes and one advice within limits',
+        (_, pair) => {
+            const item = persona(pair);
+            expect(item.field.length).toBeGreaterThan(0);
+            expect(item.hook).toBeTruthy();
+            expect(item.hook!.length).toBeLessThanOrEqual(LIMITS.hook);
+            const lines = item.meaning.split('\n');
+            expect(lines[0]).toBe('【解析】');
+            expect(lines[4]).toBe('【相處場景】');
+            expect(lines[7]).toBe('【給兩人的建議】');
+            expect(lines).toHaveLength(9);
+            const b = blocks(item.meaning);
+            expect(b['解析']).toHaveLength(3);
+            for (const p of b['解析']) {
+                expect(p.length).toBeGreaterThan(20);
+                expect(p.length).toBeLessThanOrEqual(LIMITS.paragraph);
+            }
+            expect(b['相處場景']).toHaveLength(2);
+            for (const s of b['相處場景']) {
+                expect(s.length).toBeGreaterThan(10);
+                expect(s.length).toBeLessThanOrEqual(LIMITS.scene);
+            }
+            expect(b['給兩人的建議']).toHaveLength(1);
+            expect(b['給兩人的建議'][0].length).toBeLessThanOrEqual(LIMITS.advice);
+            // About the two together: the analysis names both people, never one profile each.
+            const analysis = b['解析'].join('');
+            expect(analysis).toMatch(new RegExp(`${pair[0].name}|兩人`));
+            expect(analysis).toMatch(new RegExp(`${pair[1].name}|兩人`));
+            expect(item.meaning).not.toMatch(/代表/);
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))('%s: every advice is one plain sentence', (_, pair) => {
+        for (const item of report(pair).slice(0, 6)) {
+            const [advice] = blocks(item.meaning)['給兩人的建議'];
+            // No stitched 「順著某某的某特質：」 opener.
+            expect(advice, item.term).not.toMatch(/^[^。]{2,14}：/);
+        }
+    });
+
+    it.each(Object.entries(ALL_PAIRS))(
+        '%s: at most two scenes open with a 「甲…、乙…：」 setup, and no refer-back repeats',
+        (_, pair) => {
+            const items = report(pair).slice(0, 7);
+            const scenes = items.slice(0, 6).flatMap((i) => blocks(i.meaning)['相處場景']);
+            expect(scenes.filter((s) => /^[^，。]{2,14}：/.test(s)).length).toBeLessThanOrEqual(2);
+            // 「那份執著」「這份執著」: a refer-back to a trait is said at most once per report.
+            const all = items.map((i) => i.meaning).join('\n');
+            const refs: string[] = all.match(/[那這][份顆股][\u4e00-\u9fff]{2}/g) ?? [];
+            expect(refs.filter((r, i) => refs.indexOf(r) !== i)).toEqual([]);
+            const tails = refs.map((r) => r.slice(2));
+            expect(tails.filter((r, i) => tails.indexOf(r) !== i)).toEqual([]);
+        },
+    );
+
+    it.each(Object.entries(ALL_PAIRS))('%s: hooks carry no mismatched nature imagery', (_, pair) => {
+        for (const item of report(pair).slice(0, 6))
+            expect(item.hook).not.toMatch(
+                /流水|大地|微風|烈火|岩石|強風|暗流|爐火|老屋|深海|火種|種子|風向|潮汐|越燒越旺/,
+            );
+    });
 
     it.each(Object.entries(ALL_PAIRS))(
         '%s: hook ≤ 20 字 and the fixed layout within limits',
@@ -433,7 +503,7 @@ describe('report: five sections in card format', () => {
             expect(all).not.toMatch(/信息|质量|视频|默认|优化|反馈/);
             // No jargon in the five sections (the 星盤依據 card may name aspects).
             const body = report(pair)
-                .slice(0, 6)
+                .slice(0, 7)
                 .map((i) => `${i.hook ?? ''}${i.meaning}`)
                 .join('\n');
             expect(body).not.toMatch(/刑剋|入廟|容許度|比較盤|四分|三分|六分|對分|第 \d+ 宮/);
@@ -451,7 +521,7 @@ describe('report: five sections in card format', () => {
         // exceptions are needed: none of these words is used as an everyday word in the copy.
         const NAMES =
             /牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚|太陽|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星|北交點|凱龍|上升點|下降點|天頂|天底|座式/;
-        for (const item of report(pair).slice(0, 6)) {
+        for (const item of report(pair).slice(0, 7)) {
             let text = `${item.field}\n${item.hook ?? ''}\n${item.meaning}`;
             // Strip parenthesised chart basis (innermost first).
             for (let prev = ''; prev !== text; ) {
@@ -466,7 +536,7 @@ describe('report: five sections in card format', () => {
     it.each(Object.entries(ALL_PAIRS))(
         '%s: no sentence or clause repeats across sections',
         (_, pair) => {
-            const items = report(pair).slice(0, 6);
+            const items = report(pair).slice(0, 7);
             const seen = new Map<string, number>();
             items.forEach((item, idx) => {
                 const text = `${item.hook ?? ''}\n${item.meaning}`.replace(/【[^】]+】/g, '');
@@ -500,8 +570,9 @@ describe('report: five sections in card format', () => {
         expect(frFirst).toContain(`「${main.light}」`);
         expect(frFirst).toContain(`「${main.shadow}」`);
         expect(frFirst.indexOf(main.light)).toBeLessThan(frFirst.indexOf(main.shadow));
-        const ref = report(pair)[6].meaning;
+        const ref = report(pair)[7].meaning;
         expect(ref.split('\n')[0]).toContain(`互動主軸：${main.label}`);
+        expect(ref).toContain('【個性互動】');
     });
 
     it('output differs between pairs', () => {
@@ -514,6 +585,9 @@ describe('report: five sections in card format', () => {
             expect(y[i].meaning).not.toEqual(z[i].meaning);
         }
         expect(x[0].hook).not.toEqual(y[0].hook);
+        const p = [NORMAL, TENSE, UNKNOWN].map((pair) => persona(pair));
+        expect(new Set(p.map((i) => i.meaning)).size).toBe(3);
+        expect(new Set(p.map((i) => i.hook)).size).toBe(3);
     });
 
     it('roles follow whose planet it is', () => {
@@ -543,17 +617,23 @@ describe('report: five sections in card format', () => {
 describe('unknown birth time', () => {
     it('skips that person’s axes and houses and says so', () => {
         const items = report(UNKNOWN);
-        const ref = items[6].meaning;
+        const ref = items[7].meaning;
         expect(ref).toContain('志豪的出生時間不確定');
         // Nothing lands on 志豪's angles or houses.
         expect(ref).not.toMatch(/→ 志豪的第|志豪的(上升點|下降點|天頂|天底)/);
         expect(ref).not.toMatch(/志豪的月亮/);
         const body = items
-            .slice(0, 5)
+            .slice(0, 6)
             .map((i) => i.meaning)
             .join('\n');
         expect(body).not.toMatch(/落入志豪的|貼近志豪的/);
         expect(body).not.toMatch(/志豪的月亮/);
+        // 個性互動 says plainly that 志豪's first impression is left out, and reads only 怡君's.
+        const look = blocks(items[0].meaning)['解析'][2];
+        expect(look).toContain('志豪的出生時間不確定');
+        expect(look).toContain('怡君的上升');
+        expect(items[0].meaning).not.toContain('志豪的上升');
+        expect(ref).toContain('志豪的太陽獅子座（火象・固定）；出生時間不確定，不列上升');
     });
 
     it('works when neither time is known', () => {
@@ -568,6 +648,9 @@ describe('unknown birth time', () => {
         );
         expect(w.contacts.every((c) => c.kind === 'aspect')).toBe(true);
         expect(sections(pair)).toHaveLength(5);
+        const look = blocks(persona(pair).meaning)['解析'][2];
+        expect(look).toContain('兩人的出生時間都不確定');
+        expect(persona(pair).meaning).not.toContain('上升');
     });
 });
 
@@ -577,13 +660,14 @@ describe('honest mode (fit signal)', () => {
             const fit = astroFit(analyzeAstroSynastry(pair[0].chart, pair[1].chart));
             expect(fit.difficult).toBe(true);
             const items = report(pair);
-            const fr = items[1].meaning.split('\n');
+            const fr = items[2].meaning.split('\n');
             expect(fr[0]).toBe('【先說在前面】');
             expect(fr[1]).toContain('坦白說');
-            expect(items[1].meaning).toContain('比較吃力');
-            for (const i of [0, 2, 3, 4]) expect(items[i].meaning).not.toContain('【先說在前面】');
-            expect(items[5].term).toBe('這段關係的課題與禮物');
-            expect(items[5].meaning).toMatch(/值得珍惜|真實的好/);
+            expect(items[2].meaning).toContain('比較吃力');
+            for (const i of [0, 1, 3, 4, 5])
+                expect(items[i].meaning).not.toContain('【先說在前面】');
+            expect(items[6].term).toBe('這段關係的課題與禮物');
+            expect(items[6].meaning).toMatch(/值得珍惜|真實的好/);
             expect(prompt(pair)).toContain('比較不合');
         }
     });
@@ -601,8 +685,8 @@ describe('honest mode (fit signal)', () => {
             expect(astroFit(syn).difficult).toBe(false);
             const items = report(pair);
             expect(items.some((i) => i.meaning.includes('【先說在前面】'))).toBe(false);
-            expect(items[5].term).toBe('這段關係的禮物');
-            expect(items[5].meaning.split('\n').length).toBeGreaterThanOrEqual(2);
+            expect(items[6].term).toBe('這段關係的禮物');
+            expect(items[6].meaning.split('\n').length).toBeGreaterThanOrEqual(2);
         }
         expect(astroFit(analyzeAstroSynastry(NORMAL[0].chart, NORMAL[1].chart))).toMatchObject({
             bond: true,
@@ -611,9 +695,20 @@ describe('honest mode (fit signal)', () => {
 });
 
 describe('AI prompt', () => {
-    it('asks for the five sections as strict JSON, with the weighted data and 互動主軸', () => {
+    it('asks for 個性互動 and the five sections as strict JSON, with the weighted data and 互動主軸', () => {
         const p = prompt(NORMAL);
         expect(p).not.toMatch(/undefined|NaN/);
+        // 個性互動 comes first, with its own material and the longer format.
+        expect(p).toContain(`### 1. ${PERSONA_TITLE}（section_id: ${PERSONA_ID}）`);
+        expect(p.indexOf(`（section_id: ${PERSONA_ID}）`)).toBeLessThan(
+            p.indexOf(`（section_id: ${SECTION_ORDER[0]}）`),
+        );
+        expect(p).toContain(`"section_id": "${PERSONA_ID}"`);
+        expect(p).toContain('小明的太陽金牛座（土象・固定）');
+        expect(p).toContain('元素分布');
+        expect(p).toContain('3 個短段落');
+        expect(p).toContain('2 個場景');
+        expect(p).toContain('六個板塊');
         for (const s of SECTION_ORDER) {
             expect(p).toContain(s);
             expect(p).toContain(SECTION_TITLES[s]);
@@ -662,10 +757,10 @@ describe('distinctiveness across pairs', () => {
         ];
     });
 
-    /** Text of the five sections and the gift card, names replaced, heading lines dropped. */
+    /** Text of 個性互動, the five sections and the gift card, names replaced, heading lines dropped. */
     function body(items: ReturnType<typeof report>): string {
         return items
-            .slice(0, 6)
+            .slice(0, 7)
             .map((it) => `${it.hook ?? ''}\n${it.meaning}`)
             .join('\n')
             .split('\n')
@@ -694,7 +789,7 @@ describe('distinctiveness across pairs', () => {
         const NAMES =
             /牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚|太陽|月亮|水星|金星|火星|木星|土星|天王星|海王星|冥王星|北交點|凱龍|上升點|下降點|天頂|天底|座式/;
         for (const pair of PAIRS)
-            for (const item of report(pair).slice(0, 6)) {
+            for (const item of report(pair).slice(0, 7)) {
                 let text = `${item.field}\n${item.hook ?? ''}\n${item.meaning}`;
                 for (let prev = ''; prev !== text; ) {
                     prev = text;
@@ -715,6 +810,19 @@ describe('distinctiveness across pairs', () => {
         expect(share, `「${worst}」 in ${Math.round(share * 100)}% of reports`).toBeLessThanOrEqual(0.3);
     });
 
+    it('個性互動 stays distinct: no two of the 20 cards share a hook-and-text, and no advice is stitched', () => {
+        const cards = PAIRS.map((p) => report(p)[0]);
+        expect(new Set(cards.map((c) => c.meaning.replace(/[甲乙]/g, 'X'))).size).toBe(PAIRS.length);
+        const hooks = cards.map((c) => c.hook!);
+        for (const h of new Set(hooks))
+            expect(hooks.filter((x) => x === h).length, h).toBeLessThanOrEqual(3);
+        for (const pair of PAIRS)
+            for (const item of report(pair).slice(0, 6)) {
+                const lines = item.meaning.split('\n');
+                expect(lines[lines.length - 1], item.term).not.toMatch(/^[^。]{2,14}：/);
+            }
+    });
+
     it('a shared Sun–Moon contact still reads differently in the gift card', () => {
         const withSunMoon = PAIRS.filter(([a, b]) =>
             analyzeAstroSynastry(a.chart, b.chart).aspects.some(
@@ -725,7 +833,7 @@ describe('distinctiveness across pairs', () => {
             ),
         );
         expect(withSunMoon.length).toBeGreaterThanOrEqual(2);
-        const gifts = withSunMoon.map((p) => report(p)[5].meaning);
+        const gifts = withSunMoon.map((p) => report(p)[6].meaning);
         expect(new Set(gifts).size).toBe(gifts.length);
         // No line of one gift card reappears in another (names replaced).
         const lines = gifts.flatMap((g) => [...new Set(g.replace(/[甲乙]/g, 'X').split('\n'))]);

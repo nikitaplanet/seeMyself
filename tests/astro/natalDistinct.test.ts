@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeAstro } from '@/lib/astro/compute';
-import { natalReport, splitSentences } from '@/lib/astro/meaning';
+import { natalReport, REPEAT_ALLOWED, repeatedWord, splitSentences } from '@/lib/astro/meaning';
 import { expectValidReport } from './natalHelpers';
 import { VARIED_CHARTS } from './natalCharts';
 
@@ -53,6 +53,45 @@ describe('natal report — distinctiveness across 30 charts', () => {
         expect(n / reports.length, `「${worst}」 in ${n}/${reports.length}`).toBeLessThanOrEqual(
             MAX_CLAUSE_SHARE,
         );
+    });
+
+    // A sign phrase and an aspect phrase must not bring the same word into one sentence
+    // (「責任感替你的踏實加了分，讓你踏實、經得起檢驗」). A word is two adjacent Han characters;
+    // the parenthesised chart basis is left out. Exceptions: pairs containing a function
+    // character (FUNCTION_CHARS in meaning.ts: pronouns, particles, adverbs such as 你 的 會 也
+    // 就 很 不 一 …) are not content words, and REPEAT_ALLOWED lists whole words that may
+    // repeat, which is empty.
+    it('no sentence uses the same two-character content word twice', () => {
+        expect([...REPEAT_ALLOWED]).toEqual([]);
+        const INPUT_1990 = {
+            date: '1990-05-12',
+            time: '14:30',
+            timezone: 'Asia/Taipei',
+            place: { name: '臺北市', lat: 25.04776, lon: 121.53185, countryCode: 'TW' },
+        };
+        const all = [...reports, { name: '1990-05-12 臺北', chart: computeAstro(INPUT_1990) }];
+        const found: string[] = [];
+        for (const r of all) {
+            for (const s of natalReport(r.chart)) {
+                const texts = [
+                    s.hook,
+                    ...[...s.insight, s.scene, s.advice].flatMap(splitSentences),
+                ];
+                for (const t of texts) {
+                    const w = repeatedWord(t);
+                    if (w) found.push(`${r.name}｜${w}｜${t}`);
+                }
+            }
+        }
+        expect(found).toEqual([]);
+    });
+
+    it('detects a repeated content word but not repeated function words', () => {
+        expect(
+            repeatedWord('責任感替你的踏實加了分，讓你踏實、經得起檢驗（太陽與土星的順暢角度）。'),
+        ).toBe('踏實');
+        expect(repeatedWord('你的想法很多，你的行動也很快。')).toBeNull();
+        expect(repeatedWord('你很穩重（土星摩羯、土星摩羯）。')).toBeNull();
     });
 
     it('two people with the same Sun sign still read differently', () => {

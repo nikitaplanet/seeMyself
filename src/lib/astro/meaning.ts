@@ -96,6 +96,16 @@ export interface NatalSection {
 
 export const charLen = (s: string): number => [...s].length;
 
+/**
+ * A sentence, optionally with other wordings for when it follows one in the same paragraph.
+ * Either slot may list several options in order of preference; the paragraph takes the first
+ * one that does not repeat a content word already in it.
+ */
+type Part = string | { first: string | readonly string[]; then: string | readonly string[] };
+const optionsOf = (v: string | readonly string[]): readonly string[] =>
+    typeof v === 'string' ? [v] : v;
+const thenOf = (p: Part) => (typeof p === 'string' ? p : optionsOf(p.then)[0]);
+
 /** Shared state across sections (context chaining / anti-repetition). */
 class Ctx {
     readonly sentences = new Set<string>();
@@ -108,14 +118,34 @@ class Ctx {
         return primary;
     }
 
-    /** Concatenate unused sentences in order while the paragraph stays within `max`. */
-    pack(candidates: Array<string | null | undefined>, max: number): string {
+    /**
+     * Concatenate unused sentences in order while the paragraph stays within `max`. A part with
+     * a `then` wording uses it when it follows another sentence, so the paragraph reads as one
+     * connected thought instead of sentences set side by side.
+     */
+    pack(candidates: Array<Part | null | undefined>, max: number, last?: Part | null): string {
         let out = '';
-        for (const s of candidates) {
-            if (!s || this.sentences.has(s) || out.includes(s)) continue;
-            if (charLen(out + s) > max) continue;
-            out += s;
-        }
+        const add = (c: Part | null | undefined, limit: number) => {
+            if (!c) return;
+            const forms =
+                typeof c === 'string' ? [c] : [...optionsOf(c.first), ...optionsOf(c.then)];
+            // Any wording of this part already said (here or in an earlier card): skip it.
+            if (forms.some((f) => this.sentences.has(f) || out.includes(f))) return;
+            const options = typeof c === 'string' ? [c] : optionsOf(out ? c.then : c.first);
+            const fitting = options.filter((o) => charLen(out + o) <= limit);
+            // Prefer a wording that repeats no word of the paragraph and does not open the way
+            // an earlier sentence did (「而且…。而且…」).
+            const openers = splitSentences(out).map((t) => t.slice(0, 2));
+            const fresh = fitting.filter((o) => isClean(o) && !openers.includes(o.slice(0, 2)));
+            const pool = fresh.length ? fresh : fitting;
+            const shared = pool.map((o) => sharedWords(out, o));
+            out += pool[shared.indexOf(Math.min(...shared))] ?? '';
+        };
+        // `last` (a blind spot) closes the paragraph, so room is kept for it and nothing
+        // positive trails after its 「只是…」.
+        const reserve = last ? charLen(thenOf(last)) : 0;
+        for (const c of candidates) add(c, max - reserve);
+        add(last, max);
         // Register right away so the next paragraph of the same section cannot repeat it.
         for (const t of splitSentences(out)) this.sentences.add(t);
         return out;
@@ -213,8 +243,98 @@ function hashStr(s: string): number {
     return h >>> 0;
 }
 
+/**
+ * Characters that make a two-character window a function-word combination (你的、會讓、一點…),
+ * not a content word. Only windows of two content characters count as a repeat.
+ */
+export const FUNCTION_CHARS = new Set(
+    '你我他她它們的了是在會也就和與跟讓很有沒一不都時這那對要得著把被給先再又更最還而且或及之上下中裡來去到說個些點樣麼什為以所如但卻才能可已從向比當常偶爾些每兩幾多少大小好像起出過自己'.split(
+        '',
+    ),
+);
+/** Content words allowed to repeat inside one sentence (none needed: the list is empty). */
+export const REPEAT_ALLOWED = new Set<string>();
+
+/**
+ * First two-character content word that appears twice in a sentence, ignoring the parenthesised
+ * chart basis; null when the sentence is clean.
+ */
+export function repeatedWord(sentence: string): string | null {
+    const text = [...sentence.replace(/（[^）]*）/g, '')];
+    const seen = new Set<string>();
+    for (let i = 0; i + 1 < text.length; i++) {
+        const [a, b] = [text[i], text[i + 1]];
+        if (!/\p{Script=Han}/u.test(a) || !/\p{Script=Han}/u.test(b)) continue;
+        if (FUNCTION_CHARS.has(a) || FUNCTION_CHARS.has(b)) continue;
+        const w = a + b;
+        if (REPEAT_ALLOWED.has(w)) continue;
+        if (seen.has(w)) return w;
+        seen.add(w);
+    }
+    return null;
+}
+
+const isClean = (s: string) => splitSentences(s).every((t) => repeatedWord(t) === null);
+
+/** Two-character content words of a text, the parenthesised chart basis left out. */
+function contentWords(text: string): Set<string> {
+    const chars = [...text.replace(/（[^）]*）/g, '')];
+    const out = new Set<string>();
+    for (let i = 0; i + 1 < chars.length; i++) {
+        const [a, b] = [chars[i], chars[i + 1]];
+        if (!/\p{Script=Han}/u.test(a) || !/\p{Script=Han}/u.test(b)) continue;
+        if (FUNCTION_CHARS.has(a) || FUNCTION_CHARS.has(b)) continue;
+        out.add(a + b);
+    }
+    return out;
+}
+
+/** How many content words of the paragraph `said` the sentence `next` would bring back. */
+function sharedWords(said: string, next: string): number {
+    if (!said) return 0;
+    const words = contentWords(said);
+    return [...contentWords(next)].filter((w) => words.has(w)).length;
+}
+
+/**
+ * Every option without a repeated word, starting from the chart-seeded one; `fallback` options
+ * come after the primary ones. Never empty.
+ */
+function cleanOptions(
+    seed: string,
+    primary: readonly string[],
+    fallback: readonly string[] = [],
+): string[] {
+    const i = hashStr(seed) % primary.length;
+    const rotated = [...primary.slice(i), ...primary.slice(0, i), ...fallback];
+    const clean = rotated.filter(isClean);
+    return clean.length ? clean : [rotated[0]];
+}
+
+/** Chart-seeded choice; for text options, rotates to the first one without a repeated word. */
 function pickBy<T>(seed: string, options: readonly T[]): T {
-    return options[hashStr(seed) % options.length];
+    const i = hashStr(seed) % options.length;
+    if (typeof options[i] !== 'string') return options[i];
+    for (let k = 0; k < options.length; k++) {
+        const o = options[(i + k) % options.length];
+        if (isClean(o as string)) return o;
+    }
+    return options[i];
+}
+
+/**
+ * Frames filled with one of a planet's two wordings: the one this report has not used yet, and
+ * the other one when every frame would repeat a word with it.
+ */
+function voiced(
+    ctx: Ctx,
+    seed: string,
+    key: string,
+    pair: readonly [string, string],
+    frames: (w: string) => string[],
+): string[] {
+    const w = ctx.phrase(key, pair[0], pair[1]);
+    return cleanOptions(seed, frames(w), frames(w === pair[0] ? pair[1] : pair[0]));
 }
 
 /** One of a planet's three growth tips / two gift scenes, chosen by seed. */
@@ -229,14 +349,16 @@ const tipsOf = (k: PlanetKey) => [
 const sceneOf = (k: PlanetKey, seed: string) =>
     pickBy(`${seed}|gs`, [BODY_VOICE[k].giftScene, BODY_VOICE[k].giftScene2]);
 
-function houseSentence(env: Env, c: HouseConfig | undefined): string | null {
+function houseSentence(env: Env, c: HouseConfig | undefined): Exclude<Part, string> | null {
     if (!c || c.bodies.length === 0) return null;
     const h = c.house - 1;
-    const focus = pickBy(`house${c.house}|${c.bodies.join()}|${env.mix}`, [
-        HOUSE_KB[h].focus,
-        ...V.HOUSE_FOCUS_ALT[h],
-    ]);
-    return `${focus}（${names(c.bodies)}在第 ${c.house} 宮）。`;
+    const seed = `house${c.house}|${c.bodies.join()}|${env.mix}`;
+    const basis = `（${names(c.bodies)}在第 ${c.house} 宮）。`;
+    const first = pickBy(seed, [HOUSE_KB[h].focus, ...V.HOUSE_FOCUS_ALT[h]]) + basis;
+    const follow = V.HOUSE_FOLLOW[c.house];
+    if (!follow) return { first, then: first };
+    const brief = pickBy(seed, follow.brief);
+    return { first, then: [`${follow.lead}${brief}${basis}`, `另外，${brief}${basis}`] };
 }
 
 function moonNeighbour(chart: AstroChart): string {
@@ -337,116 +459,139 @@ function personality(env: Env): NatalSection {
     const ascSeed = `asc|${asc}|${sun}|${w.ruler}|${env.mix}|${sunCfg?.house}`;
     const basis = asc !== null ? `（上升${S(asc)}、太陽${S(sun)}）` : `（太陽${S(sun)}）`;
 
-    // Opening blend of ASC + Sun, frame and wording seeded by the chart.
+    // Opening blend of ASC + Sun, frame and wording seeded by the chart. `core` always follows
+    // 「你」, so no frame stacks a second locative (骨子裡 / 內在) in front of it.
     let blend: string;
     if (asc !== null) {
         const persona = pickBy(`${ascSeed}|persona`, [
             ASC_KB[asc].persona,
             ...V.ASC_PERSONA_ALT[asc],
         ]);
+        const personaIn = persona.replace('，', '、');
         blend =
             asc === sun
-                ? `你的外在和內在很一致：${core}，看起來也${persona}${basis}。`
+                ? `你裡外很一致：${core}，給人的第一印象也是${personaIn}${basis}。`
                 : pickBy(`${ascSeed}|frame`, [
-                      `一出場，你就給人${persona}的感覺；真正推著你走的，是骨子裡${core}${basis}。`,
-                      `別人第一眼看到的你${persona}；熟了才發現，你骨子裡${core}${basis}。`,
+                      `一出場，你給人的感覺是${personaIn}；真正熟了才知道，你${core}${basis}。`,
+                      `別人第一眼看到的你${persona}；熟了才發現，你${core}${basis}。`,
                       `初次見面，大家會覺得你${persona}；相處久了，才發現你${core}${basis}。`,
-                      `你給人的第一印象是${persona}，內在卻${core}${basis}。`,
-                      `表面上你${persona}，骨子裡其實${core}${basis}。`,
+                      `你給人的第一印象是${personaIn}；再往裡看，你${core}${basis}。`,
+                      `表面上你${persona}，私底下的你${core}${basis}。`,
                   ]);
     } else {
         blend = pickBy(`${sunSeed}|blend`, [
-            `你骨子裡${core}${basis}。`,
             `說到本性，你${core}${basis}。`,
-            `你的核心是：${core}${basis}。`,
+            `你這個人，${core}${basis}。`,
+            `認識你的人都知道，你${core}${basis}。`,
         ]);
     }
 
-    const parts = new Map<string, string>();
+    const parts = new Map<string, Part>();
+    const tenseIds = new Set<string>();
     for (const c of cs) {
         if (c.kind === 'placement' && c.body === 'sun' && c.house !== null) {
             const th = HOUSE_KB[c.house - 1].theme;
-            parts.set(
-                c.id,
-                pickBy(`${sunSeed}|house`, [
-                    `你的力氣多半往${th}去，在這裡有所表現最讓你覺得活得有意義（太陽第 ${c.house} 宮）。`,
-                    `人生的重心常落在${th}，這是你最想證明自己的地方（太陽第 ${c.house} 宮）。`,
-                    `${th}是你發光的主場，投入在這裡時你最有活力（太陽第 ${c.house} 宮）。`,
+            const hb = `（太陽第 ${c.house} 宮）。`;
+            parts.set(c.id, {
+                first: cleanOptions(`${sunSeed}|house`, [
+                    `你的力氣多半往${th}去，在這裡有所表現，最讓你覺得活得有意義${hb}`,
+                    `人生的重心常落在${th}，這是你最想證明自己的地方${hb}`,
+                    `${th}是你發光的主場，投入在這裡時你最有活力${hb}`,
                 ]),
-            );
+                then: cleanOptions(`${sunSeed}|house`, [
+                    `這樣的你，最想在${th}上證明自己${hb}`,
+                    `而${th}，正是你最願意花力氣的地方${hb}`,
+                    `這份性格，最常用在${th}上${hb}`,
+                ]),
+            });
         } else if (
             c.kind === 'placement' &&
             c.body === w.ruler &&
             c.body !== 'sun' &&
             c.house !== null
         ) {
-            parts.set(
-                c.id,
-                `你做起事來帶著一股${SIGN_KB[c.sign].trait}，人生的重心也常落在${HOUSE_KB[c.house - 1].short}（命主星${N(c.body)}在${S(c.sign)}、第 ${c.house} 宮）。`,
-            );
+            const trait = SIGN_KB[c.sign].trait;
+            const short = HOUSE_KB[c.house - 1].short;
+            const rb = `（命主星${N(c.body)}在${S(c.sign)}、第 ${c.house} 宮）。`;
+            parts.set(c.id, {
+                first: `你做起事來帶著一股${trait}，人生的重心也常落在${short}${rb}`,
+                then: `做起事來，你還帶著一股${trait}，重心常放在${short}${rb}`,
+            });
         } else if (c.kind === 'aspect') {
             const x = other(c.aspect, 'sun');
             const v = BODY_VOICE[x];
             const b = aspectBasis(c.aspect);
             const tense = strained(c.aspect, x);
-            const word = tense
-                ? ctx.phrase(`hard:${x}`, v.hard, v.hardAlt)
-                : ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
-            const kw = sunKw[1];
+            const pair = tense ? ([v.hard, v.hardAlt] as const) : V.SELF_SOFT[x];
+            const word = ctx.phrase(`${tense ? 'hard' : 'self'}:${x}`, pair[0], pair[1]);
+            const w2 = word === pair[0] ? pair[1] : pair[0];
             const xk = xKw(env, x);
             const seed = aspectSeed(env, c.aspect, 'sun');
-            const frames = tense
-                ? [
-                      `${v.fn}常和你的${kw}拉扯，讓你有時${word}`,
-                      `你的${kw}裡夾著一股${v.fnShort}的張力，有時會${word}`,
-                      `${v.fn}偶爾會和你的${kw}唱反調，讓你${word}`,
-                      `你的${kw}有時會被${v.fn}拖住，容易${word}`,
-                  ]
-                : [
-                      `${v.fn}替你的${kw}加了分，讓你${word}`,
-                      `你的${kw}有一份${xk}的${v.gift}撐腰，整個人顯得${word}`,
-                      `你的${kw}遇上${xk}的${v.gift}，做起事來${word}`,
-                      `${xk}的${v.gift}和你的${kw}很合拍，讓你${word}`,
-                  ];
-            const body = pickBy(seed, frames);
+            const framesOf = (wd: string, kw: string) =>
+                tense
+                    ? [
+                          `只是${v.fn}一過頭，你就容易${wd}`,
+                          `不過你也有${v.trapKw}的一面，有時會${wd}`,
+                          `${sunKw[0]}的你，偶爾也會${wd}`,
+                      ]
+                    : [
+                          `你${xk}、${V.GIFT_HAS[x]}的那一面，和你的${kw}很合拍，讓你${wd}`,
+                          `你的${kw}背後有${v.gift}撐腰，所以你${wd}`,
+                          `${v.gift}替你的${kw}加了分，讓你${wd}`,
+                      ];
+            // Guard: the Sun keyword and the aspect wording must not repeat a word.
+            const bodies = cleanOptions(seed, framesOf(word, sunKw[1]), [
+                ...framesOf(w2, sunKw[1]),
+                ...framesOf(word, sunKw[2]),
+                ...framesOf(w2, sunKw[2]),
+            ]);
             // Life-area clause only when the house supports it: an angular Sun, or both planets
             // in the same house.
             const sh = houseOfBody(env, 'sun');
             const supported = sh !== null && (ANGULAR.has(sh) || houseOfBody(env, x) === sh);
-            const withArena = supported
-                ? `${body}，${pickBy(`${seed}|${env.mix}|arena`, V.HOUSE_ARENA[sh - 1])}${b}。`
-                : null;
-            parts.set(c.id, withArena && charLen(withArena) <= P ? withArena : `${body}${b}。`);
+            const texts = bodies.map((body) => {
+                const withArena = supported
+                    ? pickBy(
+                          `${seed}|${env.mix}|arena`,
+                          V.HOUSE_ARENA[sh - 1].map((ar) => `${body}；${ar}${b}。`),
+                      )
+                    : null;
+                return withArena && charLen(withArena) <= P - 3 ? withArena : `${body}${b}。`;
+            });
+            parts.set(c.id, {
+                first: texts,
+                then: tense ? texts : texts.map((t) => `再加上${t}`),
+            });
+            if (tense) tenseIds.add(c.id);
         } else if (c.kind === 'stellium' && c.scope === 'sign') {
             const kw = SIGN_KB[c.index].keywords;
-            parts.set(
-                c.id,
-                `你的能量特別集中，${kw[1]}與${kw[2]}的特質在你身上格外鮮明（${c.bodies.length} 顆行星聚在${S(c.index)}）。`,
-            );
+            const text = `你的能量特別集中，${kw[1]}與${kw[2]}的特質在你身上格外鮮明（${c.bodies.length} 顆行星聚在${S(c.index)}）。`;
+            parts.set(c.id, { first: text, then: `整體來看，${text}` });
         } else if (c.kind === 'stellium' && c.scope === 'house') {
             const focus = pickBy(`st${c.index}|${c.bodies.join()}`, [
                 HOUSE_KB[c.index - 1].focus,
                 ...V.HOUSE_FOCUS_ALT[c.index - 1],
             ]);
-            parts.set(
-                c.id,
-                pickBy(`st${c.index}|${env.mix}`, [
-                    `${focus}，這也是整張盤最熱鬧的地方（${c.bodies.length} 顆行星聚在第 ${c.index} 宮）。`,
-                    `${focus}，整張盤的能量都往這裡聚集（${c.bodies.length} 顆行星同在第 ${c.index} 宮）。`,
+            const sb = `（${c.bodies.length} 顆行星同在第 ${c.index} 宮）。`;
+            parts.set(c.id, {
+                first: pickBy(`st${c.index}|${env.mix}`, [
+                    `${focus}，你大半的心力都放在這裡${sb}`,
+                    `${focus}，這是你生活裡份量最重的一塊${sb}`,
                 ]),
-            );
+                then: `說到生活重心，${focus}${sb}`,
+            });
         } else if (c.kind === 'axis' && c.axis === 'asc') {
-            parts.set(
-                c.id,
-                `${BODY_VOICE[c.body].tone}直接寫在你的第一印象裡（${N(c.body)}緊貼上升點）。`,
-            );
+            const tone = BODY_VOICE[c.body].tone;
+            const ab = `（${N(c.body)}緊貼上升點）。`;
+            parts.set(c.id, {
+                first: `${tone}直接寫在你的第一印象裡${ab}`,
+                then: `${tone}也直接寫在你的第一印象裡${ab}`,
+            });
         } else if (c.kind === 'balance') {
             const mode = c.mode !== null ? `，也${MODE_TONE[c.mode]}` : '';
             const mb = c.mode !== null ? `、${MODE_NAMES[c.mode]}星座` : '星座';
-            parts.set(
-                c.id,
-                `${ELEMENT_TONE[c.element]}${mode}（多數行星落在${SIGN_ELEMENTS[c.element]}象${mb}）。`,
-            );
+            const text = `${ELEMENT_TONE[c.element]}${mode}（多數行星落在${SIGN_ELEMENTS[c.element]}象${mb}）。`;
+            parts.set(c.id, { first: text, then: `大方向上，${text}` });
         }
     }
 
@@ -459,16 +604,21 @@ function personality(env: Env): NatalSection {
         top.weight > sunCfg.weight &&
         parts.has(top.id) &&
         !(top.kind === 'aspect' && strained(top.aspect, other(top.aspect, 'sun')));
-    const ordered = [...parts.entries()].filter(([id]) => id !== 'placement:sun').map(([, t]) => t);
+    // Strengths in weight order; one strained Sun aspect, if any, closes its paragraph.
+    const ordered = [...parts.entries()]
+        .filter(([id]) => id !== 'placement:sun' && !tenseIds.has(id))
+        .map(([, t]) => t);
+    const tenseId = [...tenseIds][0];
+    const tensePart = tenseId ? parts.get(tenseId) : null;
     const sunHouse = sunCfg ? parts.get(sunCfg.id) : undefined;
     let p1: string;
     let p2: string;
     if (leadFirst) {
-        p1 = ctx.pack([parts.get(top.id)!, ...ordered], P);
+        p1 = ctx.pack([parts.get(top.id)!, ...ordered], P, tensePart);
         p2 = ctx.pack([blend, sunHouse], P);
     } else {
         p1 = ctx.pack([blend], P);
-        p2 = ctx.pack([...ordered, sunHouse], P);
+        p2 = ctx.pack([...ordered, sunHouse], P, tensePart);
     }
     if (!p2) p2 = ctx.pack([`日常裡，你${SIGN_KB[sun].light_side}`], P);
 
@@ -488,13 +638,13 @@ function personality(env: Env): NatalSection {
         hook = strained(top.aspect, x)
             ? pickBy(seed, [
                   `${k0}與${v.trapKw}的拉鋸`,
-                  `${k0}的你，也在和${v.trapKw}過招`,
+                  `${sunKw[0]}的你，也在和${v.trapKw}過招`,
                   `${k0}背後，藏著${v.trapKw}的課題`,
               ])
             : pickBy(seed, [
                   `${v.giftKw}是你${k0}背後的底氣`,
                   `${k0}裡藏著${v.giftKw}`,
-                  `${v.giftKw}讓你的${k0}更有力`,
+                  `${v.giftKw}替你的${k0}加分`,
                   `${sunKw[1]}又帶著${v.giftKw}`,
               ]);
     } else if (asc !== null && asc !== sun) {
@@ -557,72 +707,94 @@ function logic(env: Env): NatalSection {
     const seed = seedOf(env, 'mercury');
     const mind = pickBy(`${seed}|mind`, [MERCURY_KB[m].mind, ...V.MERCURY_MIND_ALT[m]]);
     const mb = `（水星${S(m)}${h ? `、第 ${h} 宮` : ''}）`;
-    const mindLine = pickBy(`${seed}|frame`, [
-        `你${mind}${mb}。`,
-        `動起腦來，你${mind}${mb}。`,
-        `你的思路很有個人特色：${mind}${mb}。`,
-        `想事情的時候，你${mind}${mb}。`,
-        `在思考這件事上，你${mind}${mb}。`,
-    ]);
-    const houseLine = h
-        ? pickBy(`${seed}|houseLine`, [
-              `這股腦力最常用在${HOUSE_KB[h - 1].theme}上。`,
-              `你特別愛把腦力花在${HOUSE_KB[h - 1].theme}。`,
-              `${HOUSE_KB[h - 1].theme}是你最常動腦的地方。`,
-          ])
-        : null;
+    const mindLine: Part = {
+        first: cleanOptions(`${seed}|frame`, [
+            `你${mind}${mb}。`,
+            `動起腦來，你${mind}${mb}。`,
+            `你的思路很有個人特色：${mind}${mb}。`,
+            `想事情的時候，你${mind}${mb}。`,
+            `在思考這件事上，你${mind}${mb}。`,
+        ]),
+        then: cleanOptions(`${seed}|frame2`, [
+            `說到思考習慣，你${mind}${mb}。`,
+            `平常想事情，你${mind}${mb}。`,
+            `細看你的思考方式，你${mind}${mb}。`,
+        ]),
+    };
+    // Skipped when a house sentence below already covers Mercury's own house.
+    const houseOpts =
+        h && !cs.some((c) => c.kind === 'house' && c.house === h && c.bodies.length > 0)
+            ? cleanOptions(`${seed}|houseLine`, [
+                  `這股腦力最常用在${HOUSE_KB[h - 1].theme}上。`,
+                  `你特別愛把腦力花在${HOUSE_KB[h - 1].theme}。`,
+                  `${HOUSE_KB[h - 1].theme}是你最常動腦的地方。`,
+              ])
+            : null;
+    const houseLine: Part | null = houseOpts && { first: houseOpts, then: houseOpts };
 
-    const extras: string[] = [];
-    let lead: string | null = null;
-    let softSeen = 0;
+    const extras: Part[] = [];
+    const strains: Part[] = [];
+    let lead: Part | null = null;
     for (const c of cs) {
-        let t: string | null = null;
+        let t: Part | null = null;
         if (c.kind === 'aspect') {
             const x = other(c.aspect, 'mercury');
             const v = BODY_VOICE[x];
             const b = aspectBasis(c.aspect);
             const as = aspectSeed(env, c.aspect, 'mercury');
-            const xk = xKw(env, x);
             if (HARD_ASPECTS.has(c.aspect.type)) {
-                const word = ctx.phrase(`hard:${x}`, v.hard, v.hardAlt);
-                t = pickBy(as, [
-                    `只是${v.fn}偶爾會干擾判斷，讓你${word}${b}。`,
-                    `不過，${v.fn}有時會牽著思緒走，讓你${word}${b}。`,
-                    `要留意的是，${v.fn}一上來，你容易${word}${b}。`,
+                const o = voiced(ctx, as, `mindHard:${x}`, V.MIND_HARD[x], (wd) => [
+                    `只是${v.fn}偶爾會干擾判斷，讓你${wd}${b}。`,
+                    `不過${v.fn}一過頭，你容易${wd}${b}。`,
+                    `要留意的是，你有時會${wd}${b}。`,
                 ]);
+                strains.push({ first: o, then: o });
             } else if (c.aspect.type === 'conjunction' && HEAVY.has(x)) {
-                t = `${v.fn}和思考緊緊綁在一起，想法${ctx.phrase(`soft:${x}`, v.soft, v.softAlt)}，偶爾也會${ctx.phrase(`hard:${x}`, v.hard, v.hardAlt)}${b}。`;
+                const good = ctx.phrase(`mind:${x}`, ...V.MIND_SOFT[x]);
+                const o = voiced(ctx, as, `mindHard:${x}`, V.MIND_HARD[x], (wd) => [
+                    `${v.fn}和你的思考綁得很緊：你${good}，但有時也會${wd}${b}。`,
+                ]);
+                strains.push({ first: o, then: o });
             } else {
-                const word = ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
-                t = softSeen++
-                    ? pickBy(as, [
-                          `再加上${v.fn}的幫忙，你的想法也${word}${b}。`,
-                          `${v.fn}也在旁邊推一把，讓判斷${word}${b}。`,
-                      ])
-                    : pickBy(as, [
-                          `想事情時，${v.fn}會自然幫上忙，讓你的想法${word}${b}。`,
-                          `${xk}的${v.gift}替你的思考加了分，想法${word}${b}。`,
-                          `你的腦袋和${v.fn}很合拍，想出來的東西${word}${b}。`,
-                      ]);
+                const pair = V.MIND_SOFT[x];
+                const wd = ctx.phrase(`mind:${x}`, pair[0], pair[1]);
+                const w2 = wd === pair[0] ? pair[1] : pair[0];
+                const opening = (m: string) => [
+                    `你${xKw(env, x)}、${V.GIFT_HAS[x]}的那一面替思考加了分，讓你${m}${b}。`,
+                    `${v.gift}是你動腦時的好幫手，讓你${m}${b}。`,
+                    `遇到問題時，你${m}${b}。`,
+                ];
+                const following = (m: string) => [`你也${m}${b}。`, `而且你${m}${b}。`];
+                t = {
+                    first: cleanOptions(as, opening(wd), opening(w2)),
+                    then: cleanOptions(as, following(wd), following(w2)),
+                };
             }
             // A very tight supportive aspect outweighs the sign and opens the section.
-            if (!lead && merc && c.weight > merc.weight && !strained(c.aspect, x)) {
+            if (t && !lead && merc && c.weight > merc.weight) {
                 lead = t;
                 continue;
             }
         } else if (c.kind === 'house') {
             t = houseSentence(env, c);
         } else if (c.kind === 'axis') {
-            t = `你說出口的話很容易被看見，常讓人留下深刻印象（水星緊貼${AXIS_NAMES[c.axis]}）。`;
+            const text = `說出口的話很容易被看見，常讓人留下深刻印象（水星緊貼${AXIS_NAMES[c.axis]}）。`;
+            t = { first: `你${text}`, then: `而且你${text}` };
         }
         if (t) extras.push(t);
     }
-    if (merc?.retrograde)
-        extras.push('你習慣把想法反覆咀嚼才定案，回顧和修改是你的強項（水星逆行）。');
+    if (merc?.retrograde) {
+        const text = '習慣把想法反覆咀嚼才定案，回顧和修改是你的強項（水星逆行）。';
+        extras.push({ first: `你${text}`, then: `你也${text}` });
+    }
 
-    const p1 = lead ? ctx.pack([lead, mindLine], P) : ctx.pack([mindLine, houseLine], P);
+    // With a leading aspect and nothing else to say, the Mercury sign line opens paragraph two.
+    const p1 = lead
+        ? ctx.pack([lead, extras.length || strains.length ? mindLine : null], P)
+        : ctx.pack([mindLine, houseLine], P);
+    // Strengths first; one strain, if any, closes the paragraph.
     const p2 =
-        ctx.pack(lead ? [mindLine, houseLine, ...extras] : extras, P) ||
+        ctx.pack(lead ? [mindLine, houseLine, ...extras] : extras, P, strains[0]) ||
         ctx.pack(
             [
                 houseLine,
@@ -725,9 +897,17 @@ function stress(env: Env): NatalSection {
         ]);
     });
     const sat = placement(cs, 'saturn');
-    const satLine = sat
+    const lesson = sat
         ? `${pickBy(`${seedOf(env, 'saturn')}|lesson`, [SATURN_KB[sat.sign].lesson, ...V.SATURN_LESSON_ALT[sat.sign]])}（土星${S(sat.sign)}）。`
         : null;
+    const satLine: Part | null = lesson && {
+        first: lesson,
+        then: pickBy(`${seedOf(env, 'saturn')}|link`, [
+            `說到底，${lesson}`,
+            `壓力的根源在於，${lesson}`,
+            `往深處看，${lesson}`,
+        ]),
+    };
 
     // Lead with the tense aspect when it outweighs the Moon.
     const topHard = hard[0];
@@ -743,14 +923,19 @@ function stress(env: Env): NatalSection {
             P,
         );
 
-    const hook = topHard
-        ? pickBy(aspectSeed(env, topHard.aspect, topHard.aspect.a) + moonSeed, [
-              BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].stressHook,
-              `${BODY_VOICE[topHard.aspect.a].fnShort}與${BODY_VOICE[topHard.aspect.b].fnShort}的拉鋸戰`,
-              `壓力下，${BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].fnShort}先亮紅燈`,
-              `一緊張，${BODY_VOICE[pickBody(topHard.aspect, CHALLENGE_PRIORITY)].fnShort}就先失衡`,
-          ])
-        : ELEMENT_STRESS_HOOK[(moon?.sign ?? env.sunSign) % 4];
+    const hookBody = topHard ? pickBody(topHard.aspect, CHALLENGE_PRIORITY) : null;
+    const bothWants = topHard
+        ? `又想${BODY_VOICE[topHard.aspect.a].want}，又想${BODY_VOICE[topHard.aspect.b].want}`
+        : '';
+    const hook =
+        topHard && hookBody
+            ? pickBy(aspectSeed(env, topHard.aspect, topHard.aspect.a) + moonSeed, [
+                  BODY_VOICE[hookBody].stressHook,
+                  V.STRESS_HOOK2[hookBody],
+                  charLen(bothWants) <= 16 ? bothWants : V.STRESS_HOOK2[hookBody],
+                  `${BODY_VOICE[topHard.aspect.a].fnShort}與${BODY_VOICE[topHard.aspect.b].fnShort}的拉鋸戰`,
+              ])
+            : ELEMENT_STRESS_HOOK[(moon?.sign ?? env.sunSign) % 4];
 
     let field = '依月亮、火星、土星與行星間較緊繃的角度，看你在壓力下的防衛方式。';
     if (!w.moonReliable) {
@@ -778,102 +963,111 @@ function love(env: Env): NatalSection {
     const vSeed = seedOf(env, 'venus');
 
     const loveText = pickBy(`${vSeed}|love`, [VENUS_KB[vSign].love, ...V.VENUS_LOVE_ALT[vSign]]);
-    const venusLine = pickBy(`${vSeed}|frame`, [
-        `你${loveText}（金星${S(vSign)}）。`,
-        `談起感情，你${loveText}（金星${S(vSign)}）。`,
-        `在愛裡，你${loveText}（金星${S(vSign)}）。`,
-    ]);
-    const byId = new Map<string, string>();
-    const strainIds = new Set<string>();
+    const vb = `（金星${S(vSign)}）。`;
+    const venusLine: Part = {
+        first: pickBy(`${vSeed}|frame`, [
+            `你${loveText}${vb}`,
+            `在愛裡，你${loveText}${vb}`,
+            `談感情時，你${loveText}${vb}`,
+        ]),
+        then: `你${loveText}${vb}`,
+    };
+    // Weight order, so the chart's top love configuration opens the section; strengths first and
+    // at most one strain named (2:1 tone).
+    const positives: Part[] = [];
+    const strains: Part[] = [];
+    let moonNeed: string | null = null;
     for (const c of cs) {
-        if (c.kind === 'placement' && c.body === 'moon') {
+        if (c.kind === 'placement' && c.body === 'venus') {
+            positives.push(venusLine);
+        } else if (c.kind === 'placement' && c.body === 'moon') {
             const s = seedOf(env, 'moon');
             const need = pickBy(`${s}|need`, [MOON_KB[c.sign].need, V.MOON_NEED_ALT[c.sign]]);
-            byId.set(
-                c.id,
-                pickBy(`${s}|needFrame`, [
-                    `你在感情裡需要的是${need}（月亮${S(c.sign)}）。`,
-                    `感情裡最能讓你安心的，是${need}（月亮${S(c.sign)}）。`,
+            moonNeed = need;
+            const mb = `（月亮${S(c.sign)}）。`;
+            positives.push({
+                first: cleanOptions(`${s}|needFrame`, [
+                    `你在感情裡需要的是${need}${mb}`,
+                    `感情裡最能讓你安心的，是${need}${mb}`,
                 ]),
-            );
+                then: cleanOptions(`${s}|needThen`, [
+                    `而真正讓你安心的，是${need}${mb}`,
+                    `而你最想要的，是${need}${mb}`,
+                ]),
+            });
         } else if (c.kind === 'placement' && c.body === 'mars') {
             const s = seedOf(env, 'mars');
             const pursue = pickBy(`${s}|pursue`, [
                 MARS_KB[c.sign].pursue,
                 V.MARS_PURSUE_ALT[c.sign],
             ]);
-            byId.set(
-                c.id,
-                pickBy(`${s}|pursueFrame`, [
-                    `喜歡上一個人時，你${pursue}（火星${S(c.sign)}）。`,
-                    `心動的時候，你${pursue}（火星${S(c.sign)}）。`,
+            const mb = `（火星${S(c.sign)}）。`;
+            positives.push({
+                first: pickBy(`${s}|pursueFrame`, [
+                    `喜歡上一個人時，你${pursue}${mb}`,
+                    `心動的時候，你${pursue}${mb}`,
                 ]),
-            );
+                then: `一旦心動，你${pursue}${mb}`,
+            });
         } else if (c.kind === 'house' && c.house === 7 && w.ascSign !== null) {
             const dsc = (w.ascSign + 6) % 12;
-            const occ = houseSentence(env, c);
             const attract = SIGN_KB[dsc].attract;
-            byId.set(
-                c.id,
-                pickBy(`dsc|${dsc}|${vSeed}`, [
-                    `你容易被${attract}的人吸引（下降點${S(dsc)}）。`,
-                    `${attract}的人特別容易讓你心動（下降點${S(dsc)}）。`,
-                ]) + (occ ?? ''),
-            );
+            const db = `（下降點${S(dsc)}）。`;
+            positives.push({
+                first: pickBy(`dsc|${dsc}|${vSeed}`, [
+                    `你容易被${attract}的人吸引${db}`,
+                    `${attract}的人特別容易讓你心動${db}`,
+                ]),
+                then: `會讓你心動的，多半是${attract}的人${db}`,
+            });
+            const occ = houseSentence(env, c);
+            if (occ) positives.push(occ);
         } else if (c.kind === 'house') {
             const s = houseSentence(env, c);
-            if (s) byId.set(c.id, s);
+            if (s) positives.push(s);
         } else if (c.kind === 'aspect') {
             const focus: PlanetKey =
                 c.aspect.a === 'venus' || c.aspect.b === 'venus' ? 'venus' : 'moon';
             const x = other(c.aspect, focus);
-            const v = BODY_VOICE[x];
             const b = aspectBasis(c.aspect);
             const as = aspectSeed(env, c.aspect, focus);
             if (strained(c.aspect, x)) {
-                strainIds.add(c.id);
-                const word = ctx.phrase(`hard:${x}`, v.hard, v.hardAlt);
-                byId.set(
-                    c.id,
-                    pickBy(as, [
-                        `只是你偶爾會${word}，讓對方摸不透${b}。`,
-                        `不過感情裡的你，有時會${word}${b}。`,
-                    ]),
-                );
+                const o = voiced(ctx, as, `loveHard:${x}`, V.LOVE_HARD[x], (wd) => [
+                    `只是你偶爾會${wd}${b}。`,
+                    `不過感情裡的你，有時會${wd}${b}。`,
+                    `要留意的是，你有時會${wd}${b}。`,
+                ]);
+                strains.push({ first: o, then: o });
             } else {
-                const word = ctx.phrase(`soft:${x}`, v.soft, v.softAlt);
-                byId.set(
-                    c.id,
-                    pickBy(as, [
-                        `你表達愛意的方式${word}${b}。`,
-                        `${xKw(env, x)}的${v.gift}讓你的愛${word}${b}。`,
-                        `在感情裡，${v.fn}替你加分，讓你${word}${b}。`,
-                    ]),
-                );
+                const pair = V.LOVE_SOFT[x];
+                const wd = ctx.phrase(`love:${x}`, pair[0], pair[1]);
+                const w2 = wd === pair[0] ? pair[1] : pair[0];
+                const opening = (t: string) => [
+                    `感情裡的你${t}${b}。`,
+                    `面對喜歡的人，你${t}${b}。`,
+                    `在感情中，你${xKw(env, x)}、${V.GIFT_HAS[x]}的那一面讓你${t}${b}。`,
+                ];
+                const following = (t: string) => [`而且你${t}${b}。`, `你也${t}${b}。`];
+                positives.push({
+                    first: cleanOptions(as, opening(wd), opening(w2)),
+                    then: cleanOptions(as, following(wd), following(w2)),
+                });
             }
         } else if (c.kind === 'axis') {
-            byId.set(
-                c.id,
+            positives.push(
                 `你常在伴侶身上遇見${BODY_VOICE[c.body].tone}，或在關係裡被激發出這一面（${N(c.body)}緊貼下降點）。`,
             );
         }
     }
-    // Weight order, so the chart's top love configuration opens the section; strengths first and
-    // at most one strain named (2:1 tone).
-    const textOf = (c: NatalConfig) =>
-        c.kind === 'placement' && c.body === 'venus' ? venusLine : byId.get(c.id);
-    const positives = cs.filter((c) => !strainIds.has(c.id)).map(textOf);
-    const strains = cs
-        .filter((c) => strainIds.has(c.id))
-        .map(textOf)
-        .slice(0, 1);
-    const sentences = positives.filter((t): t is string => !!t).flatMap(splitSentences);
     const twist = pickBy(`${seedOf(env, 'sun')}|twist`, [
         SIGN_KB[env.sunSign].loveTwist,
         V.LOVE_TWIST_ALT[env.sunSign],
     ]);
-    const p1 = ctx.pack(sentences.slice(0, 2), P);
-    const p2 = ctx.pack([twist, ...strains, ...sentences.slice(2)], P);
+    const p1 = ctx.pack(positives.slice(0, 2), P);
+    // Paragraph two: the Sun trait turned into a love scene, more strengths while there is
+    // room, and the strain last so nothing positive trails after the 「只是…」.
+    const rest = positives.slice(2).filter((t) => !p1.includes(thenOf(t)));
+    const p2 = ctx.pack([twist, ...rest], P, strains[0]);
 
     const top = cs[0];
     let hook = VENUS_KB[vSign].hook;
@@ -881,18 +1075,15 @@ function love(env: Env): NatalSection {
         const focus: PlanetKey =
             top.aspect.a === 'venus' || top.aspect.b === 'venus' ? 'venus' : 'moon';
         const x = other(top.aspect, focus);
-        hook = pickBy(`${vSeed}|hook`, [
-            strained(top.aspect, x)
-                ? `愛裡的功課是${BODY_VOICE[x].trapKw}`
-                : `愛裡帶著${BODY_VOICE[x].giftKw}`,
-            VENUS_KB[vSign].hook,
-        ]);
-    } else if (
-        top?.kind === 'placement' &&
-        top.body === 'moon' &&
-        charLen(`你要的是${MOON_KB[top.sign].need}`) <= 20
-    ) {
-        hook = pickBy(`${vSeed}|hook`, [`你要的是${MOON_KB[top.sign].need}`, VENUS_KB[vSign].hook]);
+        hook = V.LOVE_HOOK[x][strained(top.aspect, x) ? 1 : 0];
+    } else if (top?.kind === 'placement' && top.body === 'moon') {
+        // The wording the paragraph did not use, so hook and first line do not echo each other.
+        const need =
+            moonNeed === MOON_KB[top.sign].need
+                ? V.MOON_NEED_ALT[top.sign]
+                : MOON_KB[top.sign].need;
+        if (charLen(`你要的是${need}`) <= NATAL_LIMITS.hook)
+            hook = pickBy(`${vSeed}|hook`, [`你要的是${need}`, VENUS_KB[vSign].hook]);
     }
 
     let field: string;
@@ -927,8 +1118,8 @@ function career(env: Env): NatalSection {
         !!sat && (!jup || cs.indexOf(sat) < cs.indexOf(jup) || vary(cs, [false, true], 7));
     const cSeed = `career|${mc}|${env.mix}|${h10?.bodies.join()}|${seedOf(env, 'jupiter')}`;
 
-    const lead: string[] = [];
-    const rest: string[] = [];
+    const lead: Part[] = [];
+    const rest: Part[] = [];
     if (mc !== null) {
         const f = SIGN_KB[mc].careerField;
         const j = SIGN_KB[mc].careerJobs;
@@ -955,19 +1146,27 @@ function career(env: Env): NatalSection {
                 JUPITER_KB[c.sign].gift,
                 ...V.JUPITER_GIFT_ALT[c.sign],
             ]);
-            lead.push(
-                pickBy(`${js}|giftFrame`, [
+            lead.push({
+                first: pickBy(`${js}|giftFrame`, [
                     `機會常在你${gift}時出現（木星${S(c.sign)}）。`,
                     `當你${gift}，好機會就跟著來（木星${S(c.sign)}）。`,
                 ]),
-            );
+                then: pickBy(`${js}|giftFrame`, [
+                    `機會也常在你${gift}時出現（木星${S(c.sign)}）。`,
+                    `而當你${gift}，好機會就跟著來（木星${S(c.sign)}）。`,
+                ]),
+            });
             if (mc === null) lead.push(`${SIGN_KB[c.sign].careerJobs}這類工作，很能讓你發揮所長。`);
         } else if (c.kind === 'placement' && c.body === 'saturn') {
             const work = pickBy(`${seedOf(env, 'saturn')}|work`, [
                 SATURN_KB[c.sign].work,
                 ...V.SATURN_WORK_ALT[c.sign],
             ]);
-            rest.push(`${work}（土星${S(c.sign)}）。`);
+            const text = `${work}（土星${S(c.sign)}）。`;
+            rest.push({
+                first: text,
+                then: [`長期來看，${text}`, `說到工作態度，${text}`],
+            });
         } else if (c.kind === 'house') {
             const s = houseSentence(env, c);
             if (s) rest.push(s);
@@ -996,7 +1195,7 @@ function career(env: Env): NatalSection {
                 `帶著這種腦袋上班，你${twist}。`,
                 `在職場上，這樣的你${twist}。`,
                 `把這份思考力帶進工作，你${twist}。`,
-                `上班時，你的腦袋讓你${twist}。`,
+                `上班時，你${twist}。`,
                 `工作上，你${twist}。`,
             ]),
         ],
@@ -1075,7 +1274,7 @@ function core(env: Env): NatalSection {
     });
     if (strengths.length === 0) strengths.push(`你的優勢在於${SIGN_KB[env.sunSign].light_side}`);
 
-    const blind: string[] = [];
+    const blind: Part[] = [];
     hard.forEach((c, i) => {
         if (c.kind === 'axis') {
             blind.push(
@@ -1086,24 +1285,24 @@ function core(env: Env): NatalSection {
         const a = c.aspect;
         const ch = pickBody(a, CHALLENGE_PRIORITY);
         const v = BODY_VOICE[ch];
-        const trait = ctx.phrase(`hard:${ch}`, v.hard, v.hardAlt);
         const fa = BODY_VOICE[a.a].fnShort;
         const fb = BODY_VOICE[a.b].fnShort;
         const b = aspectBasis(a);
         const seed = `${aspectSeed(env, a, a.a)}|blind${i}`;
-        blind.push(
+        const o = voiced(ctx, seed, `hard:${ch}`, [v.hard, v.hardAlt], (trait) =>
             i === 0
-                ? pickBy(seed, [
+                ? [
                       `最需要留意的盲點，是${fa}和${fb}互不相讓時，你容易${trait}${b}。`,
-                      `你的罩門在於：${fa}和${fb}一卡住，你就容易${trait}${b}。`,
+                      `你的罩門在於：${fa}和${fb}一卡住，你很容易${trait}${b}。`,
                       `當${fa}和${fb}打架，你最容易${trait}，這是值得練習的地方${b}。`,
                       `${fa}與${fb}較勁的時候，你常不自覺地${trait}${b}。`,
-                  ])
-                : pickBy(seed, [
+                  ]
+                : [
                       `另一個要注意的地方，是你偶爾會${trait}${b}。`,
                       `還有一個小盲點：你有時會${trait}${b}。`,
-                  ]),
+                  ],
         );
+        blind.push({ first: o, then: o });
     });
     if (blind.length === 0) blind.push(`最需要留意的盲點是：${SIGN_KB[env.sunSign].shadow_side}`);
 
