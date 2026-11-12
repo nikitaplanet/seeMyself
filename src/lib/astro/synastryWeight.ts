@@ -11,7 +11,7 @@ import type { AstroBodyKey, AstroChart } from './types';
 //   + 30  North Node / Saturn / Pluto × the other's personal planet, orb < 3° (karmic contact)
 //   + 10  any other contact that involves at least one personal planet (incl. axis contacts)
 //   House overlays have no orb: base 20 for a personal planet, 12 otherwise, + 10 in the
-//   relationship houses 1 / 4 / 5 / 7 / 8 / 12.
+//   houses the guideline singles out: 1 / 2 / 4 / 5 / 6 / 7 / 8 / 10 / 12.
 // Aspects to the Ascendant are left to the axis rule (conjunct ASC, or conjunct DSC = opposite
 // ASC), so the same contact is never counted twice.
 //
@@ -19,6 +19,11 @@ import type { AstroBodyKey, AstroChart } from './types';
 // sections it fits; going from the highest score down, it lands in the first fitting section that
 // still has room (at most 5 per section). A contact therefore feeds exactly one section, which is
 // what keeps the sections from repeating each other.
+//
+// Sections 6–10 (吵架與冷戰 … 初見 vs 深交) are a second layer: each re-reads the weighted contacts
+// through its own filter (see EXTRA_FITS), because they look at the same chart from another angle
+// (a Saturn contact is a 課題, but also how the two go silent and what is left once the first
+// impression fades). The report prefers a contact no earlier card has written.
 //
 // When a birth time is unknown, that person's Moon, axes and houses are left out entirely.
 
@@ -132,7 +137,7 @@ export const MIN_SCORE = 10;
 
 const PERSONAL = new Set<SynastryPointKey>(['sun', 'moon', 'mercury', 'venus', 'mars']);
 const KARMIC = new Set<SynastryPointKey>(['northNode', 'saturn', 'pluto']);
-const KEY_HOUSES = new Set([1, 4, 5, 7, 8, 12]);
+const KEY_HOUSES = new Set([1, 2, 4, 5, 6, 7, 8, 10, 12]);
 
 /** Base score by orb tier. */
 export function orbBase(orb: number): number {
@@ -429,13 +434,222 @@ export function interactionAxis(contacts: WeightedContact[]): ThemeScore[] {
         : ranked.slice(0, 1);
 }
 
+// ---------------------------------------------------------------------------
+// Second layer: sections 6–10 (準則 §3B)
+// ---------------------------------------------------------------------------
+
+export type ExtraSectionId =
+    | 'synastry_fight'
+    | 'synastry_battery'
+    | 'synastry_power'
+    | 'synastry_work'
+    | 'synastry_filter';
+
+export const EXTRA_ORDER: readonly ExtraSectionId[] = [
+    'synastry_fight',
+    'synastry_battery',
+    'synastry_power',
+    'synastry_work',
+    'synastry_filter',
+];
+
+export const EXTRA_TITLES: Record<ExtraSectionId, string> = {
+    synastry_fight: '吵架與冷戰模式',
+    synastry_battery: '兩人內耗與充電說明書',
+    synastry_power: '關係中的權力與主導權',
+    synastry_work: '一起財運與共事潛力',
+    synastry_filter: '初見印象 vs 深交後的反轉',
+};
+
+/** The point at the other end of an aspect from `k`. */
+export function otherEnd(x: InterAspect, k: SynastryPointKey): SynastryPointKey {
+    return x.a === k ? x.b : x.a;
+}
+
+const among = (...keys: SynastryPointKey[]) => {
+    const set = new Set(keys);
+    return (k: SynastryPointKey) => set.has(k);
+};
+const isPlanet = among(
+    'sun',
+    'moon',
+    'mercury',
+    'venus',
+    'mars',
+    'jupiter',
+    'saturn',
+    'uranus',
+    'neptune',
+    'pluto',
+);
+const isPersonal = (k: SynastryPointKey) => PERSONAL.has(k);
+
+/** What sets a fight off: Mars (else Mercury) in a hard aspect to one of the other's planets. */
+export function fightTrigger(x: InterAspect): 'mars' | 'mercury' | null {
+    if (!isHard(x)) return null;
+    const fast = has(x, 'mars') ? 'mars' : has(x, 'mercury') ? 'mercury' : null;
+    return fast && isPlanet(otherEnd(x, fast)) ? fast : null;
+}
+
+/** Saturn in a hard aspect to the other's Sun, Mercury, Venus or Mars (how the two go cold). */
+export function saturnChill(x: InterAspect): boolean {
+    return (
+        isHard(x) &&
+        has(x, 'saturn') &&
+        among('sun', 'mercury', 'venus', 'mars')(otherEnd(x, 'saturn'))
+    );
+}
+
+/**
+ * Who carries the weight in an aspect: Saturn, else Pluto, else the Sun, meeting one of the
+ * other's personal planets. Returns [heavy point, the other end], or null.
+ */
+export function powerEnds(x: InterAspect): ['sun' | 'saturn' | 'pluto', SynastryPointKey] | null {
+    for (const heavy of ['saturn', 'pluto', 'sun'] as const)
+        if (has(x, heavy)) {
+            const other = otherEnd(x, heavy);
+            return isPersonal(other) ? [heavy, other] : null;
+        }
+    return null;
+}
+
+const FILTER_OTHER = among('sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'asc');
+
+/** Neptune (the first-impression filter) or Saturn (what is real later) on a personal point. */
+export function filterEnd(x: InterAspect): 'neptune' | 'saturn' | null {
+    if (has(x, 'neptune')) return FILTER_OTHER(otherEnd(x, 'neptune')) ? 'neptune' : null;
+    if (has(x, 'saturn')) return FILTER_OTHER(otherEnd(x, 'saturn')) ? 'saturn' : null;
+    return null;
+}
+
+const asAspect = (c: WeightedContact) => (c.kind === 'aspect' ? c.aspect : null);
+const asHouse = (c: WeightedContact) => (c.kind === 'house' ? c : null);
+
+/** Which contacts each of sections 6–10 reads (準則 §3B). */
+export const EXTRA_FITS: Record<ExtraSectionId, (c: WeightedContact) => boolean> = {
+    // Mars / Mercury tension (導火線), Moon–Saturn in any aspect and hard Saturn (冷戰).
+    synastry_fight: (c) => {
+        const x = asAspect(c);
+        if (!x || has(x, 'asc')) return false;
+        return fightTrigger(x) !== null || (has(x, 'moon') && has(x, 'saturn')) || saturnChill(x);
+    },
+    // The Moon's aspects and house (回血), planets in the other's 6th / 12th (耗損).
+    synastry_battery: (c) => {
+        const x = asAspect(c);
+        if (x)
+            return (
+                has(x, 'moon') &&
+                !has(x, 'saturn') &&
+                !has(x, 'asc') &&
+                isPlanet(otherEnd(x, 'moon'))
+            );
+        const h = asHouse(c);
+        return !!h && h.body !== 'pluto' && (h.body === 'moon' || h.house === 6 || h.house === 12);
+    },
+    // Sun / Saturn / Pluto on the other's personal planets, or in the other's houses.
+    synastry_power: (c) => {
+        const x = asAspect(c);
+        if (x) return !has(x, 'asc') && powerEnds(x) !== null;
+        const h = asHouse(c);
+        return !!h && (h.body === 'sun' || h.body === 'saturn' || h.body === 'pluto');
+    },
+    // Planets in the other's 2nd / 6th / 10th, and Jupiter / Mercury aspects.
+    synastry_work: (c) => {
+        const x = asAspect(c);
+        if (x) {
+            if (has(x, 'asc')) return false;
+            if (has(x, 'jupiter')) return isPlanet(otherEnd(x, 'jupiter'));
+            return (
+                has(x, 'mercury') &&
+                among('sun', 'moon', 'mercury', 'venus', 'mars', 'saturn')(otherEnd(x, 'mercury'))
+            );
+        }
+        const h = asHouse(c);
+        return !!h && h.body !== 'pluto' && (h.house === 2 || h.house === 6 || h.house === 10);
+    },
+    synastry_filter: (c) => {
+        const x = asAspect(c);
+        return !!x && filterEnd(x) !== null;
+    },
+};
+
+/** 1..12: the house of `cusps` (cusps[0] = house 1) that holds the longitude. */
+function houseOfLongitude(longitude: number, cusps: number[]): number {
+    for (let i = 0; i < 12; i++) {
+        const span = normalize(cusps[(i + 1) % 12] - cusps[i]);
+        if (normalize(longitude - cusps[i]) < span) return i + 1;
+    }
+    return 1;
+}
+
+/** Pluto in the other's houses: read by 權力與主導權 only, so it stays out of the base overlays. */
+function plutoHouse(from: PartnerKey, src: AstroChart, dst: AstroChart): HouseContact[] {
+    const pluto = src.bodies.find((x) => x.key === 'pluto');
+    if (!pluto || !dst.houses || dst.timeUnknown) return [];
+    const house = houseOfLongitude(
+        pluto.longitude,
+        dst.houses.map((h) => h.longitude),
+    );
+    return [
+        {
+            kind: 'house',
+            id: `house:${from}:pluto`,
+            from,
+            body: 'pluto',
+            house,
+            score: scoreHouse('pluto', house),
+            theme: 'depth',
+            prefs: [],
+        },
+    ];
+}
+
+/**
+ * Contacts for sections 6–10, highest score first. On top of the weighted contacts this adds the
+ * two kinds only these sections read: Neptune / Saturn aspects to the Ascendant (first
+ * impressions) and Pluto's house in the other chart (power).
+ */
+export function extraSections(
+    a: AstroChart,
+    b: AstroChart,
+    syn: AstroSynastry,
+    contacts: WeightedContact[],
+): Record<ExtraSectionId, WeightedContact[]> {
+    const ascAspects: AspectContact[] = syn.aspects
+        .filter((x) => has(x, 'asc') && filterEnd(x) !== null)
+        .map((x) => ({
+            kind: 'aspect',
+            id: `aspect:${x.a}:${x.b}`,
+            aspect: x,
+            // The Ascendant counts as a personal point here.
+            score: clampScore(orbBase(x.orb) + WEIGHT.personalInvolved),
+            theme: aspectTheme(x),
+            prefs: [],
+        }));
+    const pool = [...contacts, ...ascAspects, ...plutoHouse('a', a, b), ...plutoHouse('b', b, a)]
+        .filter((c) => c.score >= MIN_SCORE)
+        .map((c, i) => [c, i] as const)
+        .sort((x, y) => y[0].score - x[0].score || x[1] - y[1])
+        .map(([c]) => c);
+    return Object.fromEntries(
+        EXTRA_ORDER.map((id) => [id, pool.filter(EXTRA_FITS[id])]),
+    ) as Record<ExtraSectionId, WeightedContact[]>;
+}
+
 export interface SynastryWeighting {
     contacts: WeightedContact[];
     sections: Record<SectionId, WeightedContact[]>;
+    /** Contacts sections 6–10 may read (not exclusive, see EXTRA_FITS). */
+    extras: Record<ExtraSectionId, WeightedContact[]>;
     axis: ThemeScore[];
 }
 
 export function weighSynastry(a: AstroChart, b: AstroChart, syn: AstroSynastry): SynastryWeighting {
     const contacts = weighContacts(a, b, syn);
-    return { contacts, sections: allocateSections(contacts), axis: interactionAxis(contacts) };
+    return {
+        contacts,
+        sections: allocateSections(contacts),
+        extras: extraSections(a, b, syn, contacts),
+        axis: interactionAxis(contacts),
+    };
 }

@@ -125,6 +125,19 @@ describe('natal weighting — section mapping', () => {
         expect(ids('natal_love')).toEqual(expect.arrayContaining(['placement:venus', 'house:7']));
         expect(ids('natal_career')).toContain('house:10');
         for (const c of w.sections.natal_core) expect(['aspect', 'axis']).toContain(c.kind);
+        expect(ids('natal_mask')).toEqual(
+            expect.arrayContaining(['placement:asc', 'placement:moon', 'house:12']),
+        );
+        expect(ids('natal_battery')).toEqual(
+            expect.arrayContaining(['placement:moon', 'house:6', 'house:12']),
+        );
+        expect(ids('natal_money')).toEqual(
+            expect.arrayContaining(['house:2', 'house:8', 'placement:venus', 'placement:jupiter']),
+        );
+        expect(ids('natal_family')).toEqual(expect.arrayContaining(['house:4', 'placement:moon']));
+        expect(ids('natal_gift')).toEqual(
+            expect.arrayContaining(['placement:jupiter', 'placement:northNode']),
+        );
         for (const c of w.sections.natal_logic) {
             if (c.kind === 'aspect') expect([c.aspect.a, c.aspect.b]).toContain('mercury');
         }

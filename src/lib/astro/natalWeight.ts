@@ -12,6 +12,7 @@ import type { AspectType, AstroAspect, AstroBody, AstroChart } from './types';
 // Houses also get +5 per occupant (max +20) so a busy house outranks an empty one; that rule is
 // ours, not the guideline's. When the birth time is unknown (or there is no place), houses, axes
 // and the chart ruler are skipped, and so are Moon aspects (the Moon may be off by ±7°).
+// The North Node is scored as a plain placement (base weight) for 天賦盲區.
 
 export const WEIGHT = {
     base: 10,
@@ -87,7 +88,12 @@ export type NatalSectionId =
     | 'natal_stress'
     | 'natal_love'
     | 'natal_career'
-    | 'natal_core';
+    | 'natal_core'
+    | 'natal_mask'
+    | 'natal_battery'
+    | 'natal_money'
+    | 'natal_family'
+    | 'natal_gift';
 
 export const NATAL_SECTIONS: ReadonlyArray<{ id: NatalSectionId; title: string }> = [
     { id: 'natal_personality', title: '個性與日常特色' },
@@ -96,6 +102,11 @@ export const NATAL_SECTIONS: ReadonlyArray<{ id: NatalSectionId; title: string }
     { id: 'natal_love', title: '感情模式' },
     { id: 'natal_career', title: '工作與天賦潛能' },
     { id: 'natal_core', title: '核心優缺點' },
+    { id: 'natal_mask', title: '面具與真實的反差感' },
+    { id: 'natal_battery', title: '內耗與充電說明書' },
+    { id: 'natal_money', title: '金錢觀與安全感來源' },
+    { id: 'natal_family', title: '原生家庭與依附模式' },
+    { id: 'natal_gift', title: '天賦盲區' },
 ];
 
 interface ConfigBase {
@@ -107,7 +118,7 @@ interface ConfigBase {
 
 export interface PlacementConfig extends ConfigBase {
     kind: 'placement';
-    body: PlanetKey | 'asc';
+    body: PlanetKey | 'asc' | 'northNode';
     sign: number;
     house: number | null;
     retrograde: boolean;
@@ -136,7 +147,7 @@ export interface StelliumConfig extends ConfigBase {
 export interface HouseConfig extends ConfigBase {
     kind: 'house';
     house: number;
-    /** Sign on the cusp; for 7 / 10 the composer uses DSC / MC instead. */
+    /** Sign on the cusp; for 4 / 7 / 10 the composer uses IC / DSC / MC instead. */
     cuspSign: number;
     bodies: PlanetKey[];
 }
@@ -245,6 +256,20 @@ export function natalConfigs(chart: AstroChart): {
         });
     }
 
+    const node = chart.bodies.find((b) => b.key === 'northNode');
+    if (node) {
+        configs.push({
+            kind: 'placement',
+            id: 'placement:northNode',
+            body: 'northNode',
+            sign: node.sign,
+            house: housesKnown ? node.house : null,
+            retrograde: false,
+            weight: WEIGHT.base,
+            reasons: [`基礎 ${WEIGHT.base}`],
+        });
+    }
+
     // Aspects between the ten planets; generational outer–outer pairs are skipped.
     for (const a of chart.aspects) {
         if (!isPlanet(a.a) || !isPlanet(a.b)) continue;
@@ -319,11 +344,12 @@ export function natalConfigs(chart: AstroChart): {
         }
     }
 
-    // Houses the sections read: 2, 3, 5, 6, 9 when occupied; 7 (DSC) and 10 (MC) always.
+    // Houses the sections read: 3, 5, 9 when occupied; the rest always, because their cusp sign
+    // is read even when the house is empty (2 / 8 金錢, 4 家庭, 6 / 12 耗損, 7 DSC, 10 MC).
     if (housesKnown) {
-        for (const house of [2, 3, 5, 6, 7, 9, 10]) {
+        for (const house of [2, 3, 4, 5, 6, 7, 8, 9, 10, 12]) {
             const bodies = [...planets].filter(([, b]) => b.house === house).map(([k]) => k);
-            if (bodies.length === 0 && house !== 7 && house !== 10) continue;
+            if (bodies.length === 0 && [3, 5, 9].includes(house)) continue;
             const reasons = [`基礎 ${WEIGHT.base}`];
             let w = WEIGHT.base;
             if (bodies.length > 0) {
@@ -370,12 +396,42 @@ export function natalConfigs(chart: AstroChart): {
 
 const involves = (c: NatalConfig, k: PlanetKey) =>
     c.kind === 'aspect' && (c.aspect.a === k || c.aspect.b === k);
-const isPlacement = (c: NatalConfig, k: PlanetKey | 'asc') =>
+const isPlacement = (c: NatalConfig, k: PlacementConfig['body']) =>
     c.kind === 'placement' && c.body === k;
 const isHouse = (c: NatalConfig, h: number) => c.kind === 'house' && c.house === h;
 const isAxis = (c: NatalConfig, a: AxisKey) => c.kind === 'axis' && c.axis === a;
 const isHard = (c: NatalConfig) => c.kind === 'aspect' && HARD_ASPECTS.has(c.aspect.type);
 const isSoft = (c: NatalConfig) => c.kind === 'aspect' && SOFT_ASPECTS.has(c.aspect.type);
+const occupied = (c: NatalConfig) => c.kind === 'house' && c.bodies.length > 0;
+
+/**
+ * 大三角：three planets that trine one another (not all three outer planets). Returns the one
+ * with the smallest total orb, or null.
+ */
+export function grandTrine(
+    configs: NatalConfig[],
+): { bodies: [PlanetKey, PlanetKey, PlanetKey]; ids: string[]; orb: number } | null {
+    const trines = configs.filter(
+        (c): c is AspectConfig => c.kind === 'aspect' && c.aspect.type === 'trine',
+    );
+    const find = (x: PlanetKey, y: PlanetKey) =>
+        trines.find(
+            (c) => (c.aspect.a === x && c.aspect.b === y) || (c.aspect.a === y && c.aspect.b === x),
+        );
+    let best: ReturnType<typeof grandTrine> = null;
+    for (const t of trines) {
+        for (const k of PLANET_KEYS) {
+            if (k === t.aspect.a || k === t.aspect.b) continue;
+            const u = find(t.aspect.a, k);
+            const v = find(t.aspect.b, k);
+            if (!u || !v) continue;
+            const orb = t.aspect.orb + u.aspect.orb + v.aspect.orb;
+            if (!best || orb < best.orb)
+                best = { bodies: [t.aspect.a, t.aspect.b, k], ids: [t.id, u.id, v.id], orb };
+        }
+    }
+    return best;
+}
 
 const LIMIT = 5;
 
@@ -434,8 +490,7 @@ export function weighNatal(chart: AstroChart): NatalWeights {
         configs,
         (c) => isHouse(c, 10) || (!housesKnown && isPlacement(c, 'jupiter')),
         (c) =>
-            isHouse(c, 6) ||
-            isHouse(c, 2) ||
+            ((isHouse(c, 6) || isHouse(c, 2)) && occupied(c)) ||
             isPlacement(c, 'saturn') ||
             isPlacement(c, 'jupiter') ||
             isAxis(c, 'mc'),
@@ -451,6 +506,51 @@ export function weighNatal(chart: AstroChart): NatalWeights {
     }
     coreSel.sort(byWeight);
 
+    // 面具與真實：上升（時間不詳時改看太陽）對月亮，加上第 12 宮。
+    const mask = pick(
+        configs,
+        (c) => isPlacement(c, housesKnown ? 'asc' : 'sun') || isPlacement(c, 'moon'),
+        (c) =>
+            isHouse(c, 12) ||
+            isAxis(c, 'asc') ||
+            (c.kind === 'stellium' && c.scope === 'house' && c.index === 12),
+    );
+    // 內耗與充電：月亮與它的和諧角度（回血），第 6／12 宮（耗損）；沒有宮位時以火星代替。
+    const battery = pick(
+        configs,
+        (c) => isPlacement(c, 'moon'),
+        (c) =>
+            (isSoft(c) && involves(c, 'moon')) ||
+            isHouse(c, 6) ||
+            isHouse(c, 12) ||
+            (!housesKnown && isPlacement(c, 'mars')),
+    );
+    // 金錢觀：第 2／8 宮、金星、木星。
+    const money = pick(
+        configs,
+        (c) => isHouse(c, 2) || isHouse(c, 8) || (!housesKnown && isPlacement(c, 'venus')),
+        (c) =>
+            isPlacement(c, 'venus') ||
+            isPlacement(c, 'jupiter') ||
+            (involves(c, 'venus') && involves(c, 'jupiter')),
+    );
+    // 原生家庭與依附：第 4 宮（天底）、月亮、月亮與土星的角度。
+    const family = pick(
+        configs,
+        (c) => isHouse(c, 4) || isPlacement(c, 'moon'),
+        (c) => (involves(c, 'moon') && involves(c, 'saturn')) || isAxis(c, 'ic'),
+    );
+    // 天賦盲區：木星、北交點、角度最緊密的和諧角度，以及大三角的三條邊。
+    const tightSoft = configs
+        .filter((c): c is AspectConfig => isSoft(c))
+        .sort((x, y) => x.aspect.orb - y.aspect.orb)[0]?.id;
+    const triangle = grandTrine(configs)?.ids ?? [];
+    const gift = pick(
+        configs,
+        (c) => isPlacement(c, 'jupiter') || isPlacement(c, 'northNode') || c.id === tightSoft,
+        (c) => triangle.includes(c.id),
+    );
+
     return {
         housesKnown,
         moonReliable,
@@ -465,6 +565,11 @@ export function weighNatal(chart: AstroChart): NatalWeights {
             natal_love: love,
             natal_career: career,
             natal_core: coreSel,
+            natal_mask: mask,
+            natal_battery: battery,
+            natal_money: money,
+            natal_family: family,
+            natal_gift: gift,
         },
     };
 }

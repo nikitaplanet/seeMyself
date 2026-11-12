@@ -22,6 +22,7 @@ import * as V from './natalKb';
 import {
     AXIS_NAMES,
     describeConfig,
+    grandTrine,
     HARD_ASPECTS,
     NATAL_SECTIONS,
     PLANET_KEYS,
@@ -37,9 +38,9 @@ import {
 } from './natalWeight';
 import type { AstroAspect, AstroBodyKey, AstroChart } from './types';
 
-// 個人本命盤解析（星盤開發準則 §3A、§4），規則式產生。Six sections, each built only from that
+// 個人本命盤解析（星盤開發準則 §3A、§4），規則式產生。Eleven sections, each built only from that
 // section's top-weighted configurations (natalWeight.ts) and the local knowledge base
-// (natalKb.ts). Sections are written in order and share a context: every sentence already used
+// (natalKb.ts). Sections 7–11 also read the cusp sign of the houses they are about. Sections are written in order and share a context: every sentence already used
 // is skipped later, and a planet's adjectives switch to an alternate wording the second time it
 // shows up, so the same sentence never appears twice in a report.
 // Client-safe: imports labels/types/KB only, never compute.ts.
@@ -222,7 +223,7 @@ function pickBody(a: AspectConfig['aspect'], order: PlanetKey[]): PlanetKey {
 }
 
 const aspects = (cs: NatalConfig[]) => cs.filter((c): c is AspectConfig => c.kind === 'aspect');
-const placement = (cs: NatalConfig[], body: PlanetKey | 'asc') =>
+const placement = (cs: NatalConfig[], body: PlacementConfig['body']) =>
     cs.find((c): c is PlacementConfig => c.kind === 'placement' && c.body === body);
 const house = (cs: NatalConfig[], h: number) =>
     cs.find((c): c is HouseConfig => c.kind === 'house' && c.house === h);
@@ -382,6 +383,8 @@ interface Env {
     mercurySign: number;
     /** Element / mode counts, e.g. 「3241|433」, part of every variant seed. */
     mix: string;
+    /** Planet 核心優缺點 put in its hook, so 天賦盲區 can spotlight another one. */
+    coreGift?: PlanetKey;
 }
 
 /**
@@ -427,7 +430,7 @@ function vary<T>(cs: NatalConfig[], options: readonly T[], salt = 0, depth = 3):
 const topOther = (cs: NatalConfig[], skip: (c: NatalConfig) => boolean) => cs.find((c) => !skip(c));
 
 const isAnchor =
-    (...bodies: Array<PlanetKey | 'asc'>) =>
+    (...bodies: Array<PlacementConfig['body']>) =>
     (c: NatalConfig) =>
         c.kind === 'placement' && bodies.includes(c.body);
 
@@ -1321,6 +1324,7 @@ function core(env: Env): NatalSection {
           ? topHard.body
           : pickBody(topHard.aspect, CHALLENGE_PRIORITY);
     const giftKw = BODY_VOICE[strengthBody].giftKw;
+    if (topSoft) env.coreGift = strengthBody;
     const hook = challengeBody
         ? vary(cs, [
               `${giftKw}是天賦，${BODY_VOICE[challengeBody].trapKw}是功課`,
@@ -1381,8 +1385,360 @@ function core(env: Env): NatalSection {
     });
 }
 
+/** Planets in a house, in body order (personal planets first); empty without houses. */
+const planetsIn = (env: Env, h: number): PlanetKey[] =>
+    env.w.housesKnown ? PLANET_KEYS.filter((k) => houseOfBody(env, k) === h) : [];
+
+/** Sign on a house cusp. Only call when houses are known. */
+const cuspSign = (env: Env, h: number) => env.chart.houses![h - 1].sign;
+
 /**
- * The six natal sections in guideline order. 個性 and 底層邏輯 are written first and the later
+ * Two wordings of one line, the chart-seeded one first. The paragraph then takes whichever
+ * repeats fewer words of what it already says.
+ */
+function either(seed: string, a: string, b: string, basis: string): Part {
+    const o = cleanOptions(seed, [`${a}${basis}。`, `${b}${basis}。`]);
+    return { first: o, then: o };
+}
+
+const moonCaveat = (env: Env) =>
+    env.w.moonReliable
+        ? ''
+        : `月亮位置也可能偏差${moonNeighbour(env.chart)}，和月亮有關的描述僅供參考。`;
+
+/**
+ * 面具與真實的反差感：上升（外在人設）對月亮（內在小孩），加上第 12 宮。The first-impression
+ * adjectives belong to 個性; here the mask is what you do in public and the Moon is what shows
+ * once the door is closed.
+ */
+function mask(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const P = NATAL_LIMITS.paragraph;
+    const moon = signOfBody(env, 'moon');
+    const outer = w.ascSign ?? env.sunSign;
+    const outerName = w.ascSign !== null ? '上升' : '太陽';
+    const in12 = planetsIn(env, 12);
+    // Wording seeded by the rest of the chart, so a shared ascendant does not read the same.
+    const seed = `mask|${outer}|${moon}|${env.mix}|${in12.join()}|${houseOfBody(env, 'moon')}`;
+    const alt = pickBy(`${seed}|outer`, [false, true]);
+    const p1 = ctx.pack(
+        [
+            `${(alt ? V.MASK_ALT : V.MASK_KB)[outer].outer}（${outerName}${S(outer)}）。`,
+            `${V.INNER_KB[moon].inner}（月亮${S(moon)}）。`,
+        ],
+        P,
+    );
+
+    // What even you do not notice: a planet in the 12th house, else the sign on its cusp.
+    const hidden = in12.length
+        ? `${V.HIDDEN_PLANET[in12[0]]}（${N(in12[0])}在第 12 宮）。`
+        : w.housesKnown
+          ? `${V.HIDDEN_SIGN[cuspSign(env, 12)]}（第 12 宮起點在${S(cuspSign(env, 12))}）。`
+          : null;
+    const gap = pickBy(`${seed}|gap`, [V.MASK_GAP, V.MASK_GAP_ALT])[outer % 4][moon % 4];
+    const p2 = ctx.pack([`${gap}。`, hidden], P);
+
+    const role = V.MASK_KB[outer].role;
+    const child = V.INNER_KB[moon].child;
+    const hook =
+        outer === moon
+            ? pickBy(seed, ['面具和真心，幾乎是同一張臉', `表裡如一，只是藏著${child}`])
+            : pickBy(seed, [
+                  `人前是${role}，人後是${child}`,
+                  `${role}面具下，住著${child}`,
+                  `外表${role}，心裡住著${child}`,
+              ]);
+
+    const field = w.housesKnown
+        ? '依上升星座（別人看到的你）與月亮星座（關起門來的你）的落差，加上代表潛意識的人生領域。'
+        : `依太陽與月亮星座的落差推估；${noHouseReason(chart)}，算不出上升星座與潛意識相關的宮位，外在人設的部分較不確定。${moonCaveat(env)}`;
+
+    return section(env, 'natal_mask', {
+        field,
+        hook: charLen(hook) <= NATAL_LIMITS.hook ? hook : `人前${role}，人後${child}`,
+        insight: [p1, p2],
+        scene: ctx.first([V.INNER_KB[moon].scene], NATAL_LIMITS.scene),
+        advice: ctx.first(
+            [pickBy(`${seed}|tip`, [V.MASK_KB, V.MASK_ALT])[outer].tip, V.MASK_KB[outer].tip],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+/**
+ * 內耗與充電說明書：月亮宮位與和諧角度是回血方式，第 6／12 宮是耗損點。Without houses the
+ * Moon sign gives the recharge and the Mars sign (where the energy is spent) the drain.
+ */
+function battery(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_battery;
+    const P = NATAL_LIMITS.paragraph;
+    const moon = signOfBody(env, 'moon');
+    const mh = houseOfBody(env, 'moon');
+    const softMoon = aspects(cs).find((c) => SOFT_ASPECTS.has(c.aspect.type));
+    const boost = softMoon ? other(softMoon.aspect, 'moon') : null;
+    const moonSeed = seedOf(env, 'moon');
+    const rh = (part: string) =>
+        pickBy(`${moonSeed}|${part}`, [V.RECHARGE_HOUSE, V.RECHARGE_HOUSE_ALT])[(mh ?? 1) - 1];
+    const p1 = ctx.pack(
+        [
+            mh ? `${rh('way').way}（月亮在第 ${mh} 宮）。` : null,
+            softMoon && boost && boost !== 'moon'
+                ? `${V.RECHARGE_ASPECT[boost]}${aspectBasis(softMoon.aspect)}。`
+                : null,
+            `${V.RECHARGE_SIGN[moon]}（月亮${S(moon)}）。`,
+        ],
+        P,
+    );
+
+    const drainSign = w.housesKnown ? cuspSign(env, 6) : signOfBody(env, 'mars');
+    const in6 = planetsIn(env, 6);
+    const in12 = planetsIn(env, 12);
+    // 面具 already read the first 12th-house planet; take the next one when there is one.
+    const p12 = in12[1] ?? in12[0];
+    const p2 = ctx.pack(
+        [
+            in6.length ? `${V.DRAIN_PLANET[in6[0]].six}（${N(in6[0])}在第 6 宮）。` : null,
+            p12
+                ? either(
+                      `${seedOf(env, p12)}|drain`,
+                      V.DRAIN_PLANET[p12].twelve,
+                      V.DRAIN_TWELVE_ALT[p12],
+                      `（${N(p12)}在第 12 宮）`,
+                  )
+                : null,
+            `${V.DRAIN_SIGN[drainSign].drain}（${w.housesKnown ? '第 6 宮起點在' : '火星'}${S(drainSign)}）。`,
+        ],
+        P,
+    );
+
+    const el = V.RECHARGE_ELEMENT[moon % 4];
+    const tips = [V.DRAIN_SIGN[drainSign].tip, V.DRAIN_TIP_ALT[drainSign]];
+    const field = w.housesKnown
+        ? '依月亮的落點與它的順暢角度看你怎麼回血，再從日常工作與幕後獨處的人生領域看電力漏在哪裡。'
+        : `依月亮與火星的星座推估；${noHouseReason(chart)}，看不出回血與耗損落在哪個人生領域，這段參考性較低。${moonCaveat(env)}`;
+
+    return section(env, 'natal_battery', {
+        field,
+        hook: mh ? rh('hook').hook : el.hook,
+        insight: [p1, p2],
+        scene: ctx.first([mh ? rh('scene').scene : el.scene], NATAL_LIMITS.scene),
+        advice: ctx.first(
+            [pickBy(`${seedOf(env, 'mars')}|${drainSign}|drainTip`, tips), ...tips],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+/**
+ * 金錢觀與安全感來源：第 2 宮（怎麼賺、錢給你什麼）、第 8 宮（共同資源與對失去的反應）、
+ * 金星（錢花去哪）與木星（財運從哪來）。工作 already covered how you work; this card only talks
+ * about what you do with money.
+ */
+function money(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const P = NATAL_LIMITS.paragraph;
+    const venus = signOfBody(env, 'venus');
+    const jupiter = signOfBody(env, 'jupiter');
+    const vSeed = seedOf(env, 'venus');
+    const jSeed = seedOf(env, 'jupiter');
+    const spend = `${V.MONEY_VENUS[venus].spend}（金星${S(venus)}）。`;
+    const luck = either(
+        `${jSeed}|${vSeed}|luck`,
+        V.MONEY_JUPITER[jupiter],
+        V.MONEY_JUPITER_ALT[jupiter],
+        `（木星${S(jupiter)}）`,
+    );
+    let key = venus;
+    const ms = (part: string) =>
+        pickBy(`${part}|${key}|${vSeed}|${seedOf(env, 'moon')}`, [V.MONEY_SIGN, V.MONEY_SIGN_ALT])[
+            key
+        ];
+    let p1: string;
+    let p2: string;
+    if (w.housesKnown) {
+        const c2 = cuspSign(env, 2);
+        const c8 = cuspSign(env, 8);
+        const in2 = planetsIn(env, 2);
+        const in8 = planetsIn(env, 8);
+        key = c2;
+        p1 = ctx.pack(
+            [
+                `${ms('earn').earn}（第 2 宮起點在${S(c2)}）。`,
+                in2.length ? `${V.MONEY_PLANET[in2[0]].two}（${N(in2[0])}在第 2 宮）。` : null,
+                spend,
+            ],
+            P,
+        );
+        p2 = ctx.pack(
+            [
+                in8.length
+                    ? `${V.MONEY_PLANET[in8[0]].eight}（${N(in8[0])}在第 8 宮）。`
+                    : `${V.MONEY_SIGN[c8].fear}（第 8 宮起點在${S(c8)}）。`,
+                luck,
+            ],
+            P,
+        );
+    } else {
+        p1 = ctx.pack([spend], P);
+        p2 = ctx.pack([luck], P);
+    }
+
+    const field = w.housesKnown
+        ? '依金錢與共同資源相關的人生領域，以及金星、木星，看你怎麼賺、怎麼花、靠什麼安心。'
+        : `依金星與木星的星座推估；${noHouseReason(chart)}，看不出金錢與共同資源的宮位，這段參考性較低。`;
+
+    return section(env, 'natal_money', {
+        field,
+        hook: ms('hook').hook,
+        insight: [p1, p2],
+        scene: ctx.first(
+            [
+                pickBy(`${vSeed}|moneyScene`, [
+                    V.MONEY_VENUS[venus].scene,
+                    V.MONEY_VENUS_SCENE_ALT[venus],
+                ]),
+            ],
+            NATAL_LIMITS.scene,
+        ),
+        advice: ctx.first([ms('tip').tip, V.MONEY_SIGN[key].tip], NATAL_LIMITS.advice),
+    });
+}
+
+/**
+ * 原生家庭與依附模式：天底星座與第 4 宮行星（你心裡的「家」）、月亮與土星的角度（怎麼靠近
+ * 人）。Tendencies only: nothing here claims what the family did. 感情 already described what you
+ * want from a partner; this card is about how you attach.
+ */
+function family(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_family;
+    const P = NATAL_LIMITS.paragraph;
+    const moon = signOfBody(env, 'moon');
+    const ic = w.mcSign !== null ? (w.mcSign + 6) % 12 : null;
+    const key = ic ?? moon;
+    const attach = `${V.FAMILY_ATTACH[moon].attach}（月亮${S(moon)}）。`;
+    const in4 = planetsIn(env, 4);
+    const seed = `family|${key}|${seedOf(env, 'moon')}|${in4.join()}`;
+    const icOf = (part: string) => pickBy(`${seed}|${part}`, [V.FAMILY_IC, V.FAMILY_IC_ALT])[key];
+
+    const ms = aspects(cs).find((c) => other(c.aspect, 'moon') === 'saturn');
+    const msLine = ms
+        ? `${pickBy(`${seedOf(env, 'moon')}|ms`, V.MOON_SATURN[ms.aspect.type])}${aspectBasis(ms.aspect)}。`
+        : null;
+    const tense = !!ms && strained(ms.aspect, 'saturn');
+
+    let p1: string;
+    let p2: string;
+    if (ic !== null) {
+        p1 = ctx.pack(
+            [
+                `${icOf('home').home}（天底${S(ic)}）。`,
+                in4.length
+                    ? either(
+                          `${seedOf(env, in4[0])}|home`,
+                          V.FAMILY_PLANET[in4[0]],
+                          V.FAMILY_PLANET_ALT[in4[0]],
+                          `（${N(in4[0])}在第 4 宮）`,
+                      )
+                    : null,
+            ],
+            P,
+        );
+        // A strained Moon–Saturn angle closes the paragraph; a supportive one opens it.
+        p2 = tense ? ctx.pack([attach], P, msLine) : ctx.pack([msLine, attach], P);
+    } else {
+        p1 = ctx.pack([attach], P);
+        p2 = ctx.pack([`${icOf('home').home}（月亮${S(moon)}）。`], P);
+    }
+
+    const field = w.housesKnown
+        ? '依天底與家庭相關的人生領域、月亮，以及月亮和土星的角度，看你心裡的「家」與靠近人的方式；這是傾向，不是定論。'
+        : `只依月亮星座推估；${noHouseReason(chart)}，算不出代表家庭的天底與宮位，這段參考性較低。${moonCaveat(env)}`;
+
+    return section(env, 'natal_family', {
+        field,
+        hook: icOf('hook').hook,
+        insight: [p1, p2],
+        scene: ctx.first([icOf('scene').scene], NATAL_LIMITS.scene),
+        advice: ctx.first([V.FAMILY_ATTACH[moon].tip], NATAL_LIMITS.advice),
+    });
+}
+
+/**
+ * 天賦盲區（別人眼裡的超能力）：全盤最緊密的和諧角度或大三角、木星宮位、北交點。核心優缺點
+ * named the strength; this card shows how it looks from outside, and spotlights the planet that
+ * card did not put in its hook.
+ */
+function gift(env: Env): NatalSection {
+    const { w, ctx, chart } = env;
+    const cs = w.sections.natal_gift;
+    const P = NATAL_LIMITS.paragraph;
+    const soft = aspects(cs)
+        .filter((c) => SOFT_ASPECTS.has(c.aspect.type))
+        .sort((x, y) => x.aspect.orb - y.aspect.orb)[0];
+    const tri = grandTrine(w.configs);
+
+    // Spotlight: a planet of the grand trine, else of the tightest harmonious aspect.
+    const pool: PlanetKey[] = tri ? tri.bodies : soft ? [soft.aspect.a, soft.aspect.b] : [];
+    const fresh = pool.filter((k) => k !== env.coreGift);
+    const seed = `gift|${pool.map((k) => `${k}${signOfBody(env, k)}`).join()}|${env.mix}`;
+    const spot: PlanetKey = pool.length ? pickBy(seed, fresh.length ? fresh : pool) : 'jupiter';
+    const kind = soft?.aspect.type === 'sextile' && !tri ? 'sextile' : 'trine';
+
+    const jSign = signOfBody(env, 'jupiter');
+    const jHouse = houseOfBody(env, 'jupiter');
+    const jupLine: Part = jHouse
+        ? either(
+              `${seedOf(env, 'jupiter')}|gift`,
+              V.GIFT_JUPITER_HOUSE[jHouse - 1],
+              V.GIFT_JUPITER_HOUSE_ALT[jHouse - 1],
+              `（木星在第 ${jHouse} 宮）`,
+          )
+        : `${V.GIFT_JUPITER_SIGN[jSign]}（木星${S(jSign)}）。`;
+    const node = chart.bodies.find((b) => b.key === 'northNode')?.sign ?? null;
+    const nodeLine = node !== null ? `${V.GIFT_NODE[node].path}（北交點${S(node)}）。` : null;
+
+    const lead: string[] = [];
+    if (tri) {
+        // Element shared by at least two of the three planets (a trine can cross a sign border).
+        const els = tri.bodies.map((k) => signOfBody(env, k) % 4);
+        const el = els.find((e, i) => els.indexOf(e) !== i) ?? els[0];
+        lead.push(`${V.GIFT_TRIANGLE[el]}（${names(tri.bodies)}兩兩順暢相連）。`);
+    }
+    if (soft && pool.includes(spot))
+        lead.push(`${V.GIFT_SUPER[spot][kind]}${tri ? '' : aspectBasis(soft.aspect)}。`);
+    // No harmonious aspect at all: Jupiter opens and the node closes.
+    const p1 = lead.length ? ctx.pack(lead, P) : ctx.pack([jupLine], P);
+    const p2 =
+        ctx.pack(lead.length ? [jupLine, nodeLine] : [nodeLine], P) ||
+        ctx.pack(['這份天賦用得越自然，你越容易忘記它其實不是人人都有。'], P);
+
+    let field = w.housesKnown
+        ? '依全盤最順暢的行星角度、木星的落點與北交點，找出你習以為常、別人卻很羨慕的能力。'
+        : `依最順暢的行星角度、木星星座與北交點推估；${noHouseReason(chart)}，看不出木星落在哪個人生領域。`;
+    if (!w.moonReliable) field += '月亮的角度受出生時間影響，這次略過。';
+
+    return section(env, 'natal_gift', {
+        field,
+        hook: V.GIFT_SUPER[spot].hooks[kind === 'trine' ? 0 : 1],
+        insight: [p1, p2],
+        scene: ctx.first(
+            [pickBy(`${seed}|scene`, [V.GIFT_SUPER[spot].scene, V.GIFT_SCENE_ALT[spot]])],
+            NATAL_LIMITS.scene,
+        ),
+        advice: ctx.first(
+            [
+                node !== null ? V.GIFT_NODE[node].tip : null,
+                '請三位熟人各說一件「你做起來很輕鬆、他們卻覺得很難」的事，寫下來。',
+            ],
+            NATAL_LIMITS.advice,
+        ),
+    });
+}
+
+/**
+ * The eleven natal sections in guideline order. 個性 and 底層邏輯 are written first and the later
  * sections read their context (the Sun / Mercury traits, every sentence already used).
  */
 export function natalReport(chart: AstroChart): NatalSection[] {
@@ -1399,7 +1755,19 @@ export function natalReport(chart: AstroChart): NatalSection[] {
         mercurySign: signOf('mercury'),
         mix: `${el}|${md}`,
     };
-    return [personality(env), logic(env), stress(env), love(env), career(env), core(env)];
+    return [
+        personality(env),
+        logic(env),
+        stress(env),
+        love(env),
+        career(env),
+        core(env),
+        mask(env),
+        battery(env),
+        money(env),
+        family(env),
+        gift(env),
+    ];
 }
 
 export function formatNatalMeaning(s: NatalSection): string {

@@ -26,9 +26,34 @@ const OTHER = {
 describe('astroMeaningItems — full chart', () => {
     const chart = computeAstro(INPUT);
 
-    it('returns the six guideline sections in order with the card layout', () => {
+    it('returns the eleven guideline sections in order with the card layout', () => {
         const items = expectValidReport(chart);
-        expect(items).toHaveLength(6);
+        expect(items.map((i) => i.term)).toEqual([
+            '個性與日常特色',
+            '底層邏輯思考方式',
+            '面對壓力的顯現',
+            '感情模式',
+            '工作與天賦潛能',
+            '核心優缺點',
+            '面具與真實的反差感',
+            '內耗與充電說明書',
+            '金錢觀與安全感來源',
+            '原生家庭與依附模式',
+            '天賦盲區',
+        ]);
+    });
+
+    it('bases cards 7–11 on the houses and points the guideline names', () => {
+        const byTerm = new Map(astroMeaningItems(chart).map((i) => [i.term, i.meaning]));
+        expect(byTerm.get('面具與真實的反差感')).toMatch(/上升[\s\S]+月亮/);
+        expect(byTerm.get('面具與真實的反差感')).toContain('第 12 宮');
+        expect(byTerm.get('內耗與充電說明書')).toMatch(/月亮在第 \d+ 宮/);
+        expect(byTerm.get('內耗與充電說明書')).toMatch(/第 (6|12) 宮/);
+        expect(byTerm.get('金錢觀與安全感來源')).toMatch(/第 2 宮[\s\S]+第 8 宮/);
+        expect(byTerm.get('金錢觀與安全感來源')).toMatch(/金星|木星/);
+        expect(byTerm.get('原生家庭與依附模式')).toMatch(/天底[\s\S]+月亮/);
+        expect(byTerm.get('天賦盲區')).toMatch(/木星在第 \d+ 宮/);
+        expect(byTerm.get('天賦盲區')).toContain('北交點');
     });
 
     it('chains context: later sections reuse earlier traits only as domain scenes', () => {
@@ -68,6 +93,10 @@ describe('astroMeaningItems — time unknown', () => {
         expect(byTerm.get('工作與天賦潛能')).toContain('參考性較低');
         expect(byTerm.get('面對壓力的顯現')).toContain('月亮位置可能偏差');
         expect(byTerm.get('核心優缺點')).toContain('略過');
+        for (const t of ['面具與真實的反差感', '內耗與充電說明書', '原生家庭與依附模式'])
+            expect(byTerm.get(t), t).toContain('出生時間不確定');
+        expect(byTerm.get('金錢觀與安全感來源')).toContain('參考性較低');
+        expect(byTerm.get('天賦盲區')).toContain('略過');
     });
 
     it('leaves Moon aspects out', () => {

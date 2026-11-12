@@ -20,7 +20,7 @@ describe('buildAstroAiPrompt', () => {
         expect(text).toContain('第 12 宮：');
     });
 
-    it('asks for the six sections with weighted configurations', () => {
+    it('asks for the eleven sections with weighted configurations', () => {
         for (const t of [
             '個性與日常特色',
             '底層邏輯思考方式',
@@ -28,11 +28,19 @@ describe('buildAstroAiPrompt', () => {
             '感情模式',
             '工作與天賦潛能',
             '核心優缺點',
+            '面具與真實的反差感',
+            '內耗與充電說明書',
+            '金錢觀與安全感來源',
+            '原生家庭與依附模式',
+            '天賦盲區',
         ]) {
             expect(text).toContain(t);
         }
         expect(text).toContain('## 權重最高的配置（依板塊）');
         expect(text).toMatch(/- \[\d+\] 上升 處女/);
+        expect(text).toContain('依序產出 11 個板塊');
+        expect(text).toContain('natal_battery');
+        expect(text).toMatch(/- \[\d+\] 北交點 /);
     });
 
     it('states chaining, de-jargon, no-concatenation and strict JSON rules', () => {
